@@ -1,0 +1,48 @@
+{% extends "base_view.html" %}
+
+{% block title %} meliza-lab : bird : {{ animal.name }} {% endblock %}
+
+{% block content %}
+<h2>{{ animal.name }}</h2>
+
+<hr>
+<dl class="dl-horizontal">
+  <dt>species</dt><dd>{{ animal.species }}</dd>
+  <dt>sex</dt><dd>{{ animal.sex }}</dd>
+  <dt>band</dt><dd>{{ animal.band }}</dd>
+  <dt>uuid</dt><dd>{{ animal.uuid }}</dd>
+  <dt>alive</dt><dd>{{ animal.alive }}</dd>
+  <dt>acquired</dt><dd>{{ animal.acquisition_event.event_date }}</dd>
+  <dt>sire</dt><dd>{% if animal.sire %}<a href="{{ animal.sire.get_absolute_url }}">{{ animal.sire }}</a>{% endif %}</dd>
+  <dt>dam</dt><dd>{% if animal.dam %}<a href="{{ animal.dam.get_absolute_url }}">{{ animal.dam }}</a>{% endif %}</dd>
+</dl>
+<a href="{% url 'admin:birds_animal_change' animal.id %}">edit bird</a><br/>
+
+<h3>Events</h3>
+
+<table class="table table-striped table-condensed">
+  <thead>
+    <th>Status</th>
+    <th>Date</th>
+    <th>Location</th>
+    <th>Comments</th>
+  </thead>
+  <tbody>
+    {% for event in event_list %}
+        <tr>
+          <td>{{ event.status }}</td>
+          <td>{{ event.date }}</td>
+          <td>{{ event.location }}</td>
+          <td>{{ event.description }}</td>
+          <td></td>
+        </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<a href="{% url 'admin:birds_event_add' %}">add event</a><br/>
+
+
+<h3>Children</h3>
+{% include "birds/bird_table.html" %}
+
+{% endblock %}

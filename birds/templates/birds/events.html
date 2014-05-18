@@ -1,0 +1,29 @@
+{% extends "base_view.html" %}
+
+{% block title %} meliza-lab : events {% endblock %}
+
+{% block content %}
+<h2>{% if header_text %}{{ header_text}}{% else %}Events{% endif %}</h2>
+<table class="table table-striped table-condensed">
+  <thead>
+    <th>Animal</th>
+    <th>Status</th>
+    <th>Date</th>
+    <th>Location</th>
+    <th>Comments</th>
+  </thead>
+  <tbody>
+    {% for event in event_list %}
+        <tr>
+          <td><a href="{% url 'birds:bird' event.animal.id %}">{{ event.animal.name }}</a></td>
+          <td>{{ event.status }}</td>
+          <td>{{ event.date }}</td>
+          <td>{{ event.location }}</td>
+          <td>{{ event.description }}</td>
+          <td></td>
+        </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p><a href="{% url 'admin:birds_event_add' %}">add new event</a></p>
+{% endblock %}
