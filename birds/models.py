@@ -57,6 +57,11 @@ class Location(models.Model):
         ordering = ['name']
 
 
+class LivingAnimalManager(models.Manager):
+    def get_queryset(self):
+        return super(LivingAnimalManager, self).get_queryset().exclude(event__status__count=-1)
+
+
 class Animal(models.Model):
     MALE = 'M'
     FEMALE = 'F'
@@ -109,6 +114,13 @@ class Animal(models.Model):
     def alive(self):
         """ Returns True if the bird is alive """
         return sum(evt.status.count for evt in self.event_set.all()) > 0
+
+    objects = models.Manager()
+    living = LivingAnimalManager()
+
+    def age(self):
+        hatch = self.event_set.filter(status__name="hatched").first()
+        return hatch and (datetime.date.today() - hatch.date).days
 
     def acquisition_event(self):
         """ Returns event when bird was acquired.

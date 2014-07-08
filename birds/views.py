@@ -14,7 +14,7 @@ class BirdListView(generic.ListView):
     context_object_name = 'bird_list'
 
     def get_queryset(self):
-        return Animal.objects.order_by("id")
+        return Animal.living.order_by("id")
 
 
 class BirdView(generic.DetailView):
