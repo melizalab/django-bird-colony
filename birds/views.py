@@ -41,6 +41,8 @@ class ClutchEntry(generic.FormView):
                       { 'event_list': objs['events'],
                         'header_text': 'Hatch events for new clutch'})
 
+# after excluding birds that have died/left, calculate days since
+# hatch/acquisition and bin according to age table
 _age_query = """
 SELECT D.*, COUNT(*) as count FROM birds_animal AS A
   INNER JOIN (birds_event AS E, birds_status AS S, birds_age AS D)
@@ -48,7 +50,10 @@ SELECT D.*, COUNT(*) as count FROM birds_animal AS A
         E.status_id=S.id AND
         A.species_id=D.species_id AND
         timestampdiff(DAY,E.date,CURDATE()) BETWEEN D.min_days AND D.max_days)
-  WHERE S.count=1
+  WHERE NOT (A.id IN (SELECT U1.animal_id FROM birds_event U1
+                       INNER JOIN birds_status U2 ON ( U1.status_id = U2.id )
+                       WHERE U2.count=-1 ))
+    AND S.count=1
   GROUP BY D.name
   ORDER BY D.species_id, D.min_days
 """
