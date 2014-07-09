@@ -2,6 +2,7 @@ from django.shortcuts import get_object_or_404, render
 from django.http import HttpResponseRedirect, HttpResponse
 from django.core.urlresolvers import reverse
 from django.views import generic
+from django.db.models import Min
 
 from birds.models import Animal, Event, Age
 from birds.forms import ClutchForm
@@ -9,7 +10,7 @@ from birds.forms import ClutchForm
 class BirdListView(generic.ListView):
     template_name = 'birds/birds.html'
     context_object_name = 'bird_list'
-    queryset = Animal.living.order_by("id")
+    queryset = Animal.living.annotate(acq_date=Min("event__date")).order_by("acq_date")
 
 
 class BirdView(generic.DetailView):
