@@ -4,7 +4,7 @@ from django.conf.urls import patterns, url
 from birds import views
 
 urlpatterns = patterns('',
-                       url(r'^$', views.index, name='index'),
+                       url(r'^$', views.IndexView.as_view(), name='index'),
                        url(r'^clutch$', login_required(views.ClutchEntry.as_view()),
                            name='clutch'),
                        url(r'^birds/$', views.BirdListView.as_view(), name='birds'),

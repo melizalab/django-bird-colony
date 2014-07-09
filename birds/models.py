@@ -47,6 +47,7 @@ class Status(models.Model):
         ordering = ['name']
         verbose_name_plural = 'status codes'
 
+
 class Location(models.Model):
     name = models.CharField(max_length=45)
 
@@ -55,6 +56,16 @@ class Location(models.Model):
 
     class Meta:
         ordering = ['name']
+
+
+class Age(models.Model):
+    name = models.CharField(max_length=16)
+    min_days = models.PositiveIntegerField()
+    max_days = models.PositiveIntegerField()
+    species = models.ForeignKey('Species')
+
+    def __unicode__(self):
+        return "%s %s (%d-%d days)" % (self.species, self.name, self.min_days, self.max_days)
 
 
 class LivingAnimalManager(models.Manager):
@@ -117,10 +128,6 @@ class Animal(models.Model):
 
     objects = models.Manager()
     living = LivingAnimalManager()
-
-    def age(self):
-        hatch = self.event_set.filter(status__name="hatched").first()
-        return hatch and (datetime.date.today() - hatch.date).days
 
     def acquisition_event(self):
         """ Returns event when bird was acquired.

@@ -3,18 +3,13 @@ from django.http import HttpResponseRedirect, HttpResponse
 from django.core.urlresolvers import reverse
 from django.views import generic
 
-from birds.models import Animal, Event
+from birds.models import Animal, Event, Age
 from birds.forms import ClutchForm
-
-def index(request):
-    return render(request, 'birds/index.html')
 
 class BirdListView(generic.ListView):
     template_name = 'birds/birds.html'
     context_object_name = 'bird_list'
-
-    def get_queryset(self):
-        return Animal.living.order_by("id")
+    queryset = Animal.living.order_by("id")
 
 
 class BirdView(generic.DetailView):
@@ -32,9 +27,7 @@ class EventListView(generic.ListView):
     template_name = 'birds/events.html'
     context_object_name = 'event_list'
 
-    def get_queryset(self):
-        """ Returns last 100 events """
-        return Event.objects.order_by('-date')[:100]
+    queryset = Event.objects.order_by('-date')[:100]
 
 
 class ClutchEntry(generic.FormView):
@@ -47,6 +40,25 @@ class ClutchEntry(generic.FormView):
         return render(self.request, 'birds/events.html',
                       { 'event_list': objs['events'],
                         'header_text': 'Hatch events for new clutch'})
+
+_age_query = """
+SELECT D.*, COUNT(*) as count FROM birds_animal AS A
+  INNER JOIN (birds_event AS E, birds_status AS S, birds_age AS D)
+    ON (E.animal_id=A.id AND
+        E.status_id=S.id AND
+        A.species_id=D.species_id AND
+        timestampdiff(DAY,E.date,CURDATE()) BETWEEN D.min_days AND D.max_days)
+  WHERE S.count=1
+  GROUP BY D.name
+  ORDER BY D.species_id, D.min_days
+"""
+
+class IndexView(generic.base.TemplateView):
+
+    template_name = "birds/index.html"
+
+    def get_context_data(self, **kwargs):
+        return {"groups": Age.objects.raw(_age_query)}
 
 
 # Create your views here.
