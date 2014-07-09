@@ -5,6 +5,8 @@ from birds import views
 
 urlpatterns = patterns('',
                        url(r'^$', views.IndexView.as_view(), name='index'),
+                       url(r'^summary/(\d+)/(\d+)/$', views.EventSummary.as_view(),
+                           name="summary"),
                        url(r'^clutch$', login_required(views.ClutchEntry.as_view()),
                            name='clutch'),
                        url(r'^birds/$', views.BirdListView.as_view(), name='birds'),

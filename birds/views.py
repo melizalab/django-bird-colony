@@ -2,9 +2,11 @@ from django.shortcuts import get_object_or_404, render
 from django.http import HttpResponseRedirect, HttpResponse
 from django.core.urlresolvers import reverse
 from django.views import generic
-from django.db.models import Min
+from django.db.models import Min, Count
 
-from birds.models import Animal, Event, Age
+import datetime
+
+from birds.models import Animal, Event, Age, Status
 from birds.forms import ClutchForm
 
 class BirdListView(generic.ListView):
@@ -64,7 +66,26 @@ class IndexView(generic.base.TemplateView):
     template_name = "birds/index.html"
 
     def get_context_data(self, **kwargs):
-        return {"groups": Age.objects.raw(_age_query)}
+        today = datetime.date.today()
+        return {"groups": Age.objects.raw(_age_query),
+                "today": today,
+                "lastmonth": today.replace(day=1) - datetime.timedelta(days=1)
+        }
 
+
+class EventSummary(generic.base.TemplateView):
+
+    template_name = "birds/summary.html"
+
+    def get_context_data(self, **kwargs):
+        year, month = map(int, self.args[:2])
+        qs = Event.objects.filter(date__year=year, date__month=month)
+        totls = [ dict(name=x['status__name'], total=x['total']) for x in
+                  qs.values("status__name").annotate(total=Count("id")) ]
+        return { "year": year,
+                 "month": month,
+                 "next": datetime.date(year, month, 1) + datetime.timedelta(days=32),
+                 "prev": datetime.date(year, month, 1) - datetime.timedelta(days=1),
+                 "event_totals": totls }
 
 # Create your views here.

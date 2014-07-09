@@ -1,0 +1,31 @@
+{% extends "base_view.html" %}
+
+{% block title %} meliza-lab : bird colony {% endblock %}
+
+{% block content %}
+
+<h2>Summary for {{ month }}/{{ year }}</h2>
+
+<table class="table table-striped table-condensed">
+  <thead>
+    <th>Event</th>
+    <th>Total</th>
+  </thead>
+  <tbody>
+    {% for evt in event_totals %}
+    <tr>
+      <td>{{ evt.name }}</td>
+      <td>{{ evt.total }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<p>
+  <a href="{% url 'birds:summary' prev.year prev.month %}">previous month</a>
+  <a href="{% url 'birds:summary' next.year next.month %}">next month</a>
+</p>
+
+<p><a href="{% url 'birds:events' %}">list all recent events</a></p>
+
+{% endblock %}
