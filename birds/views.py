@@ -67,7 +67,7 @@ SELECT D.*, COUNT(*) as count FROM birds_animal AS A
                        INNER JOIN birds_status U2 ON ( U1.status_id = U2.id )
                        WHERE U2.count=-1 ))
     AND S.count=1
-  GROUP BY D.name
+  GROUP BY D.name, D.species_id
   ORDER BY D.species_id, D.min_days
 """
 
