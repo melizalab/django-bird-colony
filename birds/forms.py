@@ -3,13 +3,17 @@
 from django import forms
 
 from django.contrib.auth.models import User
-from birds.models import Animal, Event, Status, Location, Color
+from birds.models import Animal, Event, Status, Location, Color, Species
 
 
 class BandingForm(forms.Form):
-    sire = forms.ModelChoiceField(queryset=Animal.objects.filter(sex__exact='M'))
-    dam  = forms.ModelChoiceField(queryset=Animal.objects.filter(sex__exact='F'))
-    hatch_date = forms.DateField()
+    acq_status = forms.ModelChoiceField(queryset=Status.objects.filter(count=1))
+    acq_date = forms.DateField()
+    sire = forms.ModelChoiceField(queryset=Animal.objects.filter(sex__exact='M'),
+                                  required=False)
+    dam  = forms.ModelChoiceField(queryset=Animal.objects.filter(sex__exact='F'),
+                                  required=False)
+    species = forms.ModelChoiceField(queryset=Species.objects.all(), required=False)
     banding_date = forms.DateField()
     band_color = forms.ModelChoiceField(queryset=Color.objects.all(), required=False)
     band_number = forms.IntegerField(min_value=1)
@@ -19,29 +23,35 @@ class BandingForm(forms.Form):
 
     def clean(self):
         super(BandingForm, self).clean()
+        data = self.cleaned_data
         try:
-            self.cleaned_data['hatch_status'] = Status.objects.get(name__startswith="hatch")
-        except:
-            raise forms.ValidationError("No 'hatched' status type - add one in admin")
-        try:
-            self.cleaned_data['band_status'] = Status.objects.get(name__startswith="band")
+            data['band_status'] = Status.objects.get(name__startswith="band")
         except:
             raise forms.ValidationError("No 'banded' status type - add one in admin")
-        if ('dam' in self.cleaned_data and 'sire' in self.cleaned_data and
-            self.cleaned_data['dam'].species != self.cleaned_data['sire'].species):
-            raise forms.ValidationError("Parents must be the same species")
-        return self.cleaned_data
+        if 'acq_status' in data and data['acq_status'].name == "hatched":
+            if data['dam'] is None or data['sire'] is None:
+                raise forms.ValidationError("Parents required for hatched birds")
+            if data['dam'].species != data['sire'].species:
+                raise forms.ValidationError("Parents must be the same species")
+            data['species'] = data['dam'].species
+        else:
+            if data['species'] is None:
+                raise forms.ValidationError("Species required for non-hatch acquisition")
+            data['dam'] = None
+            data['sire'] = None
+        return data
 
     def create_chick(self):
         data = self.cleaned_data
         ret = {'chick': None, 'events': []}
-        chick = Animal(species=data['sire'].species, sex='U',
+        chick = Animal(species=data['species'], sex='U',
                        band_color=data['band_color'], band_number=data['band_number'])
         chick.save()
-        chick.parents.add(data['sire'], data['dam'])
-        chick.save()
-        evt = Event(animal=chick, date=data['hatch_date'],
-                    status=data['hatch_status'],
+        if data['sire'] and data['dam']:
+            chick.parents.add(data['sire'], data['dam'])
+            chick.save()
+        evt = Event(animal=chick, date=data['acq_date'],
+                    status=data['acq_status'],
                     description=data['comments'],
                     location=data['location'],
                     entered_by=data['user'])

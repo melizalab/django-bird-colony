@@ -2,7 +2,7 @@
 {% load staticfiles %}
 {% load widget_tweaks %}
 
-{% block title %} meliza-lab : bird colony : add band {% endblock title%}
+{% block title %} meliza-lab : bird colony : add bird {% endblock title%}
 
 {% block css %}
     <link href="{% static 'local/css/bootstrap-datetimepicker.min.css' %}" rel="stylesheet">
@@ -30,16 +30,46 @@
     <form action="{% url 'birds:band' %}" class="form-horizontal" method="post" role="form">
       {% csrf_token %}
       <p><strong>Instructions</strong>: This form is for adding a single banded
-      bird to the database. For birds in the breeding colony, determine hatch
-      date in a clutch using the nest observation sheet. Zebra finches should be
-      banded between 12 to 18 days of age. This form does not yet work for
-      starlings.
-      </p>
+      bird to the database. For birds hatched in the breeding colony, determine
+      hatch date in a clutch using the nest observation sheet. Parents are
+      required, and species will be inferred from the parents. Zebra finches
+      should be banded between 12 to 18 days of age.</p>
+
+      <p>For birds acquired by other methods (including capture), parents are
+      not required, but species must be set manually.</p>
+
       {% if form.non_field_errors %}
       <div class="alert alert-danger">{{ form.non_field_errors }}</div>
       {% endif %}
+
+      <div class="form-group {% if form.acq_status.errors %}has-error{% endif %}">
+        <label for="id_acq_status" class="col-sm-2 control-label">Acquired method</label>
+        <div class="col-sm-5">
+          {% render_field form.acq_status class+="form-control" %}
+        </div>
+      </div>
+
+
+      <div class="form-group {% if form.acq_date.errors %}has-error{% endif %}">
+        <label for="id_acq_date" class="col-sm-2 control-label">Acquisition date</label>
+        <div class="col-sm-3">
+          <div class="input-group date" id="datetimepicker1">
+            {% render_field form.acq_date class+="form-control" data-format="MM/dd/YYYY" %}
+            <span class="input-group-addon"><span class="glyphicon glyphicon-calendar"></span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group {% if form.species.errors %}has-error{% endif %}">
+        <label for="id_species" class="col-sm-2 control-label">Species</label>
+        <div class="col-sm-5">
+          {% render_field form.species class+="form-control" %}
+        </div>
+      </div>
+
       <div class="form-group {% if form.sire.errors %}has-error{% endif %}">
-        <label for="input-sire" class="col-sm-2 control-label">Sire</label>
+        <label for="id_sire" class="col-sm-2 control-label">Sire</label>
         <div class="col-sm-5">
           {% render_field form.sire class+="form-control" %}
         </div>
@@ -52,19 +82,8 @@
         </div>
       </div>
 
-      <div class="form-group {% if form.hatch_date.errors %}has-error{% endif %}">
-        <label for="id_hatch_date" class="col-sm-2 control-label">Hatch Date</label>
-        <div class="col-sm-3">
-          <div class="input-group date" id="datetimepicker1">
-            {% render_field form.hatch_date class+="form-control" data-format="MM/dd/YYYY" %}
-            <span class="input-group-addon"><span class="glyphicon glyphicon-calendar"></span>
-            </span>
-          </div>
-        </div>
-      </div>
-
       <div class="form-group {% if form.banding_date.errors %}has-error{% endif %}">
-        <label for="id_banding_date" class="col-sm-2 control-label">Banding Date</label>
+        <label for="id_banding_date" class="col-sm-2 control-label">Banding date</label>
         <div class="col-sm-3">
           <div class="input-group date" id="datetimepicker2">
             {% render_field form.banding_date class+="form-control" data-format="MM/dd/YYYY" %}
@@ -75,7 +94,7 @@
       </div>
 
       <div class="form-group {% if form.band_color.errors %}has-error{% endif %}">
-        <label for="id_band_color" class="col-sm-2 control-label">Band Color</label>
+        <label for="id_band_color" class="col-sm-2 control-label">Band color</label>
         <div class="col-sm-5">
           {% render_field form.band_color class+="form-control" %}
         </div>
@@ -112,7 +131,7 @@
 
       <div class="form-group">
         <div class="col-sm-offset-2 col-sm-10">
-          <button type="submit" class="btn btn-default">Add Bird</button>
+          <button type="submit" class="btn btn-default">Add bird</button>
         </div>
       </div>
 
