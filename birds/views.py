@@ -7,7 +7,7 @@ from django.db.models import Min, Count
 import datetime
 
 from birds.models import Animal, Event, Age, Status
-from birds.forms import ClutchForm
+from birds.forms import ClutchForm, BandingForm
 
 class BirdListView(generic.ListView):
     template_name = 'birds/birds.html'
@@ -43,6 +43,16 @@ class ClutchEntry(generic.FormView):
         return render(self.request, 'birds/events.html',
                       { 'event_list': objs['events'],
                         'header_text': 'Hatch events for new clutch'})
+
+
+class BandingEntry(generic.FormView):
+    template_name = "birds/banding_entry.html"
+    form_class = BandingForm
+
+    def form_valid(self, form, **kwargs):
+        chick = form.create_chick()
+        return HttpResponseRedirect(reverse('birds:bird', args=(chick.pk,)))
+
 
 # after excluding birds that have died/left, calculate days since
 # hatch/acquisition and bin according to age table

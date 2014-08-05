@@ -2,7 +2,7 @@
 {% load staticfiles %}
 {% load widget_tweaks %}
 
-{% block title %} meliza-lab : bird colony : add clutch {% endblock title%}
+{% block title %} meliza-lab : bird colony : add band {% endblock title%}
 
 {% block css %}
     <link href="{% static 'local/css/bootstrap-datetimepicker.min.css' %}" rel="stylesheet">
@@ -14,6 +14,7 @@
 <script type="text/javascript">
   $(function () {
   $('#datetimepicker1').datetimepicker({ pickTime: false});
+  $('#datetimepicker2').datetimepicker({ pickTime: false});
   });
 </script>
 {% endblock %}
@@ -23,15 +24,16 @@
 
 <div class="panel panel-default">
   <div class="panel-heading">
-    <h3 class="panel-title">New clutch</h3>
+    <h3 class="panel-title">Band entry</h3>
   </div>
   <div class="panel-body">
-    <form action="{% url 'birds:clutch' %}" class="form-horizontal" method="post" role="form">
+    <form action="{% url 'birds:band' %}" class="form-horizontal" method="post" role="form">
       {% csrf_token %}
-      <p><strong>Instructions</strong>: Only enter clutches once the number of chicks
-        is known. Enter the father, mother, number of chicks, and the most likely date
-        of birth. This will create records for the new birds and for the hatch events.
-        You will need to manually set tag information later, when the chicks are tagged.
+      <p><strong>Instructions</strong>: This form is for adding a single banded
+      bird to the database. For birds in the breeding colony, determine hatch
+      date in a clutch using the nest observation sheet. Zebra finches should be
+      banded between 12 to 18 days of age. This form does not yet work for
+      starlings.
       </p>
       {% if form.non_field_errors %}
       <div class="alert alert-danger">{{ form.non_field_errors }}</div>
@@ -61,12 +63,31 @@
         </div>
       </div>
 
-      <div class="form-group {% if form.chicks.errors %}has-error{% endif %}">
-        <label for="id_chicks" class="col-sm-2 control-label">Number of chicks</label>
+      <div class="form-group {% if form.banding_date.errors %}has-error{% endif %}">
+        <label for="id_banding_date" class="col-sm-2 control-label">Banding Date</label>
         <div class="col-sm-3">
-          {% render_field form.chicks class+="form-control" %}
+          <div class="input-group date" id="datetimepicker2">
+            {% render_field form.banding_date class+="form-control" data-format="MM/dd/YYYY" %}
+            <span class="input-group-addon"><span class="glyphicon glyphicon-calendar"></span>
+            </span>
+          </div>
         </div>
       </div>
+
+      <div class="form-group {% if form.band_color.errors %}has-error{% endif %}">
+        <label for="id_band_color" class="col-sm-2 control-label">Band Color</label>
+        <div class="col-sm-5">
+          {% render_field form.band_color class+="form-control" %}
+        </div>
+      </div>
+
+      <div class="form-group {% if form.band_number.errors %}has-error{% endif %}">
+        <label for="id_band_number" class="col-sm-2 control-label">Band number</label>
+        <div class="col-sm-3">
+          {% render_field form.band_number class+="form-control" %}
+        </div>
+      </div>
+
 
       <div class="form-group {% if form.location.errors %}has-error{% endif %}">
         <label for="id_location" class="col-sm-2 control-label">Location</label>
@@ -91,7 +112,7 @@
 
       <div class="form-group">
         <div class="col-sm-offset-2 col-sm-10">
-          <button type="submit" class="btn btn-default">Add Clutch</button>
+          <button type="submit" class="btn btn-default">Add Bird</button>
         </div>
       </div>
 
