@@ -21,8 +21,9 @@ class BirdView(generic.DetailView):
 
     def get_context_data(self, **kwargs):
         context = super(BirdView, self).get_context_data(**kwargs)
-        context['bird_list'] = context['animal'].animal_set.all()
-        context['event_list'] = context['animal'].event_set.all()
+        animal = context['animal']
+        context['bird_list'] = animal.animal_set.all()
+        context['event_list'] = animal.event_set.all()
         return context
 
 

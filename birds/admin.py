@@ -1,15 +1,15 @@
 from django.contrib import admin
 from birds.models import Species, Color, Location, Animal, Event, Status, Age
 
-
 # Register your models here.
 
 class AnimalAdmin(admin.ModelAdmin):
-    fields = ('species', 'sex', 'band_color', 'band_number', 'parents')
-    list_display = ('name', 'species', 'band', 'uuid', 'sex')
+    fields = ('species', 'sex', 'band_color', 'band_number', 'parents', 'reserved_by')
+    list_display = ('name', 'species', 'band', 'uuid', 'sex', 'reserved_by')
     list_filter = ('species', 'sex', 'band_color')
     search_fields = ('band', 'uuid')
     pass
+
 
 class EventAdmin(admin.ModelAdmin):
     date_hierarchy = 'date'

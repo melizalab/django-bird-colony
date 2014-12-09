@@ -38,6 +38,8 @@ class Status(models.Model):
     name = models.CharField(max_length=16)
     count = models.SmallIntegerField(default=0, choices=((0, '0'), (-1, '-1'), (1, '+1')),
                                      help_text="1: animal acquired; -1: animal lost; 0: no change")
+    category = models.CharField(max_length=2, choices=(('B','B'),('C','C'),('D','D'),('E','E')),
+                                blank=True, null=True)
     description = models.TextField()
 
     def __unicode__(self):
@@ -90,6 +92,9 @@ class Animal(models.Model):
     uuid = UUIDField(auto=True, hyphenate=True)
     parents = models.ManyToManyField('Animal', blank=True)
 
+    reserved_by = models.ForeignKey(User, blank=True, null=True,
+                                    help_text="mark a bird as reserved for a specific user")
+
     created = models.DateTimeField(auto_now_add=True)
 
     def short_uuid(self):
@@ -126,6 +131,12 @@ class Animal(models.Model):
         """ Returns True if the bird is alive """
         return sum(evt.status.count for evt in self.event_set.all()) > 0
 
+    def nchildren(self):
+        """ Returns (living, total) children """
+        chicks = self.animal_set
+        # probably inefficient
+        return (sum(1 for a in chicks.iterator() if a.alive()), chicks.count())
+
     objects = models.Manager()
     living = LivingAnimalManager()
 
@@ -135,6 +146,13 @@ class Animal(models.Model):
         Returns None if no acquisition events
         """
         return self.event_set.filter(status__count=1).order_by('date').first()
+
+    def age_days(self):
+        """ Returns days since acquisition_event"""
+        try:
+            return (datetime.date.today() - self.acquisition_event().date).days
+        except AttributeError:
+            pass
 
     def get_absolute_url(self):
         return reverse("birds:bird", kwargs={'pk': self.pk})

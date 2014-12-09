@@ -4,9 +4,11 @@
     <th>Species</th>
     <th>Band</th>
     <th>Sex</th>
-    <th>Acquired</th>
+    <th>Age (days)</th>
     <th>Alive</th>
+    <th>Children</th>
     <th>UUID</th>
+    <th>Reserved</th>
   </thead>
   <tbody>
     {% for bird in bird_list %}
@@ -15,9 +17,11 @@
           <td>{{ bird.species }}</td>
           <td>{{ bird.band }}</td>
           <td>{{ bird.sex }}</td>
-          <td>{% if bird.acquisition_event %}{{ bird.acquisition_event.date }}{% endif %}</td>
+          <td>{{ bird.age_days }}</td>
           <td>{{ bird.alive}}</td>
+          <td>{{ bird.nchildren|last}}</td>
           <td>{{ bird.uuid }}</td>
+          <td>{% if bird.reserved_by %}{{ bird.reserved_by }}{% endif %}</td>
           <td></td>
         </tr>
     {% endfor %}
