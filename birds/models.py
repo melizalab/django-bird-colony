@@ -15,7 +15,7 @@ class Species(models.Model):
     species = models.CharField(max_length=45)
     code = models.CharField(max_length=4)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.common_name
 
     class Meta:
@@ -27,7 +27,7 @@ class Color(models.Model):
     name = models.CharField(max_length=12)
     abbrv = models.CharField('Abbreviation', max_length=3)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
     class Meta:
@@ -42,7 +42,7 @@ class Status(models.Model):
                                 blank=True, null=True)
     description = models.TextField()
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
     class Meta:
@@ -53,7 +53,7 @@ class Status(models.Model):
 class Location(models.Model):
     name = models.CharField(max_length=45)
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
 
     class Meta:
@@ -66,7 +66,7 @@ class Age(models.Model):
     max_days = models.PositiveIntegerField()
     species = models.ForeignKey('Species')
 
-    def __unicode__(self):
+    def __str__(self):
         return "%s %s (%d-%d days)" % (self.species, self.name, self.min_days, self.max_days)
 
 
@@ -112,7 +112,7 @@ class Animal(models.Model):
     def name(self):
         return "%s_%s" % (self.species.code, self.band() or self.short_uuid())
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name()
 
     def sire(self):
@@ -172,7 +172,7 @@ class Event(models.Model):
     entered_by = models.ForeignKey(User)
     created = models.DateTimeField(auto_now_add=True)
 
-    def __unicode__(self):
+    def __str__(self):
         return "%s: %s on %s" % (self.animal, self.status, self.date)
 
     def event_date(self):
