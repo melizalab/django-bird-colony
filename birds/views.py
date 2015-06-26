@@ -1,9 +1,9 @@
-from django.shortcuts import get_object_or_404, render, render_to_response
+from django.shortcuts import render, render_to_response
 from django.http import HttpResponseRedirect, HttpResponse
 from django.core.urlresolvers import reverse
 from django.core import serializers
 from django.views import generic
-from django.db.models import Min, Count
+from django.db.models import Min
 import django_filters
 import datetime
 
