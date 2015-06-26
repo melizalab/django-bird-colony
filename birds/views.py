@@ -1,18 +1,36 @@
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, render, render_to_response
 from django.http import HttpResponseRedirect, HttpResponse
 from django.core.urlresolvers import reverse
+from django.core import serializers
 from django.views import generic
 from django.db.models import Min, Count
-
+import django_filters
 import datetime
 
-from birds.models import Animal, Event, Age, Status
+from birds.models import Animal, Event
 from birds.forms import ClutchForm, BandingForm
 
-class BirdListView(generic.ListView):
-    template_name = 'birds/birds.html'
-    context_object_name = 'bird_list'
-    queryset = Animal.living.annotate(acq_date=Min("event__date")).order_by("acq_date")
+
+class BirdFilter(django_filters.FilterSet):
+    class Meta:
+        model = Animal
+        fields = ['sex', 'band_color', 'species__code']
+
+
+def json_response(queryset):
+    return HttpResponse(serializers.serialize("json", queryset),
+                        content_type="application/json")
+
+
+def bird_list(request):
+    qs = BirdFilter(request.GET, queryset=Animal.objects.all())
+    return render_to_response('birds/birds.html', {'bird_list': qs})
+
+
+def bird_living_list(request):
+    qs = Animal.living.annotate(acq_date=Min("event__date")).order_by("acq_date")
+    qs = BirdFilter(request.GET, queryset=qs)
+    return render_to_response('birds/birds.html', {'bird_list': qs})
 
 
 class BirdView(generic.DetailView):
@@ -55,31 +73,13 @@ class BandingEntry(generic.FormView):
         return HttpResponseRedirect(reverse('birds:bird', args=(chick.pk,)))
 
 
-# after excluding birds that have died/left, calculate days since
-# hatch/acquisition and bin according to age table
-_age_query = """
-SELECT D.*, COUNT(*) as count FROM birds_animal AS A
-  INNER JOIN (birds_event AS E, birds_status AS S, birds_age AS D)
-    ON (E.animal_id=A.id AND
-        E.status_id=S.id AND
-        A.species_id=D.species_id AND
-        timestampdiff(DAY,E.date,CURDATE()) BETWEEN D.min_days AND D.max_days)
-  WHERE NOT (A.id IN (SELECT U1.animal_id FROM birds_event U1
-                       INNER JOIN birds_status U2 ON ( U1.status_id = U2.id )
-                       WHERE U2.count=-1 ))
-    AND S.count=1
-  GROUP BY D.name, D.species_id
-  ORDER BY D.species_id, D.min_days
-"""
-
 class IndexView(generic.base.TemplateView):
 
     template_name = "birds/index.html"
 
     def get_context_data(self, **kwargs):
         today = datetime.date.today()
-        return {"groups": Age.objects.raw(_age_query),
-                "today": today,
+        return {"today": today,
                 "lastmonth": today.replace(day=1) - datetime.timedelta(days=1)
         }
 
@@ -89,14 +89,18 @@ class EventSummary(generic.base.TemplateView):
     template_name = "birds/summary.html"
 
     def get_context_data(self, **kwargs):
+        from collections import Counter
+        tots = Counter()
         year, month = map(int, self.args[:2])
-        qs = Event.objects.filter(date__year=year, date__month=month)
-        totls = [ dict(name=x['status__name'], total=x['total']) for x in
-                  qs.values("status__name").annotate(total=Count("id")) ]
+        # aggregation by month does not appear to work properly with postgres
+        # backend. Event counts per month will be relatively small, so this
+        # shouldn't be too slow
+        for event in Event.objects.filter(date__year=year, date__month=month):
+            tots[event.status.name] += 1
         return { "year": year,
                  "month": month,
                  "next": datetime.date(year, month, 1) + datetime.timedelta(days=32),
                  "prev": datetime.date(year, month, 1) - datetime.timedelta(days=1),
-                 "event_totals": totls }
+                 "event_totals": dict(tots) }
 
 # Create your views here.

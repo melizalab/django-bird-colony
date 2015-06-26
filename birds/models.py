@@ -148,9 +148,10 @@ class Animal(models.Model):
         return self.event_set.filter(status__count=1).order_by('date').first()
 
     def age_days(self):
-        """ Returns days since acquisition_event"""
+        """ Returns days since birthdate or None if unknown"""
         try:
-            return (datetime.date.today() - self.acquisition_event().date).days
+            birthday = self.event_set.filter(status__name="hatched").first().date
+            return (datetime.date.today() - birthday).days
         except AttributeError:
             pass
 

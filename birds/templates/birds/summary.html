@@ -12,18 +12,18 @@
     <th>Total</th>
   </thead>
   <tbody>
-    {% for evt in event_totals %}
+    {% for name, count in event_totals.items %}
     <tr>
-      <td>{{ evt.name }}</td>
-      <td>{{ evt.total }}</td>
+      <td>{{ name }}</td>
+      <td>{{ count }}</td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
 
 <p>
-  <a href="{% url 'birds:summary' prev.year prev.month %}">previous month</a>
-  <a href="{% url 'birds:summary' next.year next.month %}">next month</a>
+  <a href="{% url 'birds:event_summary' prev.year prev.month %}">previous month</a>
+  <a href="{% url 'birds:event_summary' next.year next.month %}">next month</a>
 </p>
 
 <p><a href="{% url 'birds:events' %}">list all recent events</a></p>
