@@ -2,12 +2,14 @@
 # -*- mode: python -*-
 from __future__ import unicode_literals
 
+import uuid
 from django.core.urlresolvers import reverse
 from django.db import models
 
 from django.contrib.auth.models import User
-from uuidfield import UUIDField
 import datetime
+
+import posixpath as pp
 
 class Species(models.Model):
     common_name = models.CharField(max_length=45)
@@ -89,7 +91,7 @@ class Animal(models.Model):
     sex = models.CharField(max_length=2, choices=SEX_CHOICES)
     band_color = models.ForeignKey('Color', blank=True, null=True)
     band_number = models.IntegerField(blank=True, null=True)
-    uuid = UUIDField(auto=True, hyphenate=True)
+    uuid = models.UUIDField(primary_key=True, default=uuid.uuid4)
     parents = models.ManyToManyField('Animal', blank=True)
 
     reserved_by = models.ForeignKey(User, blank=True, null=True,
@@ -182,3 +184,41 @@ class Event(models.Model):
 
     class Meta:
         ordering = ['-date']
+
+
+class DataCollection(models.Model):
+    name = models.CharField(max_length=16, help_text="a short name for the collection")
+    uri = models.CharField(max_length=512,
+                           help_text="canonical URL for retrieving a recording in this collection")
+    def __str__(self):
+        return self.name
+    class Meta:
+        ordering = ['name']
+
+
+class DataType(models.Model):
+    name = models.CharField(max_length=16)
+    def __str__(self):
+        return self.name
+    class Meta:
+        ordering = ['name']
+
+
+class Recording(models.Model):
+    animal = models.ForeignKey('Animal')
+    collection = models.ForeignKey('DataCollection')
+    identifier = models.CharField(max_length=128, help_text="canonical identifier for this recording")
+
+    # optional metadata fields; these will need to be synced with the datafiles
+    # somehow, or replaced by external queries
+    datatype = models.ForeignKey('DataType', blank=True, null=True)
+    timestamp = models.DateTimeField(blank=True, null=True)
+
+    def __str__(self):
+        return "%s/%s" % (self.collection.name, self.identifier)
+
+    def uri(self):
+        return pp.join(self.collection.uri, self.identifier)
+
+    class Meta:
+        ordering = ['animal', 'collection', 'identifier']

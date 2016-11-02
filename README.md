@@ -1,7 +1,8 @@
 
 ## bird-colony
 
-bird-colony is a Django application used to manage bird colonies (including breeding colonies)
+bird-colony is a Django application used to manage bird colonies (including breeding colonies).
+You may find that it can also be used for non-avian species.
 
 The admin interface is the primary tool used to create and update bird records, but there is a growing collection of views that can be used to browse the database and perform common updates (like adding clutches).
 

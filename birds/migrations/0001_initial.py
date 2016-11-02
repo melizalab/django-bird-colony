@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 
 from django.db import models, migrations
 import datetime
-import uuidfield.fields
 from django.conf import settings
 
 
@@ -29,7 +28,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(serialize=False, primary_key=True, auto_created=True, verbose_name='ID')),
                 ('sex', models.CharField(choices=[('M', 'male'), ('F', 'female'), ('U', 'unknown')], max_length=2)),
                 ('band_number', models.IntegerField(blank=True, null=True)),
-                ('uuid', uuidfield.fields.UUIDField(unique=True, blank=True, editable=False, max_length=32)),
+                ('uuid', models.UUIDField(unique=True, blank=True, editable=False, max_length=32)),
                 ('created', models.DateTimeField(auto_now_add=True)),
             ],
             options={

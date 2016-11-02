@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import uuid
 from django.db import models, migrations
-import uuidfield.fields
 
 
 class Migration(migrations.Migration):
@@ -15,6 +15,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='animal',
             name='uuid',
-            field=uuidfield.fields.UUIDField(auto=True, name='uuid', hyphenate=True),
+            field=models.UUIDField(name='uuid', default=uuid.uuid4),
         ),
     ]
