@@ -17,7 +17,7 @@
   <dt>dam</dt><dd>{% if animal.dam %}<a href="{{ animal.dam.get_absolute_url }}">{{ animal.dam }}</a>{% endif %}</dd>
   <dt>reserved by</dt><dd><span class="text-warning">{{ animal.reserved_by }}</span></dd>
 </dl>
-<a href="{% url 'admin:birds_animal_change' animal.uuid %}">edit bird</a><br/>
+<a href="{% url 'admin:birds_animal_change' animal.id %}">edit bird</a><br/>
 
 <h3>Events</h3>
 

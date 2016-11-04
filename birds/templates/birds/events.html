@@ -15,7 +15,7 @@
   <tbody>
     {% for event in event_list %}
         <tr>
-          <td><a href="{% url 'birds:bird' event.animal.uuid %}">{{ event.animal.name }}</a></td>
+          <td><a href="{% url 'birds:bird' event.animal.id %}">{{ event.animal.name }}</a></td>
           <td>{{ event.status }}</td>
           <td>{{ event.date }}</td>
           <td>{{ event.location }}</td>

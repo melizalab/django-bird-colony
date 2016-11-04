@@ -12,15 +12,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='animal',
-            name='id',
-        ),
-        migrations.AlterField(
-            model_name='animal',
-            name='uuid',
-            field=models.UUIDField(default=uuid.uuid4, primary_key=True, serialize=False),
-        ),
         migrations.AlterField(
             model_name='datacollection',
             name='name',

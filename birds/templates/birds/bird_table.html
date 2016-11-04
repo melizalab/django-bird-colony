@@ -13,7 +13,7 @@
   <tbody>
     {% for bird in bird_list %}
         <tr>
-          <td><a href="{% url 'birds:bird' bird.uuid %}">{{ bird.name }}</a></td>
+          <td><a href="{% url 'birds:bird' bird.id %}">{{ bird.name }}</a></td>
           <td>{{ bird.species }}</td>
           <td>{{ bird.band }}</td>
           <td>{{ bird.sex }}</td>

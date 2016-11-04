@@ -91,7 +91,7 @@ class Animal(models.Model):
     sex = models.CharField(max_length=2, choices=SEX_CHOICES)
     band_color = models.ForeignKey('Color', blank=True, null=True)
     band_number = models.IntegerField(blank=True, null=True)
-    uuid = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    uuid = models.UUIDField(primary_key=False, default=uuid.uuid4)
     parents = models.ManyToManyField('Animal', blank=True)
 
     reserved_by = models.ForeignKey(User, blank=True, null=True,
