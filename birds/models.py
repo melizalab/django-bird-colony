@@ -91,7 +91,7 @@ class Animal(models.Model):
     sex = models.CharField(max_length=2, choices=SEX_CHOICES)
     band_color = models.ForeignKey('Color', blank=True, null=True)
     band_number = models.IntegerField(blank=True, null=True)
-    uuid = models.UUIDField(primary_key=False, default=uuid.uuid4)
+    uuid = models.UUIDField(primary_key=False, default=uuid.uuid4, unique=True)
     parents = models.ManyToManyField('Animal', blank=True)
 
     reserved_by = models.ForeignKey(User, blank=True, null=True,
@@ -158,7 +158,7 @@ class Animal(models.Model):
             pass
 
     def get_absolute_url(self):
-        return reverse("birds:bird", kwargs={'pk': self.pk})
+        return reverse("birds:bird", kwargs={'uuid': self.uuid})
 
     class Meta:
         ordering = ['band_color', 'band_number']

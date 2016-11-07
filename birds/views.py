@@ -36,6 +36,8 @@ def bird_living_list(request):
 class BirdView(generic.DetailView):
     model = Animal
     template_name = 'birds/bird.html'
+    slug_field = 'uuid'
+    slug_url_kwarg = 'uuid'
 
     def get_context_data(self, **kwargs):
         context = super(BirdView, self).get_context_data(**kwargs)
