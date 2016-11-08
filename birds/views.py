@@ -1,36 +1,109 @@
-from django.shortcuts import render, render_to_response
+from django.shortcuts import render
 from django.http import HttpResponseRedirect, HttpResponse
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.urlresolvers import reverse
-from django.core import serializers
+from django.core.serializers.python import Serializer
+from django.core.serializers.json import DjangoJSONEncoder
 from django.views import generic
 from django.db.models import Min
 import django_filters
 import datetime
+import json
 
-from birds.models import Animal, Event
+from birds.models import Animal, Event, Recording
 from birds.forms import ClutchForm, BandingForm
 
 
 class BirdFilter(django_filters.FilterSet):
     class Meta:
         model = Animal
-        fields = ['sex', 'band_color', 'species__code']
+        fields = {
+            'sex': ['exact'],
+            'band_color': ['exact'],
+            'species__code': ['exact'],
+        }
+
+
+class EventFilter(django_filters.FilterSet):
+    class Meta:
+        model = Event
+        fields = {
+            'animal__uuid': ['exact','contains'],
+            'location__name': ['exact', 'contains'],
+            'date': ['exact', 'year', 'range'],
+            'entered_by': ['exact'],
+        }
+
+
+class RecordingFilter(django_filters.FilterSet):
+    class Meta:
+        model = Recording
+        fields = {
+            'animal__uuid': ['exact', 'contains'],
+            'collection__name' : ['exact', 'contains'],
+            'datatype__name' : ['exact'],
+            'timestamp' : ['exact', 'year', 'range'],
+        }
+
+
+class FlatJsonSerializer(Serializer):
+    def get_dump_object(self, obj):
+        data = self._current
+        if not self.selected_fields or 'id' in self.selected_fields:
+            data['id'] = obj.id
+        return data
+
+    def end_object(self, obj):
+        if not self.first:
+            self.stream.write(', ')
+        json.dump(self.get_dump_object(obj), self.stream,
+                  cls=DjangoJSONEncoder)
+        self._current = None
+
+    def start_serialization(self):
+        self.stream.write("[")
+
+    def end_serialization(self):
+        self.stream.write("]")
+
+    def getvalue(self):
+        return super(Serializer, self).getvalue()
 
 
 def json_response(queryset):
-    return HttpResponse(serializers.serialize("json", queryset),
+    s = FlatJsonSerializer()
+    return HttpResponse(s.serialize(queryset),
                         content_type="application/json")
 
 
-def bird_list(request):
-    qs = BirdFilter(request.GET, queryset=Animal.objects.all())
-    return render_to_response('birds/birds.html', {'bird_list': qs})
-
-
-def bird_living_list(request):
-    qs = Animal.living.annotate(acq_date=Min("event__date")).order_by("acq_date")
+def bird_list(request, living=None):
+    if living:
+        qs = Animal.living.annotate(acq_date=Min("event__date")).order_by("acq_date")
+    else:
+        qs = Animal.objects.all()
     qs = BirdFilter(request.GET, queryset=qs)
-    return render_to_response('birds/birds.html', {'bird_list': qs})
+    if 'application/json' in request.META.get('HTTP_ACCEPT'):
+        return json_response(qs)
+    else:
+        return render(request, 'birds/birds.html', {'bird_list': qs})
+
+
+def event_list(request):
+    event_list = EventFilter(request.GET, Event.objects.all())
+    if 'application/json' in request.META.get('HTTP_ACCEPT'):
+        return json_response(event_list)
+    else:
+        paginator = Paginator(event_list, 25)
+        page = request.GET.get('page')
+        try:
+            qs = paginator.page(page)
+        except PageNotAnInteger:
+            # If page is not an integer, deliver first page.
+            qs = paginator.page(1)
+        except EmptyPage:
+            # If page is out of range (e.g. 9999), deliver last page of results.
+            qs = paginator.page(paginator.num_pages)
+        return render(request, 'birds/events.html', {'event_list': qs})
 
 
 class BirdView(generic.DetailView):
@@ -43,6 +116,7 @@ class BirdView(generic.DetailView):
         context = super(BirdView, self).get_context_data(**kwargs)
         animal = context['animal']
         context['bird_list'] = animal.animal_set.all()
+        print(context['bird_list'])
         context['event_list'] = animal.event_set.all()
         return context
 
@@ -50,7 +124,6 @@ class BirdView(generic.DetailView):
 class EventListView(generic.ListView):
     template_name = 'birds/events.html'
     context_object_name = 'event_list'
-
     queryset = Event.objects.order_by('-date')[:100]
 
 
@@ -76,7 +149,6 @@ class BandingEntry(generic.FormView):
 
 
 class IndexView(generic.base.TemplateView):
-
     template_name = "birds/index.html"
 
     def get_context_data(self, **kwargs):

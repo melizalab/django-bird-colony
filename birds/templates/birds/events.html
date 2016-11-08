@@ -24,5 +24,20 @@
     {% endfor %}
   </tbody>
 </table>
+<div class="pagination">
+    <span class="step-links">
+        {% if event_list.has_previous %}
+            <a href="?page={{ event_list.previous_page_number }}">previous</a>
+        {% endif %}
+
+        <span class="current">
+            Page {{ event_list.number }} of {{ event_list.paginator.num_pages }}.
+        </span>
+
+        {% if event_list.has_next %}
+            <a href="?page={{ event_list.next_page_number }}">next</a>
+        {% endif %}
+    </span>
+</div>
 <p><a href="{% url 'admin:birds_event_add' %}">add new event</a></p>
 {% endblock %}
