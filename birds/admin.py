@@ -1,14 +1,18 @@
 from django.contrib import admin
-from birds.models import Species, Color, Location, Animal, Event, Status, Age, DataCollection, DataType, Recording
+from birds.models import Species, Color, Location, Animal, Event, Status, Age, DataCollection, DataType, Recording, Parent
 
 # Register your models here.
 
+class ParentInline(admin.TabularInline):
+    model = Parent
+    fk_name = 'child'
+
 class AnimalAdmin(admin.ModelAdmin):
-    fields = ('species', 'sex', 'band_color', 'band_number', 'parents', 'reserved_by')
+    fields = ('species', 'sex', 'band_color', 'band_number', 'reserved_by')
     list_display = ('name', 'species', 'band', 'uuid', 'sex', 'reserved_by')
-    list_filter = ('species', 'sex', 'band_color')
+    list_filter = ('species', 'sex', 'band_color','parents')
     search_fields = ('band', 'uuid')
-    pass
+    inlines = (ParentInline,)
 
 
 class EventAdmin(admin.ModelAdmin):

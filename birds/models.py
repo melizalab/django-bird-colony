@@ -15,7 +15,7 @@ class Species(models.Model):
     common_name = models.CharField(max_length=45)
     genus = models.CharField(max_length=45)
     species = models.CharField(max_length=45)
-    code = models.CharField(max_length=4)
+    code = models.CharField(max_length=4, unique=True)
 
     def __str__(self):
         return self.common_name
@@ -26,8 +26,8 @@ class Species(models.Model):
 
 
 class Color(models.Model):
-    name = models.CharField(max_length=12)
-    abbrv = models.CharField('Abbreviation', max_length=3)
+    name = models.CharField(max_length=12, unique=True)
+    abbrv = models.CharField('Abbreviation', max_length=3, unique=True)
 
     def __str__(self):
         return self.name
@@ -37,7 +37,7 @@ class Color(models.Model):
 
 
 class Status(models.Model):
-    name = models.CharField(max_length=16)
+    name = models.CharField(max_length=16, unique=True)
     count = models.SmallIntegerField(default=0, choices=((0, '0'), (-1, '-1'), (1, '+1')),
                                      help_text="1: animal acquired; -1: animal lost; 0: no change")
     category = models.CharField(max_length=2, choices=(('B','B'),('C','C'),('D','D'),('E','E')),
@@ -53,7 +53,7 @@ class Status(models.Model):
 
 
 class Location(models.Model):
-    name = models.CharField(max_length=45)
+    name = models.CharField(max_length=45, unique=True)
 
     def __str__(self):
         return self.name
@@ -63,7 +63,7 @@ class Location(models.Model):
 
 
 class Age(models.Model):
-    name = models.CharField(max_length=16)
+    name = models.CharField(max_length=16, unique=True)
     min_days = models.PositiveIntegerField()
     max_days = models.PositiveIntegerField()
     species = models.ForeignKey('Species')
@@ -75,6 +75,11 @@ class Age(models.Model):
 class LivingAnimalManager(models.Manager):
     def get_queryset(self):
         return super(LivingAnimalManager, self).get_queryset().exclude(event__status__count=-1)
+
+
+class Parent(models.Model):
+    child = models.ForeignKey('Animal', related_name='a', on_delete=models.CASCADE)
+    parent = models.ForeignKey('Animal', related_name='b', on_delete=models.CASCADE)
 
 
 class Animal(models.Model):
@@ -92,7 +97,7 @@ class Animal(models.Model):
     band_color = models.ForeignKey('Color', blank=True, null=True)
     band_number = models.IntegerField(blank=True, null=True)
     uuid = models.UUIDField(primary_key=False, default=uuid.uuid4, unique=True)
-    parents = models.ManyToManyField('Animal', blank=True)
+    parents = models.ManyToManyField('Animal', related_name='children', through='Parent', through_fields=('child', 'parent'))
 
     reserved_by = models.ForeignKey(User, blank=True, null=True,
                                     help_text="mark a bird as reserved for a specific user")
@@ -135,7 +140,7 @@ class Animal(models.Model):
 
     def nchildren(self):
         """ Returns (living, total) children """
-        chicks = self.animal_set
+        chicks = self.children
         # probably inefficient
         return (sum(1 for a in chicks.iterator() if a.alive()), chicks.count())
 
