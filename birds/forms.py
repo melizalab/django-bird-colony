@@ -3,7 +3,7 @@
 from django import forms
 
 from django.contrib.auth.models import User
-from birds.models import Animal, Event, Status, Location, Color, Species
+from birds.models import Animal, Event, Status, Location, Color, Species, Parent
 
 
 class BandingForm(forms.Form):
@@ -43,12 +43,12 @@ class BandingForm(forms.Form):
 
     def create_chick(self):
         data = self.cleaned_data
-        ret = {'chick': None, 'events': []}
         chick = Animal(species=data['species'], sex='U',
                        band_color=data['band_color'], band_number=data['band_number'])
         chick.save()
         if data['sire'] and data['dam']:
-            chick.parents.add(data['sire'], data['dam'])
+            Parent.objects.create(child=chick, parent=data['sire'])
+            Parent.objects.create(child=chick, parent=data['dam'])
             chick.save()
         evt = Event(animal=chick, date=data['acq_date'],
                     status=data['acq_status'],
@@ -63,6 +63,7 @@ class BandingForm(forms.Form):
                     entered_by=data['user'])
         evt.save()
         return chick
+
 
 class ClutchForm(forms.Form):
     sire = forms.ModelChoiceField(queryset=Animal.objects.filter(sex__exact='M'))
@@ -90,8 +91,8 @@ class ClutchForm(forms.Form):
         for i in range(self.cleaned_data['chicks']):
             chick = Animal(species=self.cleaned_data['sire'].species, sex='U')
             chick.save()
-            chick.parents.add(self.cleaned_data['sire'],
-                              self.cleaned_data['dam'])
+            Parent.objects.create(child=chick, parent=self.cleaned_data['sire'])
+            Parent.objects.create(child=chick, parent=self.cleaned_data['dam'])
             chick.save()
             evt = Event(animal=chick, date=self.cleaned_data['hatch_date'],
                         status=self.cleaned_data['status'],

@@ -1,15 +1,16 @@
+# -*- coding: utf-8 -*-
+# -*- mode: python -*-
 from django.shortcuts import render
 from django.http import HttpResponseRedirect, HttpResponse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.urlresolvers import reverse
 from django.views import generic
-from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Min
-from rest_framework.renderers import JSONRenderer
-from rest_framework.parsers import JSONParser
+from rest_framework import status
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 import django_filters
 import datetime
-import json
 
 from birds.models import Animal, Event, Recording
 from birds.serializers import AnimalSerializer, EventSerializer
@@ -46,36 +47,6 @@ class RecordingFilter(django_filters.FilterSet):
             'datatype__name' : ['exact'],
             'timestamp' : ['exact', 'year', 'range'],
         }
-
-
-# class FlatJsonSerializer(Serializer):
-#     def get_dump_object(self, obj):
-#         data = self._current
-#         if not self.selected_fields or 'id' in self.selected_fields:
-#             data['id'] = obj.id
-#         return data
-
-#     def end_object(self, obj):
-#         if not self.first:
-#             self.stream.write(', ')
-#         json.dump(self.get_dump_object(obj), self.stream,
-#                   cls=DjangoJSONEncoder)
-#         self._current = None
-
-#     def start_serialization(self):
-#         self.stream.write("[")
-
-#     def end_serialization(self):
-#         self.stream.write("]")
-
-#     def getvalue(self):
-#         return super(Serializer, self).getvalue()
-
-
-# def json_response(queryset):
-#     s = FlatJsonSerializer()
-#     return HttpResponse(s.serialize(queryset),
-#                         content_type="application/json")
 
 
 def bird_list(request, living=None):
@@ -169,27 +140,31 @@ class EventSummary(generic.base.TemplateView):
 
 ### API
 
-class JSONResponse(HttpResponse):
-    """
-    An HttpResponse that renders its content into JSON.
-    """
-    def __init__(self, data, **kwargs):
-        content = JSONRenderer().render(data)
-        kwargs['content_type'] = 'application/json'
-        super(JSONResponse, self).__init__(content, **kwargs)
-
-@csrf_exempt
+@api_view(['GET', 'POST'])
 def all_birds_json(request):
     if request.method == 'GET':
         birds = Animal.objects.all()
         serializer = AnimalSerializer(birds, many=True)
-        return JSONResponse(serializer.data)
+        return Response(serializer.data)
+    elif request.method == 'POST':
+        serializer = AnimalSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-@csrf_exempt
+
+@api_view(['GET', 'POST'])
 def all_events_json(request):
     if request.method == 'GET':
         events = Event.objects.all()
         serializer = EventSerializer(events, many=True)
-        return JSONResponse(serializer.data)
+        return Response(serializer.data)
+    elif request.method == 'POST':
+        serializer = EventSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # Create your views here.
