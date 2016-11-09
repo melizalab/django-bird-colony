@@ -12,10 +12,9 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterField(
-            model_name='age',
-            name='name',
-            field=models.CharField(max_length=16, unique=True),
+        migrations.AlterUniqueTogether(
+            name='age',
+            unique_together=set([('name', 'species')]),
         ),
         migrations.AlterField(
             model_name='color',
@@ -41,5 +40,23 @@ class Migration(migrations.Migration):
             model_name='status',
             name='name',
             field=models.CharField(max_length=16, unique=True),
+        ),
+        migrations.AlterField(
+            model_name='datacollection',
+            name='name',
+            field=models.CharField(help_text='a short name for the collection', max_length=16, unique=True),
+        ),
+        migrations.AlterField(
+            model_name='datatype',
+            name='name',
+            field=models.CharField(max_length=16, unique=True),
+        ),
+        migrations.AlterUniqueTogether(
+            name='recording',
+            unique_together=set([('collection', 'identifier')]),
+        ),
+        migrations.AlterUniqueTogether(
+            name='species',
+            unique_together=set([('genus', 'species')]),
         ),
     ]

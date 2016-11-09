@@ -13,6 +13,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunSQL(
-            ["INSERT INTO birds_parent (id, child_id, parent_id) SELECT id, from_animal_id, to_animal_id FROM birds_animal_parents;"]
+            ["INSERT INTO birds_parent (id, child_id, parent_id) SELECT id, from_animal_id, to_animal_id FROM birds_animal_parents;"],
+            migrations.RunSQL.noop
         )
     ]

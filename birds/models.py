@@ -23,6 +23,7 @@ class Species(models.Model):
     class Meta:
         ordering = ['common_name']
         verbose_name_plural = 'species'
+        unique_together = ("genus", "species")
 
 
 class Color(models.Model):
@@ -63,13 +64,16 @@ class Location(models.Model):
 
 
 class Age(models.Model):
-    name = models.CharField(max_length=16, unique=True)
+    name = models.CharField(max_length=16,)
     min_days = models.PositiveIntegerField()
     max_days = models.PositiveIntegerField()
     species = models.ForeignKey('Species')
 
     def __str__(self):
         return "%s %s (%d-%d days)" % (self.species, self.name, self.min_days, self.max_days)
+
+    class Meta:
+        unique_together = ("name", "species")
 
 
 class LivingAnimalManager(models.Manager):
@@ -192,7 +196,7 @@ class Event(models.Model):
 
 
 class DataCollection(models.Model):
-    name = models.CharField(max_length=16, help_text="a short name for the collection")
+    name = models.CharField(max_length=16, help_text="a short name for the collection", unique=True)
     uri = models.CharField(max_length=512,
                            help_text="canonical URL for retrieving a recording in this collection")
     def __str__(self):
@@ -202,7 +206,7 @@ class DataCollection(models.Model):
 
 
 class DataType(models.Model):
-    name = models.CharField(max_length=16)
+    name = models.CharField(max_length=16, unique=True)
     def __str__(self):
         return self.name
     class Meta:
@@ -227,3 +231,4 @@ class Recording(models.Model):
 
     class Meta:
         ordering = ['animal', 'collection', 'identifier']
+        unique_together = ("collection", "identifier")
