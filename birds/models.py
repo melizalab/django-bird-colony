@@ -9,7 +9,13 @@ import posixpath as pp
 from django.utils.encoding import python_2_unicode_compatible
 from django.core.urlresolvers import reverse
 from django.db import models
-from django.contrib.auth.models import User
+from django.conf import settings
+from django.contrib.auth import get_user_model
+
+
+def get_sentinel_user():
+    return get_user_model().objects.get_or_create(username='deleted')[0]
+
 
 @python_2_unicode_compatible
 class Species(models.Model):
@@ -72,7 +78,7 @@ class Age(models.Model):
     name = models.CharField(max_length=16,)
     min_days = models.PositiveIntegerField()
     max_days = models.PositiveIntegerField()
-    species = models.ForeignKey('Species')
+    species = models.ForeignKey('Species', on_delete=models.CASCADE)
 
     def __str__(self):
         return "%s %s (%d-%d days)" % (self.species, self.name, self.min_days, self.max_days)
@@ -86,10 +92,12 @@ class LivingAnimalManager(models.Manager):
         return super(LivingAnimalManager, self).get_queryset().exclude(event__status__count=-1)
 
 
+@python_2_unicode_compatible
 class Parent(models.Model):
-    child = models.ForeignKey('Animal', related_name='a', on_delete=models.CASCADE)
-    parent = models.ForeignKey('Animal', related_name='b', on_delete=models.CASCADE)
-
+    child = models.ForeignKey('Animal', on_delete=models.CASCADE)
+    parent = models.ForeignKey('Animal', on_delete=models.CASCADE)
+    def __str__(self):
+        return "%s -> %s" % (self.parent, self.child)
 
 @python_2_unicode_compatible
 class Animal(models.Model):
@@ -102,16 +110,21 @@ class Animal(models.Model):
         (UNKNOWN_SEX, 'unknown')
     )
 
-    species = models.ForeignKey('Species')
+    species = models.ForeignKey('Species', on_delete=models.PROTECT)
     sex = models.CharField(max_length=2, choices=SEX_CHOICES)
-    band_color = models.ForeignKey('Color', blank=True, null=True)
+    band_color = models.ForeignKey('Color', on_delete=models.SET_NULL,
+                                   blank=True, null=True)
     band_number = models.IntegerField(blank=True, null=True)
-    uuid = models.UUIDField(primary_key=False, default=uuid.uuid4, unique=True)
-    parents = models.ManyToManyField('Animal', related_name='children', through='Parent', through_fields=('child', 'parent'))
+    uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, unique=True)
+    parents = models.ManyToManyField('Animal',
+                                     related_name='children',
+                                     through='Parent',
+                                     through_fields=('child', 'parent'))
 
-    reserved_by = models.ForeignKey(User, blank=True, null=True,
+    reserved_by = models.ForeignKey(settings.AUTH_USER_MODEL,
+                                    blank=True, null=True,
+                                    on_delete=models.SET(get_sentinel_user),
                                     help_text="mark a bird as reserved for a specific user")
-
     created = models.DateTimeField(auto_now_add=True)
 
     def short_uuid(self):
@@ -181,13 +194,14 @@ class Animal(models.Model):
 
 @python_2_unicode_compatible
 class Event(models.Model):
-    animal = models.ForeignKey('Animal')
+    animal = models.ForeignKey('Animal', on_delete=models.CASCADE)
     date = models.DateField(default=datetime.date.today)
-    status = models.ForeignKey('Status')
-    location = models.ForeignKey('Location', blank=True, null=True)
+    status = models.ForeignKey('Status', on_delete=models.PROTECT)
+    location = models.ForeignKey('Location', blank=True, null=True, on_delete=models.SET_NULL)
     description = models.TextField(blank=True)
 
-    entered_by = models.ForeignKey(User)
+    entered_by = models.ForeignKey(settings.AUTH_USER_MODEL,
+                                   on_delete=models.SET(get_sentinel_user))
     created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -223,13 +237,13 @@ class DataType(models.Model):
 
 @python_2_unicode_compatible
 class Recording(models.Model):
-    animal = models.ForeignKey('Animal')
-    collection = models.ForeignKey('DataCollection')
+    animal = models.ForeignKey('Animal', on_delete=models.CASCADE)
+    collection = models.ForeignKey('DataCollection', on_delete=models.CASCADE)
     identifier = models.CharField(max_length=128, help_text="canonical identifier for this recording")
 
     # optional metadata fields; these will need to be synced with the datafiles
     # somehow, or replaced by external queries
-    datatype = models.ForeignKey('DataType', blank=True, null=True)
+    datatype = models.ForeignKey('DataType', blank=True, null=True, on_delete=models.SET_NULL)
     timestamp = models.DateTimeField(blank=True, null=True)
 
     def __str__(self):
