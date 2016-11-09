@@ -30,6 +30,11 @@ url(r'^birds/', include(birds.urls')),
 3. Run `python manage.py migrate` to create the birds models.
 
 4. Start the development server and visit http://127.0.0.1:8000/admin/birds/
-   to create items, vendors, manufacturers, etc. (you'll need the Admin app enabled).
+   to create birds, events, etc. (you'll need the Admin app enabled).
 
 5. Visit http://127.0.0.1:8000/birds/ to use views.
+
+
+### Changelog
+
+In the 0.4.0 release, the primary key for animal records became the animal's uuid. To migrate from previous version, data must be exported as JSON under the 0.3.999 release and then imported under 0.4.0
