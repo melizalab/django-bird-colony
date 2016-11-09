@@ -9,6 +9,11 @@ def clear_animals(apps, schema_editor):
     for animal in Animal.objects.all():
         animal.delete()
 
+def clear_events(apps, schema_editor):
+    Event = apps.get_model("birds", "Event")
+    for event in Event.objects.all():
+        event.delete()
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -17,5 +22,6 @@ class Migration(migrations.Migration):
 
     operations = [
         # remove all animals; will need to repopulate
-        migrations.RunPython(clear_animals, migrations.RunPython.noop)
+        migrations.RunPython(clear_animals, migrations.RunPython.noop),
+        migrations.RunPython(clear_events, migrations.RunPython.noop)
     ]
