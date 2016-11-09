@@ -94,8 +94,8 @@ class LivingAnimalManager(models.Manager):
 
 @python_2_unicode_compatible
 class Parent(models.Model):
-    child = models.ForeignKey('Animal', on_delete=models.CASCADE)
-    parent = models.ForeignKey('Animal', on_delete=models.CASCADE)
+    child = models.ForeignKey('Animal', related_name="+", on_delete=models.CASCADE)
+    parent = models.ForeignKey('Animal', related_name="+", on_delete=models.CASCADE)
     def __str__(self):
         return "%s -> %s" % (self.parent, self.child)
 
