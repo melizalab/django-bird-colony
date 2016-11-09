@@ -3,14 +3,15 @@
 from __future__ import unicode_literals
 
 import uuid
-from django.core.urlresolvers import reverse
-from django.db import models
-
-from django.contrib.auth.models import User
 import datetime
-
 import posixpath as pp
 
+from django.utils.encoding import python_2_unicode_compatible
+from django.core.urlresolvers import reverse
+from django.db import models
+from django.contrib.auth.models import User
+
+@python_2_unicode_compatible
 class Species(models.Model):
     common_name = models.CharField(max_length=45)
     genus = models.CharField(max_length=45)
@@ -26,6 +27,7 @@ class Species(models.Model):
         unique_together = ("genus", "species")
 
 
+@python_2_unicode_compatible
 class Color(models.Model):
     name = models.CharField(max_length=12, unique=True)
     abbrv = models.CharField('Abbreviation', max_length=3, unique=True)
@@ -37,6 +39,7 @@ class Color(models.Model):
         ordering = ['name']
 
 
+@python_2_unicode_compatible
 class Status(models.Model):
     name = models.CharField(max_length=16, unique=True)
     count = models.SmallIntegerField(default=0, choices=((0, '0'), (-1, '-1'), (1, '+1')),
@@ -53,6 +56,7 @@ class Status(models.Model):
         verbose_name_plural = 'status codes'
 
 
+@python_2_unicode_compatible
 class Location(models.Model):
     name = models.CharField(max_length=45, unique=True)
 
@@ -63,6 +67,7 @@ class Location(models.Model):
         ordering = ['name']
 
 
+@python_2_unicode_compatible
 class Age(models.Model):
     name = models.CharField(max_length=16,)
     min_days = models.PositiveIntegerField()
@@ -86,6 +91,7 @@ class Parent(models.Model):
     parent = models.ForeignKey('Animal', related_name='b', on_delete=models.CASCADE)
 
 
+@python_2_unicode_compatible
 class Animal(models.Model):
     MALE = 'M'
     FEMALE = 'F'
@@ -173,8 +179,8 @@ class Animal(models.Model):
         ordering = ['band_color', 'band_number']
 
 
+@python_2_unicode_compatible
 class Event(models.Model):
-
     animal = models.ForeignKey('Animal')
     date = models.DateField(default=datetime.date.today)
     status = models.ForeignKey('Status')
@@ -195,6 +201,7 @@ class Event(models.Model):
         ordering = ['-date']
 
 
+@python_2_unicode_compatible
 class DataCollection(models.Model):
     name = models.CharField(max_length=16, help_text="a short name for the collection", unique=True)
     uri = models.CharField(max_length=512,
@@ -205,6 +212,7 @@ class DataCollection(models.Model):
         ordering = ['name']
 
 
+@python_2_unicode_compatible
 class DataType(models.Model):
     name = models.CharField(max_length=16, unique=True)
     def __str__(self):
@@ -213,6 +221,7 @@ class DataType(models.Model):
         ordering = ['name']
 
 
+@python_2_unicode_compatible
 class Recording(models.Model):
     animal = models.ForeignKey('Animal')
     collection = models.ForeignKey('DataCollection')
@@ -226,7 +235,7 @@ class Recording(models.Model):
     def __str__(self):
         return "%s/%s" % (self.collection.name, self.identifier)
 
-    def uri(self):
+    def get_absolute_url(self):
         return pp.join(self.collection.uri, self.identifier)
 
     class Meta:
