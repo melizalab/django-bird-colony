@@ -5,6 +5,8 @@ from birds import views
 
 urlpatterns = [
     url(r'^$', views.IndexView.as_view(), name='index'),
+    url(r'^api/birds/$', views.all_birds_json),
+    url(r'^api/events/$', views.all_events_json),
     url(r'^birds/$', views.bird_list, {'living': None}, name='birds'),
     url(r'^birds/living/$', views.bird_list, {'living': True}, name='birds_living'),
     url(r'^birds/(?P<uuid>[a-f0-9\-]{36})/$', views.BirdView.as_view(), name='bird'),

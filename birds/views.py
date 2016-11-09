@@ -2,15 +2,17 @@ from django.shortcuts import render
 from django.http import HttpResponseRedirect, HttpResponse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.urlresolvers import reverse
-from django.core.serializers.python import Serializer
-from django.core.serializers.json import DjangoJSONEncoder
 from django.views import generic
+from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Min
+from rest_framework.renderers import JSONRenderer
+from rest_framework.parsers import JSONParser
 import django_filters
 import datetime
 import json
 
 from birds.models import Animal, Event, Recording
+from birds.serializers import AnimalSerializer, EventSerializer
 from birds.forms import ClutchForm, BandingForm
 
 
@@ -46,34 +48,34 @@ class RecordingFilter(django_filters.FilterSet):
         }
 
 
-class FlatJsonSerializer(Serializer):
-    def get_dump_object(self, obj):
-        data = self._current
-        if not self.selected_fields or 'id' in self.selected_fields:
-            data['id'] = obj.id
-        return data
+# class FlatJsonSerializer(Serializer):
+#     def get_dump_object(self, obj):
+#         data = self._current
+#         if not self.selected_fields or 'id' in self.selected_fields:
+#             data['id'] = obj.id
+#         return data
 
-    def end_object(self, obj):
-        if not self.first:
-            self.stream.write(', ')
-        json.dump(self.get_dump_object(obj), self.stream,
-                  cls=DjangoJSONEncoder)
-        self._current = None
+#     def end_object(self, obj):
+#         if not self.first:
+#             self.stream.write(', ')
+#         json.dump(self.get_dump_object(obj), self.stream,
+#                   cls=DjangoJSONEncoder)
+#         self._current = None
 
-    def start_serialization(self):
-        self.stream.write("[")
+#     def start_serialization(self):
+#         self.stream.write("[")
 
-    def end_serialization(self):
-        self.stream.write("]")
+#     def end_serialization(self):
+#         self.stream.write("]")
 
-    def getvalue(self):
-        return super(Serializer, self).getvalue()
+#     def getvalue(self):
+#         return super(Serializer, self).getvalue()
 
 
-def json_response(queryset):
-    s = FlatJsonSerializer()
-    return HttpResponse(s.serialize(queryset),
-                        content_type="application/json")
+# def json_response(queryset):
+#     s = FlatJsonSerializer()
+#     return HttpResponse(s.serialize(queryset),
+#                         content_type="application/json")
 
 
 def bird_list(request, living=None):
@@ -82,28 +84,22 @@ def bird_list(request, living=None):
     else:
         qs = Animal.objects.all()
     qs = BirdFilter(request.GET, queryset=qs)
-    if 'application/json' in request.META.get('HTTP_ACCEPT'):
-        return json_response(qs)
-    else:
-        return render(request, 'birds/birds.html', {'bird_list': qs})
+    return render(request, 'birds/birds.html', {'bird_list': qs})
 
 
 def event_list(request):
     event_list = EventFilter(request.GET, Event.objects.all())
-    if 'application/json' in request.META.get('HTTP_ACCEPT'):
-        return json_response(event_list)
-    else:
-        paginator = Paginator(event_list, 25)
-        page = request.GET.get('page')
-        try:
-            qs = paginator.page(page)
-        except PageNotAnInteger:
-            # If page is not an integer, deliver first page.
-            qs = paginator.page(1)
-        except EmptyPage:
-            # If page is out of range (e.g. 9999), deliver last page of results.
-            qs = paginator.page(paginator.num_pages)
-        return render(request, 'birds/events.html', {'event_list': qs})
+    paginator = Paginator(event_list, 25)
+    page = request.GET.get('page')
+    try:
+        qs = paginator.page(page)
+    except PageNotAnInteger:
+        # If page is not an integer, deliver first page.
+        qs = paginator.page(1)
+    except EmptyPage:
+        # If page is out of range (e.g. 9999), deliver last page of results.
+        qs = paginator.page(paginator.num_pages)
+    return render(request, 'birds/events.html', {'event_list': qs})
 
 
 class BirdView(generic.DetailView):
@@ -119,12 +115,6 @@ class BirdView(generic.DetailView):
         print(context['bird_list'])
         context['event_list'] = animal.event_set.all()
         return context
-
-
-class EventListView(generic.ListView):
-    template_name = 'birds/events.html'
-    context_object_name = 'event_list'
-    queryset = Event.objects.order_by('-date')[:100]
 
 
 class ClutchEntry(generic.FormView):
@@ -176,5 +166,30 @@ class EventSummary(generic.base.TemplateView):
                  "next": datetime.date(year, month, 1) + datetime.timedelta(days=32),
                  "prev": datetime.date(year, month, 1) - datetime.timedelta(days=1),
                  "event_totals": dict(tots) }
+
+### API
+
+class JSONResponse(HttpResponse):
+    """
+    An HttpResponse that renders its content into JSON.
+    """
+    def __init__(self, data, **kwargs):
+        content = JSONRenderer().render(data)
+        kwargs['content_type'] = 'application/json'
+        super(JSONResponse, self).__init__(content, **kwargs)
+
+@csrf_exempt
+def all_birds_json(request):
+    if request.method == 'GET':
+        birds = Animal.objects.all()
+        serializer = AnimalSerializer(birds, many=True)
+        return JSONResponse(serializer.data)
+
+@csrf_exempt
+def all_events_json(request):
+    if request.method == 'GET':
+        events = Event.objects.all()
+        serializer = EventSerializer(events, many=True)
+        return JSONResponse(serializer.data)
 
 # Create your views here.
