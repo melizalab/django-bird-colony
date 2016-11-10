@@ -27,10 +27,9 @@ class Migration(migrations.Migration):
         # remove all animals; will need to repopulate
         migrations.RunPython(clear_animals, migrations.RunPython.noop),
         migrations.RunPython(clear_events, migrations.RunPython.noop),
-        migrations.AlterField(
+        migrations.RemoveField(
             model_name='animal',
-            name='species',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='birds.Species'),
+            name='id',
         ),
         migrations.AlterField(
             model_name='animal',

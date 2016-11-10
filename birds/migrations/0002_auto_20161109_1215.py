@@ -15,10 +15,6 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='animal',
-            name='id',
-        ),
         migrations.AlterField(
             model_name='animal',
             name='band_color',
@@ -48,5 +44,10 @@ class Migration(migrations.Migration):
             model_name='recording',
             name='datatype',
             field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='birds.DataType'),
+        ),
+        migrations.AlterField(
+            model_name='animal',
+            name='species',
+            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='birds.Species'),
         ),
     ]
