@@ -50,4 +50,14 @@ class Migration(migrations.Migration):
             name='species',
             field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='birds.Species'),
         ),
+        migrations.AlterField(
+            model_name='parent',
+            name='child',
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to='birds.Animal'),
+        ),
+        migrations.AlterField(
+            model_name='parent',
+            name='parent',
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='+', to='birds.Animal'),
+        ),
     ]
