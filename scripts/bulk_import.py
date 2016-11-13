@@ -17,4 +17,4 @@ if __name__=="__main__":
     for record in data:
         print(record)
         r = rq.post(args.endpoint, json=record)
-        r.raise_for_status()
+        print(r.status_code)
