@@ -12,8 +12,8 @@ class ParentInline(admin.TabularInline):
 class AnimalAdmin(admin.ModelAdmin):
     fields = ('species', 'sex', 'band_color', 'band_number', 'reserved_by')
     list_display = ('name', 'species', 'band', 'uuid', 'sex', 'reserved_by')
-    list_filter = ('species', 'sex', 'band_color','parents')
-    search_fields = ('band', 'uuid')
+    list_filter = ('species', 'sex', 'band_color','parents', 'reserved_by')
+    search_fields = ('band_number', 'uuid')
     inlines = (ParentInline,)
 
 
@@ -22,7 +22,7 @@ class EventAdmin(admin.ModelAdmin):
     fields = ('animal', 'status', 'location', 'description', 'date', 'entered_by')
     list_display = ('animal', 'date', 'status', 'description')
     list_filter = ('animal', 'entered_by', 'status', 'location')
-    search_fields = ('animal', 'entered_by', 'description')
+    search_fields = ('description',)
 
 
 class StatusAdmin(admin.ModelAdmin):
