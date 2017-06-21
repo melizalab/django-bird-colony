@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
 from django.shortcuts import render
-from django.http import HttpResponseRedirect, HttpResponse
+from django.http import HttpResponseRedirect
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.urlresolvers import reverse
 from django.views import generic
@@ -15,7 +15,6 @@ import datetime
 from birds.models import Animal, Event, Recording
 from birds.serializers import AnimalSerializer, EventSerializer
 from birds.forms import ClutchForm, BandingForm
-
 
 class BirdFilter(django_filters.FilterSet):
     class Meta:
