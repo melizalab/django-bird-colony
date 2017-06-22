@@ -1,9 +1,0 @@
-{% extends "base_view.html" %}
-
-{% block title %} meliza-lab : birds {% endblock %}
-
-{% block content %}
-<h2>Birds</h2>
-{% include "birds/bird_table.html" %}
-<p><a href="{% url 'birds:new_bird' %}">add new bird</a></p>
-{% endblock %}

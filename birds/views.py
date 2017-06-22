@@ -9,41 +9,51 @@ from django.db.models import Min
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-import django_filters
+from django_filters import rest_framework as filters
 import datetime
 
 from birds.models import Animal, Event
 from birds.serializers import AnimalSerializer, EventSerializer
 from birds.forms import ClutchForm, BandingForm
 
-class BirdFilter(django_filters.FilterSet):
+class AnimalFilter(filters.FilterSet):
+    color = filters.CharFilter(name="band_color", lookup_expr="iexact")
+    band = filters.NumberFilter(name="band_number", lookup_expr="exact")
+    species = filters.CharFilter(name="species__code", lookup_expr="iexact")
+    sex = filters.CharFilter(name="sex", lookup_expr="iexact")
+    available = filters.BooleanFilter(name="reserved_by", lookup_expr="isnull")
+
     class Meta:
         model = Animal
-        fields = {
-            'sex': ['exact'],
-            'band_color': ['exact'],
-            'species__code': ['exact'],
-        }
+        fields = []
 
 
-class EventFilter(django_filters.FilterSet):
+class EventFilter(filters.FilterSet):
+    animal = filters.CharFilter(name="animal__uuid", lookup_expr="istartswith")
+    color = filters.CharFilter(name="animal__band_color", lookup_expr="iexact")
+    band = filters.NumberFilter(name="animal__band_number", lookup_expr="exact")
+    species = filters.CharFilter(name="animal__species__code", lookup_expr="iexact")
+    location = filters.CharFilter(name="location__name", lookup_expr="icontains")
+    entered_by = filters.CharFilter(name="entered_by", lookup_expr="icontains")
+    description = filters.CharFilter(name="description", lookup_expr="icontains")
     class Meta:
         model = Event
         fields = {
-            'animal__uuid': ['exact','contains'],
-            'location__name': ['exact', 'contains'],
             'date': ['exact', 'year', 'range'],
-            'entered_by': ['exact'],
         }
 
 
-def bird_list(request, living=None):
-    if living:
-        qs = Animal.living.annotate(acq_date=Min("event__date")).order_by("acq_date")
-    else:
-        qs = Animal.objects.all()
-    f = BirdFilter(request.GET, queryset=qs)
-    return render(request, 'birds/birds.html', {'bird_list': f.qs})
+class AnimalList(generic.ListView):
+    model = Animal
+    template_name = "birds/animal_list.html"
+
+    def get_queryset(self):
+        if self.request.GET.get("living", False):
+            qs = Animal.living.annotate(acq_date=Min("event__date")).order_by("acq_date")
+        else:
+            qs = Animal.objects.all()
+        f = AnimalFilter(self.request.GET, queryset=qs)
+        return f.qs
 
 
 def event_list(request):
@@ -61,16 +71,16 @@ def event_list(request):
     return render(request, 'birds/events.html', {'event_list': events})
 
 
-class BirdView(generic.DetailView):
+class AnimalView(generic.DetailView):
     model = Animal
-    template_name = 'birds/bird.html'
+    template_name = 'birds/animal.html'
     slug_field = 'uuid'
     slug_url_kwarg = 'uuid'
 
     def get_context_data(self, **kwargs):
-        context = super(BirdView, self).get_context_data(**kwargs)
+        context = super(AnimalView, self).get_context_data(**kwargs)
         animal = context['animal']
-        context['bird_list'] = animal.children.all()
+        context['animal_list'] = animal.children.all()
         context['event_list'] = animal.event_set.all()
         return context
 
@@ -107,7 +117,6 @@ class IndexView(generic.base.TemplateView):
 
 
 class EventSummary(generic.base.TemplateView):
-
     template_name = "birds/summary.html"
 
     def get_context_data(self, **kwargs):
@@ -126,6 +135,7 @@ class EventSummary(generic.base.TemplateView):
                  "event_totals": dict(tots) }
 
 ### API
+
 
 @api_view(['GET', 'POST'])
 def all_birds_json(request):

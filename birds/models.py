@@ -7,7 +7,7 @@ import datetime
 import posixpath as pp
 
 from django.utils.encoding import python_2_unicode_compatible
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.db import models
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -186,7 +186,7 @@ class Animal(models.Model):
             pass
 
     def get_absolute_url(self):
-        return reverse("birds:bird", kwargs={'uuid': self.uuid})
+        return reverse("birds:animal", kwargs={'uuid': self.uuid})
 
     class Meta:
         ordering = ['band_color', 'band_number']

@@ -1,0 +1,29 @@
+<table class="table table-striped table-condensed">
+  <thead>
+    <th>Name</th>
+    <th>Species</th>
+    <th>Band</th>
+    <th>Sex</th>
+    <th>Age (days)</th>
+    <th>Alive</th>
+    <th>Children</th>
+    <th>UUID</th>
+    <th>Reserved</th>
+  </thead>
+  <tbody>
+    {% for animal in animal_list %}
+        <tr>
+          <td><a href="{{ animal.get_absolute_url }}">{{ animal.name }}</a></td>
+          <td>{{ animal.species }}</td>
+          <td>{{ animal.band }}</td>
+          <td>{{ animal.sex }}</td>
+          <td>{{ animal.age_days }}</td>
+          <td>{{ animal.alive}}</td>
+          <td>{{ animal.nchildren|last}}</td>
+          <td>{{ animal.uuid }}</td>
+          <td>{% if animal.reserved_by %}{{ animal.reserved_by }}{% endif %}</td>
+          <td></td>
+        </tr>
+    {% endfor %}
+  </tbody>
+</table>

@@ -23,12 +23,22 @@
 <!--   </tbody> -->
 <!-- </table> -->
 
-<h2>Actions</h2>
+This web application allows you to access the animal database. Here are some things you can do:
 
-<p><a href="{% url 'birds:event_summary' today.year today.month %}">summary for this month</a></p>
-<p><a href="{% url 'birds:event_summary' lastmonth.year lastmonth.month %}">summary for last month</a></p>
-<p><a href="{% url 'birds:birds_living' %}">list living birds</a></p>
-<p><a href="{% url 'birds:events' %}">list events</a></p>
-<p><a href="{% url 'birds:new_bird' %}">add new bird</a></p>
+<h3>Lists</h3>
+
+<p><a href="{% url 'birds:animals' %}?living=True">all the living birds</a></p>
+<p><a href="{% url 'birds:animals' %}?living=True&available=True">all the available birds</a></p>
+<p><a href="{% url 'birds:animals' %}">all the birds</a></p>
+<p><a href="{% url 'birds:events' %}">all events</a></p>
+
+<h3>Summary Reports</h3>
+
+<p><a href="{% url 'birds:event_summary' today.year today.month %}">for this month</a></p>
+<p><a href="{% url 'birds:event_summary' lastmonth.year lastmonth.month %}">for last month</a></p>
+
+<h3>Data Entry Forms</h3>
+
+<p><a href="{% url 'birds:new_animal' %}">add new bird</a></p>
 <p><a href="{% url 'birds:clutch' %}">add clutch of birds</a></p>
 {% endblock %}
