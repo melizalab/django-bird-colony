@@ -26,16 +26,16 @@
 </table>
 <div class="pagination">
     <span class="step-links">
-        {% if event_list.has_previous %}
-            <a href="?page={{ event_list.previous_page_number }}">previous</a>
+        {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}">previous</a> |
         {% endif %}
 
         <span class="current">
-            Page {{ event_list.number }} of {{ event_list.paginator.num_pages }}.
+            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
         </span>
 
-        {% if event_list.has_next %}
-            <a href="?page={{ event_list.next_page_number }}">next</a>
+        {% if page_obj.has_next %}
+            | <a href="?page={{ page_obj.next_page_number }}">next</a>
         {% endif %}
     </span>
 </div>

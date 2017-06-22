@@ -10,6 +10,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django_filters import rest_framework as filters
+from django_filters.views import FilterView
 import datetime
 
 from birds.models import Animal, Event
@@ -56,19 +57,11 @@ class AnimalList(generic.ListView):
         return f.qs
 
 
-def event_list(request):
-    f = EventFilter(request.GET, Event.objects.all())
-    paginator = Paginator(f.qs, 25)
-    page = request.GET.get('page')
-    try:
-        events = paginator.page(page)
-    except PageNotAnInteger:
-        # If page is not an integer, deliver first page.
-        events = paginator.page(1)
-    except EmptyPage:
-        # If page is out of range (e.g. 9999), deliver last page of results.
-        events = paginator.page(paginator.num_pages)
-    return render(request, 'birds/events.html', {'event_list': events})
+class EventList(FilterView, generic.list.MultipleObjectMixin):
+    model = Event
+    filterset_class = EventFilter
+    template_name = "birds/event_list.html"
+    paginate_by = 25
 
 
 class AnimalView(generic.DetailView):
