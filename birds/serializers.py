@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from birds.models import Animal, Parent, Event, Color, Species, Status, Location, Recording
+from birds.models import Animal, Parent, Event, Color, Species, Status, Location
 
 # class ColorSerializer(serializers.ModelSerializer):
 #     class Meta:

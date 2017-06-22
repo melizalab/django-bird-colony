@@ -12,7 +12,7 @@ from rest_framework.response import Response
 import django_filters
 import datetime
 
-from birds.models import Animal, Event, Recording
+from birds.models import Animal, Event
 from birds.serializers import AnimalSerializer, EventSerializer
 from birds.forms import ClutchForm, BandingForm
 
@@ -37,39 +37,28 @@ class EventFilter(django_filters.FilterSet):
         }
 
 
-class RecordingFilter(django_filters.FilterSet):
-    class Meta:
-        model = Recording
-        fields = {
-            'animal__uuid': ['exact', 'contains'],
-            'collection__name' : ['exact', 'contains'],
-            'datatype__name' : ['exact'],
-            'timestamp' : ['exact', 'year', 'range'],
-        }
-
-
 def bird_list(request, living=None):
     if living:
         qs = Animal.living.annotate(acq_date=Min("event__date")).order_by("acq_date")
     else:
         qs = Animal.objects.all()
-    qs = BirdFilter(request.GET, queryset=qs)
-    return render(request, 'birds/birds.html', {'bird_list': qs})
+    f = BirdFilter(request.GET, queryset=qs)
+    return render(request, 'birds/birds.html', {'bird_list': f.qs})
 
 
 def event_list(request):
-    event_list = EventFilter(request.GET, Event.objects.all())
-    paginator = Paginator(event_list, 25)
+    f = EventFilter(request.GET, Event.objects.all())
+    paginator = Paginator(f.qs, 25)
     page = request.GET.get('page')
     try:
-        qs = paginator.page(page)
+        events = paginator.page(page)
     except PageNotAnInteger:
         # If page is not an integer, deliver first page.
-        qs = paginator.page(1)
+        events = paginator.page(1)
     except EmptyPage:
         # If page is out of range (e.g. 9999), deliver last page of results.
-        qs = paginator.page(paginator.num_pages)
-    return render(request, 'birds/events.html', {'event_list': qs})
+        events = paginator.page(paginator.num_pages)
+    return render(request, 'birds/events.html', {'event_list': events})
 
 
 class BirdView(generic.DetailView):
@@ -82,7 +71,6 @@ class BirdView(generic.DetailView):
         context = super(BirdView, self).get_context_data(**kwargs)
         animal = context['animal']
         context['bird_list'] = animal.children.all()
-        print(context['bird_list'])
         context['event_list'] = animal.event_set.all()
         return context
 

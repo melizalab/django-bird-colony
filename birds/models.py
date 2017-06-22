@@ -233,25 +233,3 @@ class DataType(models.Model):
         return self.name
     class Meta:
         ordering = ['name']
-
-
-@python_2_unicode_compatible
-class Recording(models.Model):
-    animal = models.ForeignKey('Animal', on_delete=models.CASCADE)
-    collection = models.ForeignKey('DataCollection', on_delete=models.CASCADE)
-    identifier = models.CharField(max_length=128, help_text="canonical identifier for this recording")
-
-    # optional metadata fields; these will need to be synced with the datafiles
-    # somehow, or replaced by external queries
-    datatype = models.ForeignKey('DataType', blank=True, null=True, on_delete=models.SET_NULL)
-    timestamp = models.DateTimeField(blank=True, null=True)
-
-    def __str__(self):
-        return "%s/%s" % (self.collection.name, self.identifier)
-
-    def get_absolute_url(self):
-        return pp.join(self.collection.uri, self.identifier)
-
-    class Meta:
-        ordering = ['animal', 'collection', 'identifier']
-        unique_together = ("collection", "identifier")

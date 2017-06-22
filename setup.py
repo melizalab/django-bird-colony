@@ -8,7 +8,7 @@ except ImportError:
     use_setuptools()
     from setuptools import setup
 
-VERSION = '0.4.1'
+VERSION = '0.5.0'
 cls_txt = """
 Development Status :: 3 - Alpha
 Framework :: Django
