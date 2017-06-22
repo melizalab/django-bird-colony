@@ -6,6 +6,7 @@
     <th>Sex</th>
     <th>Age (days)</th>
     <th>Alive</th>
+    <th>Whereabouts</th>
     <th>Children</th>
     <th>UUID</th>
     <th>Reserved</th>
@@ -19,6 +20,7 @@
           <td>{{ animal.sex }}</td>
           <td>{{ animal.age_days }}</td>
           <td>{{ animal.alive}}</td>
+          <td>{{ animal.last_location}}</td>
           <td>{{ animal.nchildren|last}}</td>
           <td>{{ animal.uuid }}</td>
           <td>{% if animal.reserved_by %}{{ animal.reserved_by }}{% endif %}</td>
