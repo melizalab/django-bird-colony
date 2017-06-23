@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
+import datetime
+
 from django.shortcuts import render
 from django.http import HttpResponseRedirect
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -7,22 +9,23 @@ from django.core.urlresolvers import reverse
 from django.views import generic
 from django.db.models import Min
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework import generics
 from rest_framework.response import Response
 from django_filters import rest_framework as filters
 from django_filters.views import FilterView
-import datetime
 
 from birds.models import Animal, Event
-from birds.serializers import AnimalSerializer, EventSerializer
+from birds.serializers import AnimalSerializer, AnimalDetailSerializer, EventSerializer
 from birds.forms import ClutchForm, BandingForm, EventForm
 
 class AnimalFilter(filters.FilterSet):
+    uuid = filters.CharFilter(name="uuid", lookup_expr="istartswith")
     color = filters.CharFilter(name="band_color", lookup_expr="iexact")
     band = filters.NumberFilter(name="band_number", lookup_expr="exact")
     species = filters.CharFilter(name="species__code", lookup_expr="iexact")
     sex = filters.CharFilter(name="sex", lookup_expr="iexact")
     available = filters.BooleanFilter(name="reserved_by", lookup_expr="isnull")
+    reserved_by = filters.CharFilter(name="reserved_by", lookup_expr="iexact")
 
     class Meta:
         model = Animal
@@ -164,32 +167,23 @@ class EventSummary(generic.base.TemplateView):
 
 ### API
 
-
-@api_view(['GET', 'POST'])
-def all_birds_json(request):
-    if request.method == 'GET':
-        birds = Animal.objects.all()
-        serializer = AnimalSerializer(birds, many=True)
-        return Response(serializer.data)
-    elif request.method == 'POST':
-        serializer = AnimalSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class APIAnimalsList(generics.ListAPIView):
+    queryset = Animal.objects.all()
+    serializer_class = AnimalSerializer
+    filter_backends = (filters.DjangoFilterBackend,)
+    filter_class = AnimalFilter
 
 
-@api_view(['GET', 'POST'])
-def all_events_json(request):
-    if request.method == 'GET':
-        events = Event.objects.all()
-        serializer = EventSerializer(events, many=True)
-        return Response(serializer.data)
-    elif request.method == 'POST':
-        serializer = EventSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+class APIAnimalDetail(generics.RetrieveAPIView):
+    queryset = Animal.objects.all()
+    serializer_class = AnimalDetailSerializer
+
+
+class APIEventsList(generics.ListAPIView):
+    queryset = Event.objects.all()
+    serializer_class = EventSerializer
+    filter_backends = (filters.DjangoFilterBackend,)
+    filter_class = EventFilter
+
 
 # Create your views here.

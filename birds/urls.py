@@ -23,6 +23,8 @@ urlpatterns = [
     # forms
     url(r'^clutch$', login_required(views.ClutchEntry.as_view()), name='clutch'),
     # api
-    # url(r'^api/animals/$', views.all_animals_json),
-    # url(r'^api/events/$', views.all_events_json),
+    url(r'^api/animals/$', views.APIAnimalsList.as_view(), name="animals_api"),
+    url(r'^api/animals/(?P<pk>[a-f0-9\-]{36})/$', views.APIAnimalDetail.as_view()),
+    #url(r'^api/animals/(?P<uuid>[a-f0-9\-]{36})/events$', views.APIEventsList.as_view()),
+    url(r'^api/events/$', views.APIEventsList.as_view(), name="events_api"),
 ]

@@ -42,4 +42,21 @@ This web application allows you to access the animal database. Here are some thi
 <p><a href="{% url 'birds:new_animal' %}">add new bird</a></p>
 <p><a href="{% url 'birds:new_event' %}">add new event</a></p>
 <p><a href="{% url 'birds:clutch' %}">add clutch of birds</a></p>
+
+<h3>API</h3>
+
+<p>You can also query the database using the HTTP API. Specify query parameters using the URL. Your main entry points are:</p>
+
+</br>
+<p><code>{% url 'birds:animals_api' %}</code> : list of animals</p>
+
+<p>&nbsp;&nbsp;Supported query parameters: <code>uuid</code>, <code>color</code>, <code>band</code>, <code>species</code>, <code>sex</code>, <code>available</code>, <code>reserved_by</code>. Most text-based query parameters are case-insensitive and will do partial matches.</p>
+
+<p>&nbsp;&nbsp;Example: <code>curl http://my.domain/{% url 'birds:animals_api' %}?species=zebf&available=True</code> will retrieve all available (unreserved) zebra finches.</p>
+
+<br/>
+<p><code>{% url 'birds:events_api' %}</code> : list of events</p>
+
+<p>&nbsp;&nbsp;Supported query parameters: <code>animal</code> (uuid), <code>color</code>, <code>band</code>, <code>species</code>, <code>location</code>, <code>entered_by</code>, <code>description</code>.</p>
+
 {% endblock %}
