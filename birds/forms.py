@@ -6,6 +6,11 @@ from django.contrib.auth.models import User
 from birds.models import Animal, Event, Status, Location, Color, Species, Parent
 
 
+class EventForm(forms.ModelForm):
+    class Meta:
+        model = Event
+        fields = ["animal", "date", "status", "location", "description", "entered_by"]
+
 class BandingForm(forms.Form):
     acq_status = forms.ModelChoiceField(queryset=Status.objects.filter(count=1))
     acq_date = forms.DateField()

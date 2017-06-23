@@ -27,7 +27,7 @@
     <h3 class="panel-title">Band entry</h3>
   </div>
   <div class="panel-body">
-    <form action="{% url 'birds:new_bird' %}" class="form-horizontal" method="post" role="form">
+    <form action="{% url 'birds:new_animal' %}" class="form-horizontal" method="post" role="form">
       {% csrf_token %}
       <p><strong>Instructions</strong>: This form is for adding a single banded
       bird to the database. For birds hatched in the breeding colony, determine

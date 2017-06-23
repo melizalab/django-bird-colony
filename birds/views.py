@@ -15,7 +15,7 @@ import datetime
 
 from birds.models import Animal, Event
 from birds.serializers import AnimalSerializer, EventSerializer
-from birds.forms import ClutchForm, BandingForm
+from birds.forms import ClutchForm, BandingForm, EventForm
 
 class AnimalFilter(filters.FilterSet):
     color = filters.CharFilter(name="band_color", lookup_expr="iexact")
@@ -44,7 +44,7 @@ class EventFilter(filters.FilterSet):
         }
 
 
-class AnimalList(generic.ListView):
+class AnimalList(FilterView):
     model = Animal
     template_name = "birds/animal_list.html"
 
@@ -62,6 +62,11 @@ class EventList(FilterView, generic.list.MultipleObjectMixin):
     filterset_class = EventFilter
     template_name = "birds/event_list.html"
     paginate_by = 25
+
+    def get_queryset(self):
+        qs = Event.objects.filter(**self.kwargs)
+        f = EventFilter(self.request.GET, queryset=qs)
+        return f.qs
 
 
 class AnimalView(generic.DetailView):
@@ -82,6 +87,11 @@ class ClutchEntry(generic.FormView):
     template_name = "birds/clutch_entry.html"
     form_class = ClutchForm
 
+    def get_initial(self):
+        initial = super(ClutchEntry, self).get_initial()
+        initial["user"] = self.request.user
+        return initial
+
     def form_valid(self, form, **kwargs):
         """ For valid entries, render a page with a list of the created events """
         objs = form.create_clutch()
@@ -94,9 +104,34 @@ class BandingEntry(generic.FormView):
     template_name = "birds/banding_entry.html"
     form_class = BandingForm
 
+    def get_initial(self):
+        initial = super(BandingEntry, self).get_initial()
+        initial["user"] = self.request.user
+        return initial
+
     def form_valid(self, form, **kwargs):
         chick = form.create_chick()
-        return HttpResponseRedirect(reverse('birds:bird', args=(chick.pk,)))
+        return HttpResponseRedirect(reverse('birds:animal', args=(chick.pk,)))
+
+
+class EventEntry(generic.FormView):
+    template_name = "birds/event_entry.html"
+    form_class = EventForm
+
+    def get_initial(self):
+        initial = super(EventEntry, self).get_initial()
+        try:
+            uuid = self.kwargs["uuid"]
+            animal = Animal.objects.get(uuid=uuid)
+            initial['animal'] = animal
+        except:
+            pass
+        initial['entered_by'] = self.request.user
+        return initial
+
+    def form_valid(self, form, **kwargs):
+        event = form.save()
+        return HttpResponseRedirect(reverse('birds:animal', args=(event.animal.pk,)))
 
 
 class IndexView(generic.base.TemplateView):
