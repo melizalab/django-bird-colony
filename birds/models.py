@@ -227,23 +227,3 @@ class Event(models.Model):
 
     class Meta:
         ordering = ['-date']
-
-
-@python_2_unicode_compatible
-class DataCollection(models.Model):
-    name = models.CharField(max_length=16, help_text="a short name for the collection", unique=True)
-    uri = models.CharField(max_length=512,
-                           help_text="canonical URL for retrieving a recording in this collection")
-    def __str__(self):
-        return self.name
-    class Meta:
-        ordering = ['name']
-
-
-@python_2_unicode_compatible
-class DataType(models.Model):
-    name = models.CharField(max_length=16, unique=True)
-    def __str__(self):
-        return self.name
-    class Meta:
-        ordering = ['name']

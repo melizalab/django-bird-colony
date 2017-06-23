@@ -1,0 +1,99 @@
+{% extends "base_view.html" %}
+{% load staticfiles %}
+{% load widget_tweaks %}
+
+{% block title %} meliza-lab : bird colony : add event {% endblock title%}
+
+{% block css %}
+    <link href="{% static 'local/css/bootstrap-datetimepicker.min.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'local/js/moment.min.js' %}"></script>
+<script src="{% static 'local/js/bootstrap-datetimepicker.min.js' %}"></script>
+<script type="text/javascript">
+  $(function () {
+  $('#datetimepicker1').datetimepicker({ pickTime: false});
+  });
+</script>
+{% endblock %}
+
+
+{% block content %}
+
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h3 class="panel-title">New event</h3>
+  </div>
+  <div class="panel-body">
+    <form action="{% url 'birds:new_event' %}" class="form-horizontal" method="post" role="form">
+      {% csrf_token %}
+      <p><strong>Instructions</strong>: This form is for adding an event to the
+        database. Events track each individual's life history and allow us to
+        determine its current status and location. For convenience, you can only
+        add events on this form for living birds. You can use the <a href="{%
+        url 'admin:birds_event_add' %}">admin interface</a> to add events for
+        other birds, or edit existing events.</p>
+
+      {% if form.non_field_errors %}
+      <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <div class="form-group {% if form.animal.errors %}has-error{% endif %}">
+        <label for="id_animal" class="col-sm-2 control-label">Animal *</label>
+        <div class="col-sm-5">
+          {% render_field form.animal class+="form-control" %}
+        </div>
+      </div>
+
+      <div class="form-group {% if form.status.errors %}has-error{% endif %}">
+        <label for="id_status" class="col-sm-2 control-label">Event type * </label>
+        <div class="col-sm-5">
+          {% render_field form.status class+="form-control" %}
+        </div>
+      </div>
+
+
+      <div class="form-group {% if form.date.errors %}has-error{% endif %}">
+        <label for="id_date" class="col-sm-2 control-label">Event date * </label>
+        <div class="col-sm-3">
+          <div class="input-group date" id="datetimepicker1">
+            {% render_field form.date class+="form-control" data-format="MM/dd/YYYY" %}
+            <span class="input-group-addon"><span class="glyphicon glyphicon-calendar"></span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group {% if form.location.errors %}has-error{% endif %}">
+        <label for="id_location" class="col-sm-2 control-label">Location</label>
+        <div class="col-sm-5">
+          {% render_field form.location class+="form-control" %}
+        </div>
+      </div>
+
+      <div class="form-group {% if form.description.errors %}has-error{% endif %}">
+        <label for="id_description" class="col-sm-2 control-label">Description</label>
+        <div class="col-sm-5">
+          {% render_field form.description class+="form-control" rows="3"%}
+        </div>
+      </div>
+
+      <div class="form-group {% if form.entered_by.errors %}has-error{% endif %}">
+        <label for="id_entered_by" class="col-sm-2 control-label">Entered by * </label>
+        <div class="col-sm-3">
+          {% render_field form.entered_by class+="form-control" %}
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="col-sm-offset-2 col-sm-10">
+          <button type="submit" class="btn btn-default">Add event</button>
+        </div>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+{% endblock %}

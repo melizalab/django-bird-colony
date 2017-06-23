@@ -1,5 +1,5 @@
 from django.contrib import admin
-from birds.models import Species, Color, Location, Animal, Event, Status, Age, DataCollection, DataType, Parent
+from birds.models import Species, Color, Location, Animal, Event, Status, Age, Parent
 
 # Register your models here.
 
@@ -33,5 +33,5 @@ admin.site.register(Animal, AnimalAdmin)
 admin.site.register(Event, EventAdmin)
 admin.site.register(Status, StatusAdmin)
 
-for model in (Species, Color, Location, Age, DataCollection, DataType):
+for model in (Species, Color, Location, Age):
     admin.site.register(model)
