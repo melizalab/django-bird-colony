@@ -45,18 +45,21 @@ This web application allows you to access the animal database. Here are some thi
 
 <h3>API</h3>
 
-<p>You can also query the database using the HTTP API. Specify query parameters using the URL. Your main entry points are:</p>
+<p>You can also query the database using the HTTP API. Specify query parameters using the URL.</p>
 
-</br>
-<p><code>{% url 'birds:animals_api' %}</code> : list of animals</p>
+<h4>Entry Points</h4>
 
-<p>&nbsp;&nbsp;Supported query parameters: <code>uuid</code>, <code>color</code>, <code>band</code>, <code>species</code>, <code>sex</code>, <code>available</code>, <code>reserved_by</code>. Most text-based query parameters are case-insensitive and will do partial matches.</p>
+<p><code>{% url 'birds:animals_api' %}</code> retrieves a list of animals. Supported query parameters are <code>uuid</code>, <code>color</code>, <code>band</code>, <code>species</code>, <code>sex</code>, <code>available</code>, <code>reserved_by</code>. Most text-based query parameters are case-insensitive and will do partial matches.</p>
 
-<p>&nbsp;&nbsp;Example: <code>curl http://my.domain/{% url 'birds:animals_api' %}?species=zebf&available=True</code> will retrieve all available (unreserved) zebra finches.</p>
+<p><code>{% url 'birds:animals_api' %}my-uuid/</code> retrieves the record for a single animal by by uuid. Includes some additional information not returned by the list query.</p>
 
-<br/>
-<p><code>{% url 'birds:events_api' %}</code> : list of events</p>
+<p><code>{% url 'birds:events_api' %}</code> retrieves a list of events. Supported query parameters: <code>animal</code> (uuid), <code>color</code>, <code>band</code>, <code>species</code>, <code>location</code>, <code>entered_by</code>, <code>description</code>.</p>
 
-<p>&nbsp;&nbsp;Supported query parameters: <code>animal</code> (uuid), <code>color</code>, <code>band</code>, <code>species</code>, <code>location</code>, <code>entered_by</code>, <code>description</code>.</p>
+<h4>Examples</h4>
+
+<p><code>curl http://my.domain{% url 'birds:animals_api' %}?species=zebf&available=True</code> will retrieve all available (unreserved) zebra finches.</p>
+
+<p><code>curl http://my.domain{% url 'birds:events_api' %}?animal=bd0dcfc1</code> will retrieve all the events for the bird whose uuid begins with <code>bd0dcfc1</code>.</p>
+
 
 {% endblock %}
