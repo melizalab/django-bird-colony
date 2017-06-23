@@ -20,12 +20,12 @@ from birds.forms import ClutchForm, BandingForm, EventForm
 
 class AnimalFilter(filters.FilterSet):
     uuid = filters.CharFilter(name="uuid", lookup_expr="istartswith")
-    color = filters.CharFilter(name="band_color", lookup_expr="iexact")
+    color = filters.CharFilter(name="band_color__name", lookup_expr="iexact")
     band = filters.NumberFilter(name="band_number", lookup_expr="exact")
     species = filters.CharFilter(name="species__code", lookup_expr="iexact")
     sex = filters.CharFilter(name="sex", lookup_expr="iexact")
     available = filters.BooleanFilter(name="reserved_by", lookup_expr="isnull")
-    reserved_by = filters.CharFilter(name="reserved_by", lookup_expr="iexact")
+    reserved_by = filters.CharFilter(name="reserved_by__username", lookup_expr="iexact")
 
     class Meta:
         model = Animal
@@ -34,11 +34,11 @@ class AnimalFilter(filters.FilterSet):
 
 class EventFilter(filters.FilterSet):
     animal = filters.CharFilter(name="animal__uuid", lookup_expr="istartswith")
-    color = filters.CharFilter(name="animal__band_color", lookup_expr="iexact")
+    color = filters.CharFilter(name="animal__band_color__name", lookup_expr="iexact")
     band = filters.NumberFilter(name="animal__band_number", lookup_expr="exact")
     species = filters.CharFilter(name="animal__species__code", lookup_expr="iexact")
     location = filters.CharFilter(name="location__name", lookup_expr="icontains")
-    entered_by = filters.CharFilter(name="entered_by", lookup_expr="icontains")
+    entered_by = filters.CharFilter(name="entered_by__username", lookup_expr="icontains")
     description = filters.CharFilter(name="description", lookup_expr="icontains")
     class Meta:
         model = Event
@@ -49,6 +49,7 @@ class EventFilter(filters.FilterSet):
 
 class AnimalList(FilterView):
     model = Animal
+    filterset_class = AnimalFilter
     template_name = "birds/animal_list.html"
 
     def get_queryset(self):
@@ -56,8 +57,7 @@ class AnimalList(FilterView):
             qs = Animal.living.annotate(acq_date=Min("event__date")).order_by("acq_date")
         else:
             qs = Animal.objects.all()
-        f = AnimalFilter(self.request.GET, queryset=qs)
-        return f.qs
+        return qs
 
 
 class EventList(FilterView, generic.list.MultipleObjectMixin):
@@ -68,8 +68,7 @@ class EventList(FilterView, generic.list.MultipleObjectMixin):
 
     def get_queryset(self):
         qs = Event.objects.filter(**self.kwargs)
-        f = EventFilter(self.request.GET, queryset=qs)
-        return f.qs
+        return qs
 
 
 class AnimalView(generic.DetailView):
