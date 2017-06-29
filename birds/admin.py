@@ -1,7 +1,6 @@
 from django.contrib import admin
 from birds.models import Species, Color, Location, Animal, Event, Status, Age, Parent
 
-# Register your models here.
 
 class ParentInline(admin.TabularInline):
     model = Parent

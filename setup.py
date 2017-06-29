@@ -8,9 +8,9 @@ except ImportError:
     use_setuptools()
     from setuptools import setup
 
-VERSION = '0.5.1'
+VERSION = '0.5.2'
 cls_txt = """
-Development Status :: 3 - Alpha
+Development Status :: 4 - Beta
 Framework :: Django
 Intended Audience :: Science/Research
 License :: OSI Approved :: GNU General Public License (GPL)
@@ -23,13 +23,11 @@ Topic :: Internet :: WWW/HTTP :: Dynamic Content
 setup(
     name="django-bird-colony",
     version=VERSION,
-    description="A simple Django app for managing a bird colony",
+    description="A simple Django app for managing a bird breeding colony",
     long_description=open(os.path.join(os.path.dirname(__file__), 'README.md')).read(),
     classifiers=[x for x in cls_txt.split("\n") if x],
     author='C Daniel Meliza',
-    author_email='dan@meliza.org',
     maintainer='C Daniel Meliza',
-    maintainer_email='dan@meliza.org',
     url = "https://github.com/melizalab/django-bird-colony",
     packages=['birds'],
     include_package_data=True,

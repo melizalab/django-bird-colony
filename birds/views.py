@@ -26,6 +26,8 @@ class AnimalFilter(filters.FilterSet):
     sex = filters.CharFilter(name="sex", lookup_expr="iexact")
     available = filters.BooleanFilter(name="reserved_by", lookup_expr="isnull")
     reserved_by = filters.CharFilter(name="reserved_by__username", lookup_expr="iexact")
+    parent = filters.CharFilter(name="parents__uuid", lookup_expr="istartswith")
+    child = filters.CharFilter(name="children__uuid", lookup_expr="istartswith")
 
     class Meta:
         model = Animal
