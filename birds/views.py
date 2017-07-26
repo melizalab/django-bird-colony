@@ -174,6 +174,13 @@ class APIAnimalsList(generics.ListAPIView):
     filter_backends = (filters.DjangoFilterBackend,)
     filter_class = AnimalFilter
 
+    def get_queryset(self):
+        if self.request.GET.get("living", False):
+            qs = Animal.living.annotate(acq_date=Min("event__date")).order_by("acq_date")
+        else:
+            qs = Animal.objects.all()
+        return qs
+
 
 class APIAnimalDetail(generics.RetrieveAPIView):
     queryset = Animal.objects.all()
