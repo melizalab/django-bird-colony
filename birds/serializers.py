@@ -7,31 +7,17 @@ from django.contrib.auth.models import User
 from birds.models import Animal, Parent, Event, Color, Species, Status, Location
 
 
-class AnimalUUIDField(serializers.RelatedField):
-    def to_representation(self, value):
-        return str(value.uuid)
-
-
 class AnimalSerializer(serializers.ModelSerializer):
     species = serializers.StringRelatedField()
     band_color = serializers.StringRelatedField()
     reserved_by = serializers.StringRelatedField()
-    parents = serializers.PrimaryKeyRelatedField(many=True, read_only=False,
-                                                 queryset=Animal.objects.all())
-
-    def create(self, validated_data):
-        # can't add the parents directly
-        d = validated_data.copy()
-        parents = d.pop("parents")
-        animal = Animal.objects.create(**d)
-        for p in parents:
-            Parent.objects.create(child=animal, parent=p)
-        return animal
+    sire = serializers.PrimaryKeyRelatedField(read_only=True)
+    dam = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = Animal
         fields = ('name', 'uuid', 'species', 'sex', 'band_color', 'band_number',
-                  'parents', 'reserved_by',)
+                  'sire', 'dam', 'alive', 'reserved_by',)
 
 
 class AnimalDetailSerializer(AnimalSerializer):
@@ -39,7 +25,7 @@ class AnimalDetailSerializer(AnimalSerializer):
     class Meta:
         model = Animal
         fields = ('name', 'uuid', 'species', 'sex', 'band_color', 'band_number',
-                  'parents', 'reserved_by', "age_days", "alive", "last_location",)
+                  'sire', 'dam', 'reserved_by', "age_days", "alive", "last_location",)
 
 
 class StatusSerializer(serializers.ModelSerializer):
