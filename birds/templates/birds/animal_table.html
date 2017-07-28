@@ -1,3 +1,6 @@
+{% load date_fmt %}
+<p>NB: When alive is False, age is at death or release</p>
+
 <table class="table table-striped table-condensed">
   <thead>
     <th>Name</th>
@@ -18,7 +21,7 @@
           <td>{{ animal.species }}</td>
           <td>{{ animal.band }}</td>
           <td>{{ animal.sex }}</td>
-          <td>{{ animal.age_days }}</td>
+          <td>{{ animal.age_days|agestr }}</td>
           <td>{{ animal.alive}}</td>
           <td>{{ animal.last_location}}</td>
           <td>{{ animal.nchildren|last}}</td>

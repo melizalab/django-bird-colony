@@ -12,7 +12,6 @@ from django.db import models
 from django.conf import settings
 from django.contrib.auth import get_user_model
 
-
 def get_sentinel_user():
     return get_user_model().objects.get_or_create(username='deleted')[0]
 
@@ -87,9 +86,23 @@ class Age(models.Model):
         unique_together = ("name", "species")
 
 
-class LivingAnimalManager(models.Manager):
+class ThreshSum(models.Sum):
+    """Returns True if Sum is greater than zero"""
+    def convert_value(self, value, expresssion, connection, context):
+        if value is None:
+            return value
+        return value > 0
+
+
+class AnimalManager(models.Manager):
     def get_queryset(self):
-        return super(LivingAnimalManager, self).get_queryset().exclude(event__status__count=-1)
+        qs = super(AnimalManager, self).get_queryset()
+        return qs.annotate(alive=ThreshSum("event__status__count"))
+
+
+class LivingAnimalManager(AnimalManager):
+    def get_queryset(self):
+        return super(LivingAnimalManager, self).get_queryset().filter(alive__exact=True)
 
 
 class LastEventManager(models.Manager):
@@ -154,28 +167,18 @@ class Animal(models.Model):
         return self.name()
 
     def sire(self):
-        try:
-            return self.parents.filter(sex__exact='M')[0]
-        except IndexError:
-            return None
+        return self.parents.filter(sex__exact='M').first()
 
     def dam(self):
-        try:
-            return self.parents.filter(sex__exact='F')[0]
-        except IndexError:
-            return None
-
-    def alive(self):
-        """ Returns True if the bird is alive """
-        return sum(evt.status.count for evt in self.event_set.all()) > 0
+        return self.parents.filter(sex__exact='F').first()
 
     def nchildren(self):
         """ Returns (living, total) children """
         chicks = self.children
-        # probably inefficient
-        return (sum(1 for a in chicks.iterator() if a.alive()), chicks.count())
+        return (chicks.filter(alive__exact=True).count(),
+                chicks.count())
 
-    objects = models.Manager()
+    objects = AnimalManager()
     living = LivingAnimalManager()
 
     def acquisition_event(self):
@@ -185,13 +188,17 @@ class Animal(models.Model):
         """
         return self.event_set.filter(status__count=1).order_by('date').first()
 
+
     def age_days(self):
-        """ Returns days since birthdate or None if unknown"""
-        try:
-            birthday = self.event_set.filter(status__name="hatched").first().date
-            return (datetime.date.today() - birthday).days
-        except AttributeError:
-            pass
+        """ Returns days since birthdate if alive, age at death if dead, or None if unknown"""
+        q_birth = self.event_set.filter(status__name="hatched").aggregate(d=models.Min("date"))
+        if q_birth["d"] is None:
+            return None
+        if self.alive:
+            return (datetime.date.today() - q_birth["d"]).days
+        else:
+            q_death = self.event_set.filter(status__count__lt=0).aggregate(d=models.Max("date"))
+            return (q_death["d"] - q_birth["d"]).days
 
     def last_location(self):
         """ Returns the location recorded in the most recent event """
