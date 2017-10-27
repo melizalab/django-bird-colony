@@ -13,6 +13,7 @@ class AnimalSerializer(serializers.ModelSerializer):
     reserved_by = serializers.StringRelatedField()
     sire = serializers.PrimaryKeyRelatedField(read_only=True)
     dam = serializers.PrimaryKeyRelatedField(read_only=True)
+    alive = serializers.BooleanField(required=False)
 
     class Meta:
         model = Animal
@@ -22,6 +23,7 @@ class AnimalSerializer(serializers.ModelSerializer):
 
 class AnimalDetailSerializer(AnimalSerializer):
     last_location = serializers.StringRelatedField()
+
     class Meta:
         model = Animal
         fields = ('name', 'uuid', 'species', 'sex', 'band_color', 'band_number',

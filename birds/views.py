@@ -8,7 +8,6 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.urlresolvers import reverse
 from django.views import generic
 from django.db.models import Min
-from rest_framework import status
 from rest_framework import generics
 from rest_framework.response import Response
 from django_filters import rest_framework as filters
@@ -17,6 +16,7 @@ from django_filters.views import FilterView
 from birds.models import Animal, Event
 from birds.serializers import AnimalSerializer, AnimalDetailSerializer, EventSerializer
 from birds.forms import ClutchForm, BandingForm, EventForm
+
 
 class AnimalFilter(filters.FilterSet):
     uuid = filters.CharFilter(name="uuid", lookup_expr="istartswith")
@@ -42,6 +42,7 @@ class EventFilter(filters.FilterSet):
     location = filters.CharFilter(name="location__name", lookup_expr="icontains")
     entered_by = filters.CharFilter(name="entered_by__username", lookup_expr="icontains")
     description = filters.CharFilter(name="description", lookup_expr="icontains")
+
     class Meta:
         model = Event
         fields = {
