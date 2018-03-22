@@ -4,7 +4,6 @@ from __future__ import unicode_literals
 
 import uuid
 import datetime
-import posixpath as pp
 
 from django.utils.encoding import python_2_unicode_compatible
 from django.urls import reverse
@@ -48,7 +47,9 @@ class Color(models.Model):
 class Status(models.Model):
     name = models.CharField(max_length=16, unique=True)
     count = models.SmallIntegerField(default=0, choices=((0, '0'), (-1, '-1'), (1, '+1')),
-                                     help_text="1: animal acquired; -1: animal lost; 0: no change")
+                                     help_text="1: animal acquired; -1: animal lost/died/removed; 0: no change")
+    adds = models.BooleanField(default=False, help_text="select for acquisition events")
+    removes = models.BooleanField(default=False, help_text="select for loss/death/removal events")
     category = models.CharField(max_length=2, choices=(('B','B'),('C','C'),('D','D'),('E','E')),
                                 blank=True, null=True)
     description = models.TextField()
@@ -86,8 +87,15 @@ class Age(models.Model):
         unique_together = ("name", "species")
 
 
+class ThreshMin(models.Min):
+    """Returns True if Min is greater than or equal to zero"""
+    def convert_value(self, value, expresssion, connection, context):
+        if value is None:
+            return value
+        return value >= 0
+
+
 class ThreshSum(models.Sum):
-    """Returns True if Sum is greater than zero"""
     def convert_value(self, value, expresssion, connection, context):
         if value is None:
             return value
@@ -97,12 +105,12 @@ class ThreshSum(models.Sum):
 class AnimalManager(models.Manager):
     def get_queryset(self):
         qs = super(AnimalManager, self).get_queryset()
-        return qs.annotate(alive=ThreshSum("event__status__count"))
+        return qs.annotate(alive=ThreshMin("event__status__count"))
 
 
 class LivingAnimalManager(AnimalManager):
     def get_queryset(self):
-        return super(LivingAnimalManager, self).get_queryset().filter(alive__exact=True)
+        return super(LivingAnimalManager, self).get_queryset().filter(alive=True)
 
 
 class LastEventManager(models.Manager):
@@ -187,7 +195,6 @@ class Animal(models.Model):
         Returns None if no acquisition events
         """
         return self.event_set.filter(status__count=1).order_by('date').first()
-
 
     def age_days(self):
         """ Returns days since birthdate if alive, age at death if dead, or None if unknown"""

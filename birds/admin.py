@@ -25,7 +25,7 @@ class EventAdmin(admin.ModelAdmin):
 
 
 class StatusAdmin(admin.ModelAdmin):
-    list_display = ('name', 'count')
+    list_display = ('name', 'count', 'adds', 'removes')
 
 
 admin.site.register(Animal, AnimalAdmin)
