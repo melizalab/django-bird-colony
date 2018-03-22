@@ -46,12 +46,11 @@ class Color(models.Model):
 @python_2_unicode_compatible
 class Status(models.Model):
     name = models.CharField(max_length=16, unique=True)
-    count = models.SmallIntegerField(default=0, choices=((0, '0'), (-1, '-1'), (1, '+1')),
-                                     help_text="1: animal acquired; -1: animal lost/died/removed; 0: no change")
     adds = models.BooleanField(default=False, help_text="select for acquisition events")
     removes = models.BooleanField(default=False, help_text="select for loss/death/removal events")
     category = models.CharField(max_length=2, choices=(('B','B'),('C','C'),('D','D'),('E','E')),
-                                blank=True, null=True)
+                                blank=True, null=True,
+                                help_text="category of animal in protocol")
     description = models.TextField()
 
     def __str__(self):
@@ -87,30 +86,15 @@ class Age(models.Model):
         unique_together = ("name", "species")
 
 
-class ThreshMin(models.Min):
-    """Returns True if Min is greater than or equal to zero"""
-    def convert_value(self, value, expresssion, connection, context):
-        if value is None:
-            return value
-        return value >= 0
-
-
-class ThreshSum(models.Sum):
-    def convert_value(self, value, expresssion, connection, context):
-        if value is None:
-            return value
-        return value > 0
-
-
 class AnimalManager(models.Manager):
     def get_queryset(self):
         qs = super(AnimalManager, self).get_queryset()
-        return qs.annotate(alive=ThreshMin("event__status__count"))
+        return qs
 
 
 class LivingAnimalManager(AnimalManager):
     def get_queryset(self):
-        return super(LivingAnimalManager, self).get_queryset().filter(alive=True)
+        return super(LivingAnimalManager, self).get_queryset().exclude(event__status__removes=True)
 
 
 class LastEventManager(models.Manager):
@@ -174,6 +158,9 @@ class Animal(models.Model):
     def __str__(self):
         return self.name()
 
+    def alive(self):
+        return self.event_set.filter(status__removes=True).count() == 0
+
     def sire(self):
         return self.parents.filter(sex__exact='M').first()
 
@@ -183,29 +170,32 @@ class Animal(models.Model):
     def nchildren(self):
         """ Returns (living, total) children """
         chicks = self.children
-        return (chicks.filter(alive__exact=True).count(),
+        return (chicks.exclude(event__status__removes=True).count(),
                 chicks.count())
 
     objects = AnimalManager()
     living = LivingAnimalManager()
 
     def acquisition_event(self):
-        """ Returns event when bird was acquired.
+        """Returns event when bird was acquired.
 
+        If there are multiple acquisition events, returns the most recent one.
         Returns None if no acquisition events
+
         """
-        return self.event_set.filter(status__count=1).order_by('date').first()
+        return self.event_set.filter(status__adds=True).order_by('date').last()
 
     def age_days(self):
         """ Returns days since birthdate if alive, age at death if dead, or None if unknown"""
         q_birth = self.event_set.filter(status__name="hatched").aggregate(d=models.Min("date"))
         if q_birth["d"] is None:
             return None
-        if self.alive:
+        q_death = self.event_set.filter(status__removes=True)
+        if q_death.count() == 0:
             return (datetime.date.today() - q_birth["d"]).days
         else:
-            q_death = self.event_set.filter(status__count__lt=0).aggregate(d=models.Max("date"))
-            return (q_death["d"] - q_birth["d"]).days
+            qq = q_death.aggregate(d=models.Max("date"))
+            return (qq["d"] - q_birth["d"]).days
 
     def last_location(self):
         """ Returns the location recorded in the most recent event """

@@ -12,7 +12,7 @@ class EventForm(forms.ModelForm):
         fields = ["animal", "date", "status", "location", "description", "entered_by"]
 
 class BandingForm(forms.Form):
-    acq_status = forms.ModelChoiceField(queryset=Status.objects.filter(count=1))
+    acq_status = forms.ModelChoiceField(queryset=Status.objects.filter(adds=True))
     acq_date = forms.DateField()
     sire = forms.ModelChoiceField(queryset=Animal.objects.filter(sex__exact='M'),
                                   required=False)

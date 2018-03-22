@@ -1,4 +1,5 @@
 {% extends "base_view.html" %}
+{% load date_fmt %}
 
 {% block title %} meliza-lab : bird : {{ animal.name }} {% endblock %}
 
@@ -13,6 +14,7 @@
   <dt>uuid</dt><dd>{{ animal.uuid }}</dd>
   <dt>alive</dt><dd>{{ animal.alive }}</dd>
   <dt>acquired</dt><dd>{{ animal.acquisition_event.event_date }}</dd>
+  <dt>age</dt><dd>{{ animal.age_days|agestr }}</dd>
   <dt>sire</dt><dd>{% if animal.sire %}<a href="{{ animal.sire.get_absolute_url }}">{{ animal.sire }}</a>{% endif %}</dd>
   <dt>dam</dt><dd>{% if animal.dam %}<a href="{{ animal.dam.get_absolute_url }}">{{ animal.dam }}</a>{% endif %}</dd>
   <dt>reserved by</dt><dd><span class="text-warning">{{ animal.reserved_by }}</span></dd>

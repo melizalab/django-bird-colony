@@ -71,7 +71,7 @@ class EventList(FilterView, generic.list.MultipleObjectMixin):
 
     def get_queryset(self):
         qs = Event.objects.filter(**self.kwargs)
-        return qs
+        return qs.order_by("-date")
 
 
 class AnimalView(generic.DetailView):
@@ -84,7 +84,7 @@ class AnimalView(generic.DetailView):
         context = super(AnimalView, self).get_context_data(**kwargs)
         animal = context['animal']
         context['animal_list'] = animal.children.all()
-        context['event_list'] = animal.event_set.all()
+        context['event_list'] = animal.event_set.all().order_by("date")
         return context
 
 
