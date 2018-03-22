@@ -6,7 +6,7 @@ class ParentInline(admin.TabularInline):
     model = Parent
     fk_name = 'child'
     max_num = 2
-    min_num = 2
+    min_num = 0
 
 class AnimalAdmin(admin.ModelAdmin):
     fields = ('species', 'sex', 'band_color', 'band_number', 'reserved_by')
