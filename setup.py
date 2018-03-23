@@ -7,7 +7,7 @@ if sys.hexversion < 0x02060000:
 from setuptools import setup, find_packages
 
 
-VERSION = '0.5.6'
+VERSION = '0.5.7'
 cls_txt = """
 Development Status :: 4 - Beta
 Framework :: Django
