@@ -16,7 +16,7 @@ urlpatterns = [
     url(r'^animals/(?P<uuid>[a-f0-9\-]{36})/events/new/$',
         login_required(views.EventEntry.as_view()), name='new_event'),
     url(r'^events/$', views.EventList.as_view(), name='events'),
-    url(r'^events/new/$', login_required(views.EventEntry.as_view()), name='new_event'),
+    url(r'^events/new/$', login_required(views.LivingEventEntry.as_view()), name='new_event'),
     # summary views
     url(r'^summary/events/([0-9]{4})/([0-9]{1,2})/$', views.EventSummary.as_view(),
         name="event_summary"),

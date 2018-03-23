@@ -11,12 +11,17 @@ class EventForm(forms.ModelForm):
         model = Event
         fields = ["animal", "date", "status", "location", "description", "entered_by"]
 
+
+class LivingEventForm(EventForm):
+    animal = forms.ModelChoiceField(queryset=Animal.living.all())
+
+
 class BandingForm(forms.Form):
     acq_status = forms.ModelChoiceField(queryset=Status.objects.filter(adds=True))
     acq_date = forms.DateField()
-    sire = forms.ModelChoiceField(queryset=Animal.objects.filter(sex__exact='M'),
+    sire = forms.ModelChoiceField(queryset=Animal.living.filter(sex__exact='M'),
                                   required=False)
-    dam  = forms.ModelChoiceField(queryset=Animal.objects.filter(sex__exact='F'),
+    dam  = forms.ModelChoiceField(queryset=Animal.living.filter(sex__exact='F'),
                                   required=False)
     species = forms.ModelChoiceField(queryset=Species.objects.all(), required=False)
     banding_date = forms.DateField()
@@ -71,8 +76,8 @@ class BandingForm(forms.Form):
 
 
 class ClutchForm(forms.Form):
-    sire = forms.ModelChoiceField(queryset=Animal.objects.filter(sex__exact='M'))
-    dam  = forms.ModelChoiceField(queryset=Animal.objects.filter(sex__exact='F'))
+    sire = forms.ModelChoiceField(queryset=Animal.living.filter(sex__exact='M'))
+    dam  = forms.ModelChoiceField(queryset=Animal.living.filter(sex__exact='F'))
     chicks = forms.IntegerField(min_value=1)
     hatch_date = forms.DateField()
     location = forms.ModelChoiceField(queryset=Location.objects.all())

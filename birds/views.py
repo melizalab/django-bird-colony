@@ -9,13 +9,12 @@ from django.core.urlresolvers import reverse
 from django.views import generic
 from django.db.models import Min
 from rest_framework import generics
-from rest_framework.response import Response
 from django_filters import rest_framework as filters
 from django_filters.views import FilterView
 
 from birds.models import Animal, Event
 from birds.serializers import AnimalSerializer, AnimalDetailSerializer, EventSerializer
-from birds.forms import ClutchForm, BandingForm, EventForm
+from birds.forms import ClutchForm, BandingForm, LivingEventForm, EventForm
 
 
 class AnimalFilter(filters.FilterSet):
@@ -137,6 +136,10 @@ class EventEntry(generic.FormView):
     def form_valid(self, form, **kwargs):
         event = form.save()
         return HttpResponseRedirect(reverse('birds:animal', args=(event.animal.pk,)))
+
+
+class LivingEventEntry(EventEntry):
+    form_class = LivingEventForm
 
 
 class IndexView(generic.base.TemplateView):
