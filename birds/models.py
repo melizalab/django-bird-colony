@@ -199,7 +199,10 @@ class Animal(models.Model):
 
     def last_location(self):
         """ Returns the location recorded in the most recent event """
-        return self.event_set.order_by("-date").first().location
+        try:
+            return self.event_set.exclude(location__isnull=True).order_by("-date").first().location
+        except AttributeError:
+            return None
 
     def get_absolute_url(self):
         return reverse("birds:animal", kwargs={'uuid': self.uuid})
