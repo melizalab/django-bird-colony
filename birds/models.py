@@ -101,7 +101,7 @@ class LastEventManager(models.Manager):
     """ Filters queryset so that only the most recent event is returned """
     def get_queryset(self):
         qs = super(LastEventManager, self).get_queryset()
-        return qs.order_by("animal_id", "-date").distinct("animal_id")
+        return qs.exclude(location__isnull=True).order_by("animal_id", "-date").distinct("animal_id")
 
 
 @python_2_unicode_compatible
@@ -111,6 +111,7 @@ class Parent(models.Model):
 
     def __str__(self):
         return "%s -> %s" % (self.parent, self.child)
+
 
 @python_2_unicode_compatible
 class Animal(models.Model):
@@ -200,7 +201,7 @@ class Animal(models.Model):
     def last_location(self):
         """ Returns the location recorded in the most recent event """
         try:
-            return self.event_set.exclude(location__isnull=True).order_by("-date").first().location
+            return self.event_set.exclude(location__isnull=True).latest().location
         except AttributeError:
             return None
 
@@ -235,3 +236,4 @@ class Event(models.Model):
 
     class Meta:
         ordering = ['-date']
+        get_latest_by = 'date'

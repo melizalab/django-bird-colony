@@ -62,6 +62,16 @@ class AnimalList(FilterView):
         return qs
 
 
+class AnimalLocationList(FilterView):
+    model = Event
+    filterset_class = EventFilter
+    template_name = "birds/animal_location_list.html"
+
+    def get_queryset(self):
+        qs = Event.latest.exclude(status__removes=True).filter(**self.kwargs)
+        return qs.order_by("location__name")
+
+
 class EventList(FilterView, generic.list.MultipleObjectMixin):
     model = Event
     filterset_class = EventFilter
