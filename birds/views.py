@@ -4,8 +4,7 @@ import datetime
 
 from django.shortcuts import render
 from django.http import HttpResponseRedirect
-from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.views import generic
 from django.db.models import Min
 from rest_framework import generics

@@ -5,6 +5,7 @@ from django.conf.urls import url
 
 from birds import views
 
+app_name = "birds"
 urlpatterns = [
     # browser ui
     url(r'^$', views.IndexView.as_view(), name='index'),
