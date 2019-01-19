@@ -3,7 +3,6 @@
 from __future__ import unicode_literals
 
 from rest_framework import serializers
-from django.contrib.auth.models import User
 from birds.models import Animal, Parent, Event, Color, Species, Status, Location
 
 
@@ -18,7 +17,7 @@ class AnimalSerializer(serializers.ModelSerializer):
     class Meta:
         model = Animal
         fields = ('name', 'uuid', 'species', 'sex', 'band_color', 'band_number',
-                  'sire', 'dam', 'alive', 'reserved_by',)
+                  'sire', 'dam', 'alive', 'reserved_by', 'attributes')
 
 
 class AnimalDetailSerializer(AnimalSerializer):
@@ -33,7 +32,7 @@ class AnimalDetailSerializer(AnimalSerializer):
 class StatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = Status
-        fields = ('name', 'count', 'category')
+        fields = ('name', 'count')
 
 
 class EventSerializer(serializers.ModelSerializer):

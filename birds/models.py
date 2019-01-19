@@ -5,11 +5,13 @@ from __future__ import unicode_literals
 import uuid
 import datetime
 
+from django.contrib.postgres.fields import JSONField
 from django.utils.encoding import python_2_unicode_compatible
 from django.urls import reverse
 from django.db import models
 from django.conf import settings
 from django.contrib.auth import get_user_model
+
 
 def get_sentinel_user():
     return get_user_model().objects.get_or_create(username='deleted')[0]
@@ -48,9 +50,6 @@ class Status(models.Model):
     name = models.CharField(max_length=16, unique=True)
     adds = models.BooleanField(default=False, help_text="select for acquisition events")
     removes = models.BooleanField(default=False, help_text="select for loss/death/removal events")
-    category = models.CharField(max_length=2, choices=(('B','B'),('C','C'),('D','D'),('E','E')),
-                                blank=True, null=True,
-                                help_text="category of animal in protocol")
     description = models.TextField()
 
     def __str__(self):
@@ -140,6 +139,7 @@ class Animal(models.Model):
                                     on_delete=models.SET(get_sentinel_user),
                                     help_text="mark a bird as reserved for a specific user")
     created = models.DateTimeField(auto_now_add=True)
+    attributes = JSONField(default=dict, blank=True, help_text="specify additional attributes for the animal")
 
     def short_uuid(self):
         return str(self.uuid).split('-')[0]

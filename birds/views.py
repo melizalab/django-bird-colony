@@ -109,8 +109,8 @@ class ClutchEntry(generic.FormView):
         """ For valid entries, render a page with a list of the created events """
         objs = form.create_clutch()
         return render(self.request, 'birds/events.html',
-                      { 'event_list': objs['events'],
-                        'header_text': 'Hatch events for new clutch'})
+                      {'event_list': objs['events'],
+                       'header_text': 'Hatch events for new clutch'})
 
 
 class BandingEntry(generic.FormView):
@@ -137,7 +137,7 @@ class EventEntry(generic.FormView):
             uuid = self.kwargs["uuid"]
             animal = Animal.objects.get(uuid=uuid)
             initial['animal'] = animal
-        except:
+        except KeyError:
             pass
         initial['entered_by'] = self.request.user
         return initial
@@ -156,8 +156,9 @@ class IndexView(generic.base.TemplateView):
 
     def get_context_data(self, **kwargs):
         today = datetime.date.today()
-        return {"today": today,
-                "lastmonth": today.replace(day=1) - datetime.timedelta(days=1)
+        return {
+            "today": today,
+            "lastmonth": today.replace(day=1) - datetime.timedelta(days=1)
         }
 
 
@@ -173,14 +174,16 @@ class EventSummary(generic.base.TemplateView):
         # shouldn't be too slow
         for event in Event.objects.filter(date__year=year, date__month=month):
             tots[event.status.name] += 1
-        return { "year": year,
-                 "month": month,
-                 "next": datetime.date(year, month, 1) + datetime.timedelta(days=32),
-                 "prev": datetime.date(year, month, 1) - datetime.timedelta(days=1),
-                 "event_totals": dict(tots) }
+        return {
+            "year": year,
+            "month": month,
+            "next": datetime.date(year, month, 1) + datetime.timedelta(days=32),
+            "prev": datetime.date(year, month, 1) - datetime.timedelta(days=1),
+            "event_totals": dict(tots)
+        }
+
 
 ### API
-
 class APIAnimalsList(generics.ListAPIView):
     queryset = Animal.objects.all()
     serializer_class = AnimalSerializer

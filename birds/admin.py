@@ -8,11 +8,12 @@ class ParentInline(admin.TabularInline):
     max_num = 2
     min_num = 0
 
+
 class AnimalAdmin(admin.ModelAdmin):
-    fields = ('species', 'sex', 'band_color', 'band_number', 'reserved_by')
+    fields = ('species', 'sex', 'band_color', 'band_number', 'reserved_by', 'attributes')
     list_display = ('name', 'species', 'band', 'uuid', 'sex', 'reserved_by')
-    list_filter = ('species', 'sex', 'band_color','parents', 'reserved_by')
-    search_fields = ('band_number', 'uuid')
+    list_filter = ('species', 'sex', 'band_color', 'parents', 'reserved_by')
+    search_fields = ('band_number', 'uuid', 'attributes__icontains')
     inlines = (ParentInline,)
 
 
