@@ -17,15 +17,15 @@ from birds.forms import ClutchForm, BandingForm, LivingEventForm, EventForm
 
 
 class AnimalFilter(filters.FilterSet):
-    uuid = filters.CharFilter(name="uuid", lookup_expr="istartswith")
-    color = filters.CharFilter(name="band_color__name", lookup_expr="iexact")
-    band = filters.NumberFilter(name="band_number", lookup_expr="exact")
-    species = filters.CharFilter(name="species__code", lookup_expr="iexact")
-    sex = filters.CharFilter(name="sex", lookup_expr="iexact")
-    available = filters.BooleanFilter(name="reserved_by", lookup_expr="isnull")
-    reserved_by = filters.CharFilter(name="reserved_by__username", lookup_expr="iexact")
-    parent = filters.CharFilter(name="parents__uuid", lookup_expr="istartswith")
-    child = filters.CharFilter(name="children__uuid", lookup_expr="istartswith")
+    uuid = filters.CharFilter(field_name="uuid", lookup_expr="istartswith")
+    color = filters.CharFilter(field_name="band_color__name", lookup_expr="iexact")
+    band = filters.NumberFilter(field_name="band_number", lookup_expr="exact")
+    species = filters.CharFilter(field_name="species__code", lookup_expr="iexact")
+    sex = filters.CharFilter(field_name="sex", lookup_expr="iexact")
+    available = filters.BooleanFilter(field_name="reserved_by", lookup_expr="isnull")
+    reserved_by = filters.CharFilter(field_name="reserved_by__username", lookup_expr="iexact")
+    parent = filters.CharFilter(field_name="parents__uuid", lookup_expr="istartswith")
+    child = filters.CharFilter(field_name="children__uuid", lookup_expr="istartswith")
 
     class Meta:
         model = Animal
@@ -33,13 +33,13 @@ class AnimalFilter(filters.FilterSet):
 
 
 class EventFilter(filters.FilterSet):
-    animal = filters.CharFilter(name="animal__uuid", lookup_expr="istartswith")
-    color = filters.CharFilter(name="animal__band_color__name", lookup_expr="iexact")
-    band = filters.NumberFilter(name="animal__band_number", lookup_expr="exact")
-    species = filters.CharFilter(name="animal__species__code", lookup_expr="iexact")
-    location = filters.CharFilter(name="location__name", lookup_expr="icontains")
-    entered_by = filters.CharFilter(name="entered_by__username", lookup_expr="icontains")
-    description = filters.CharFilter(name="description", lookup_expr="icontains")
+    animal = filters.CharFilter(field_name="animal__uuid", lookup_expr="istartswith")
+    color = filters.CharFilter(field_name="animal__band_color__name", lookup_expr="iexact")
+    band = filters.NumberFilter(field_name="animal__band_number", lookup_expr="exact")
+    species = filters.CharFilter(field_name="animal__species__code", lookup_expr="iexact")
+    location = filters.CharFilter(field_name="location__name", lookup_expr="icontains")
+    entered_by = filters.CharFilter(field_name="entered_by__username", lookup_expr="icontains")
+    description = filters.CharFilter(field_name="description", lookup_expr="icontains")
 
     class Meta:
         model = Event

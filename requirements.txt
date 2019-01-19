@@ -1,2 +1,3 @@
-django-filter==1.0.4
-djangorestframework==3.6.3
+django_filter==2.0.0
+djangorestframework==3.9.1
+djangorestframework-link-header-pagination==0.1.1

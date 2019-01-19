@@ -31,12 +31,14 @@ INSTALLED_APPS = (
 url(r'^birds/', include('birds.urls', namespace='birds'))
 ```
 
-3. Run `python manage.py migrate` to create the birds models.
+3. Run `python manage.py migrate` to create the database tables. If this is a new django install, run `python migrate.py createsuperuser` to create your admin user.
 
-4. Start the development server and visit http://127.0.0.1:8000/admin/birds/
+4. Run `python manage.py loaddata path-to-this-repository/starter_kit.json` to create some useful initial records.
+
+5. Start the development server (`python manage.py runserver`) and visit http://127.0.0.1:8000/admin/birds/
    to set up your colony, as described in the next section.
 
-5. Visit http://127.0.0.1:8000/birds/ to use views.
+6. Visit http://127.0.0.1:8000/birds/ to use views.
 
 Make sure to consult the Django documentation on deployment if you are at all concerned about security.
 
@@ -47,14 +49,15 @@ to set up some tables using the Django admin app.
 
 #### Required steps:
 
-1. Add your species to the `Species` table. The `code` field is used to give animals their names, so if you have zebra finches and use `zebf` as your code, your birds will be named `zebf_red_1` and so forth.
-1. Add locations to the `Locations` table. You need to have at least one location created. The main use for this field is to allow you to find where a bird is by looking at the last event.
-1. Create event types in the `Status codes` table. Common event types include `hatched`, `added`, `moved`, `died`, `used for anatomy`, etc. For each status code, indicate whether it adds or removes a bird from the colony. When you create an event that removes a bird, it will appear as no longer alive. The `hatched` event is special, because if you add a bird to the database using the `Add new bird` view using this code, the system will require you to enter the bird's parents. (If you don't know the bird's parents, you can always create it manually in the admin interface)
+1. Edit species records in the `Species` table. The `starter_kit.json` file will create a record for zebra finches. The `code` field is used to give animals their names, so if you have zebra finches and use `zebf` as your code, your birds will be named `zebf_red_1` and so forth.
+2. Edit and add locations to the `Locations` table. You need to have at least one location created. The main use for this field is to allow you to find where a bird is by looking at the last event.
+3. Edit and create new event types in the `Status codes` table. Common event types include `hatched`, `added`, `moved`, `died`, `used for anatomy`, etc. For each status code, indicate whether it adds or removes a bird from the colony. When you create an event that removes a bird, it will appear as no longer alive. The `hatched` event is special, because if you add a bird to the database using the `Add new bird` view using this code, the system will require you to enter the bird's parents. (If you don't know the bird's parents, you can always create it manually in the admin interface)
 
 #### Optional steps:
 
 1. If your bands are colored, add your colors to the `Colors` table. This will affect the short name for your animals.
-1. If you want to change some of the boilerplate text on the entry forms, you'll need to install the app from source. The templates are found under `birds/templates/birds` in the source directory.
+2. Add additional users to the database. This is particularly useful if you want to allow specific users to reserve animals.
+3. If you want to change some of the boilerplate text on the entry forms, you'll need to install the app from source. The templates are found under `birds/templates/birds` in the source directory.
 
 ### Changelog
 

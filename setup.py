@@ -7,7 +7,7 @@ if sys.hexversion < 0x02060000:
 from setuptools import setup, find_packages
 
 
-VERSION = '0.5.7'
+VERSION = '0.6.0'
 cls_txt = """
 Development Status :: 4 - Beta
 Framework :: Django
@@ -27,7 +27,7 @@ setup(
     classifiers=[x for x in cls_txt.split("\n") if x],
     author='C Daniel Meliza',
     maintainer='C Daniel Meliza',
-    url= "https://github.com/melizalab/django-bird-colony",
+    url="https://github.com/melizalab/django-bird-colony",
     packages=find_packages(exclude=["*test*"]),
     include_package_data=True,
 )
