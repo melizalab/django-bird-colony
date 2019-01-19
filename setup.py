@@ -2,9 +2,9 @@
 # -*- mode: python -*-
 import os
 import sys
-if sys.hexversion < 0x02060000:
-    raise RuntimeError("Python 2.6 or higher required")
 from setuptools import setup, find_packages
+if sys.hexversion < 0x03050000:
+    raise RuntimeError("Python 3.5 or higher required")
 
 
 VERSION = '0.6.0'
