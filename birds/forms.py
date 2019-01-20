@@ -3,6 +3,7 @@
 from django import forms
 
 from django.contrib.auth.models import User
+from django.core.exceptions import ObjectDoesNotExist
 from birds.models import Animal, Event, Status, Location, Color, Species, Parent
 
 
@@ -36,7 +37,7 @@ class BandingForm(forms.Form):
         data = self.cleaned_data
         try:
             data['band_status'] = Status.objects.get(name__startswith="band")
-        except:
+        except ObjectDoesNotExist:
             raise forms.ValidationError("No 'banded' status type - add one in admin")
         if 'acq_status' in data and data['acq_status'].name == "hatched":
             if data['dam'] is None or data['sire'] is None:

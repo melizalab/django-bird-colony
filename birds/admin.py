@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+# -*- mode: python -*-
 from django.contrib import admin
 from birds.models import Species, Color, Location, Animal, Event, Status, Age, Parent
 

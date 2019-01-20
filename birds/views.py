@@ -21,7 +21,6 @@ class AnimalFilter(filters.FilterSet):
     color = filters.CharFilter(field_name="band_color__name", lookup_expr="iexact")
     band = filters.NumberFilter(field_name="band_number", lookup_expr="exact")
     species = filters.CharFilter(field_name="species__code", lookup_expr="iexact")
-    sex = filters.CharFilter(field_name="sex", lookup_expr="iexact")
     available = filters.BooleanFilter(field_name="reserved_by", lookup_expr="isnull")
     reserved_by = filters.CharFilter(field_name="reserved_by__username", lookup_expr="iexact")
     parent = filters.CharFilter(field_name="parents__uuid", lookup_expr="istartswith")
@@ -29,7 +28,7 @@ class AnimalFilter(filters.FilterSet):
 
     class Meta:
         model = Animal
-        fields = []
+        fields = ['sex']
 
 
 class EventFilter(filters.FilterSet):
@@ -52,6 +51,7 @@ class AnimalList(FilterView):
     model = Animal
     filterset_class = AnimalFilter
     template_name = "birds/animal_list.html"
+    strict = False
 
     def get_queryset(self):
         if self.request.GET.get("living", False):
@@ -76,6 +76,7 @@ class EventList(FilterView, generic.list.MultipleObjectMixin):
     filterset_class = EventFilter
     template_name = "birds/event_list.html"
     paginate_by = 25
+    strict = False
 
     def get_queryset(self):
         qs = Event.objects.filter(**self.kwargs)
