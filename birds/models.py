@@ -237,3 +237,60 @@ class Event(models.Model):
     class Meta:
         ordering = ['-date']
         get_latest_by = 'date'
+
+
+@python_2_unicode_compatible
+class SampleType(models.Model):
+    """ Defines a type of biological sample """
+    name = models.CharField(max_length=16, unique=True)
+    description = models.CharField(max_length=64, unique=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ['name']
+
+
+@python_2_unicode_compatible
+class SampleLocation(models.Model):
+    """ Defines a location where a sample can be stored """
+    name = models.CharField(max_length=64, unique=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ['name']
+
+
+@python_2_unicode_compatible
+class Sample(models.Model):
+    """ Defines a specific sample, which may be derived from another sample """
+
+    uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, unique=True)
+    type = models.ForeignKey(SampleType, on_delete=models.CASCADE)
+    animal = models.ForeignKey("Animal", on_delete=models.CASCADE)
+    source = models.ForeignKey("self", blank=True, null=True, on_delete=models.SET_NULL)
+    location = models.ForeignKey(SampleLocation, null=True, on_delete=models.SET_NULL)
+    consumed = models.BooleanField(default=False, help_text="set this field if the sample is no longer available")
+    attributes = JSONField(default=dict, blank=True,
+                           help_text="specify additional sample-specific attributes")
+    comments = models.TextField(blank=True)
+
+    date = models.DateField(default=datetime.date.today,
+                            help_text="date of sample collection")
+    collected_by = models.ForeignKey(settings.AUTH_USER_MODEL,
+                                     on_delete=models.SET(get_sentinel_user))
+
+    def short_uuid(self):
+        return str(self.uuid).split('-')[0]
+
+    def __str__(self):
+        return "%s:%s" % (self.animal.name(), self.type.name)
+
+    def get_absolute_url(self):
+        return reverse("birds:sample", kwargs={'uuid': self.uuid})
+
+    class Meta:
+        ordering = ['animal', 'type']

@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
 from django.contrib import admin
-from birds.models import Species, Color, Location, Animal, Event, Status, Age, Parent
+from birds import models
 
 
 class ParentInline(admin.TabularInline):
-    model = Parent
+    model = models.Parent
     fk_name = 'child'
     max_num = 2
     min_num = 0
@@ -31,9 +31,18 @@ class StatusAdmin(admin.ModelAdmin):
     list_display = ('name', 'adds', 'removes')
 
 
-admin.site.register(Animal, AnimalAdmin)
-admin.site.register(Event, EventAdmin)
-admin.site.register(Status, StatusAdmin)
+class SampleAdmin(admin.ModelAdmin):
+    date_hierarchy = 'date'
+    fields = ('type', 'animal', 'source', 'location', 'attributes', 'comments', 'date', 'collected_by')
+    list_display = ('type', 'animal', 'location', 'date', 'collected_by')
+    list_filter = ('type', 'animal', 'source', 'location', 'collected_by')
+    search_fields = ('description',)
 
-for model in (Species, Color, Location, Age):
+
+admin.site.register(models.Animal, AnimalAdmin)
+admin.site.register(models.Event, EventAdmin)
+admin.site.register(models.Status, StatusAdmin)
+admin.site.register(models.Sample, SampleAdmin)
+
+for model in (models.Species, models.Color, models.Location, models.Age, models.SampleType, models.SampleLocation):
     admin.site.register(model)

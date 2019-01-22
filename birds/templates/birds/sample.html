@@ -1,0 +1,26 @@
+{% extends "base_view.html" %}
+{% load date_fmt %}
+
+{% block title %} meliza-lab : sample : {{ sample }} {% endblock %}
+
+{% block content %}
+<h2>{{ sample }}</h2>
+
+<hr>
+<dl class="dl-horizontal">
+  <dt>animal</dt><dd><a href="{{ sample.animal.get_absolute_url }}">{{ sample.animal.name }}</a></dd>
+  <dt>sample type</dt><dd>{{ sample.type }}</dd>
+  <dt>location</dt><dd>{{ sample.location }}</dd>
+  <dt>collection date</dt><dd>{{ sample.date }}</dd>
+  <dt>collected by</dt><dd>{{ sample.collected_by }}</dd>
+  <dt>uuid</dt><dd>{{ sample.uuid }}</dd>
+  <dt>source</dt><dd>{% if sample.source %}<a href="{{ sample.source.get_absolute_url }}">{{ sample.source }}</a>{% endif %}</dd>
+</dl>
+
+<hr>
+<h4>additional attributes</h4>
+
+<hr>
+<h4>comments</h4>
+
+{% endblock %}

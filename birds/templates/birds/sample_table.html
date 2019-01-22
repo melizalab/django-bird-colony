@@ -1,0 +1,23 @@
+{% load date_fmt %}
+
+<table class="table table-striped table-condensed">
+  <thead>
+    <th>Animal</th>
+    <th>Type</th>
+    <th>Location</th>
+    <th>Date</th>
+    <th>Experimenter</th>
+  </thead>
+  <tbody>
+    {% for sample in sample_list %}
+        <tr>
+          <td><a href="{{ sample.animal.get_absolute_url }}">{{ sample.animal.name }}</a></td>
+          <td><a href="{{ sample.get_absolute_url}}">{{ sample.type }}</td>
+          <td>{{ sample.location }}</td>
+          <td>{{ sample.date }}</td>
+          <td>{{ sample.collected_by }}</td>
+          <td></td>
+        </tr>
+    {% endfor %}
+  </tbody>
+</table>

@@ -12,7 +12,7 @@ from rest_framework import generics
 from django_filters import rest_framework as filters
 from django_filters.views import FilterView
 
-from birds.models import Animal, Event
+from birds.models import Animal, Event, Sample
 from birds.serializers import AnimalSerializer, AnimalDetailSerializer, EventSerializer
 from birds.forms import ClutchForm, NewAnimalForm, NewBandForm, LivingEventForm, EventForm
 
@@ -207,6 +207,35 @@ class EventSummary(generic.base.TemplateView):
             "prev": datetime.date(year, month, 1) - datetime.timedelta(days=1),
             "event_totals": dict(tots)
         }
+
+
+class SampleFilter(filters.FilterSet):
+    uuid = filters.CharFilter(field_name="uuid", lookup_expr="istartswith")
+    type = filters.CharFilter(field_name="type__name", lookup_expr="istartswith")
+    location = filters.CharFilter(field_name="location__name", lookup_expr="istartswith")
+    animal = filters.CharFilter(field_name="animal__name", lookup_expr="istartswith")
+    collected_by = filters.CharFilter(field_name="collected_by__username", lookup_expr="iexact")
+
+    class Meta:
+        model = Sample
+        fields = {
+            'date': ['exact', 'year', 'range'],
+        }
+
+
+class SampleList(FilterView):
+    model = Sample
+    filterset_class = SampleFilter
+    template_name = "birds/sample_list.html"
+    queryset = Sample.objects.all()
+    strict = False
+
+
+class SampleView(generic.DetailView):
+    model = Sample
+    template_name = "birds/sample.html"
+    slug_field = "uuid"
+    slug_url_kwarg = "uuid"
 
 
 ### API
