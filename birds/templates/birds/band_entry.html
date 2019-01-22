@@ -1,0 +1,95 @@
+{% extends "base_view.html" %}
+{% load staticfiles %}
+{% load widget_tweaks %}
+
+{% block title %} meliza-lab : bird colony : band bird {% endblock title%}
+
+{% block css %}
+    <link href="{% static 'local/css/bootstrap-datetimepicker.min.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'local/js/moment.min.js' %}"></script>
+<script src="{% static 'local/js/bootstrap-datetimepicker.min.js' %}"></script>
+<script type="text/javascript">
+  $(function () {
+  $('#datetimepicker1').datetimepicker({ pickTime: false});
+  $('#datetimepicker2').datetimepicker({ pickTime: false});
+  });
+</script>
+{% endblock %}
+
+
+{% block content %}
+
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h3 class="panel-title">Banding entry</h3>
+  </div>
+  <div class="panel-body">
+    <form action="{% url 'birds:new_band' %}" class="form-horizontal" method="post" role="form">
+      {% csrf_token %}
+      <p><strong>Instructions</strong>: This form is for banding a single bird.
+      Use this only if the bird has already been entered into the database (for
+      example, through the <a href="{% url 'birds:clutch' %}">new clutch</a>
+        form). If you are adding a new bird, use the
+        <a href="{% url 'birds:new_animal' %}">new animal</a> form. </p>
+
+      <div class="form-group {% if form.animal.errors %}has-error{% endif %}">
+        <label for="id_sire" class="col-sm-2 control-label">Animal</label>
+        <div class="col-sm-5">
+          {% render_field form.animal class+="form-control" %}
+        </div>
+      </div>
+
+      <div class="form-group {% if form.banding_date.errors %}has-error{% endif %}">
+        <label for="id_banding_date" class="col-sm-2 control-label">Banding date</label>
+        <div class="col-sm-3">
+          <div class="input-group date" id="datetimepicker2">
+            {% render_field form.banding_date class+="form-control" data-format="MM/dd/YYYY" %}
+            <span class="input-group-addon"><span class="glyphicon glyphicon-calendar"></span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group {% if form.band_color.errors %}has-error{% endif %}">
+        <label for="id_band_color" class="col-sm-2 control-label">Band color</label>
+        <div class="col-sm-5">
+          {% render_field form.band_color class+="form-control" %}
+        </div>
+      </div>
+
+      <div class="form-group {% if form.band_number.errors %}has-error{% endif %}">
+        <label for="id_band_number" class="col-sm-2 control-label">Band number</label>
+        <div class="col-sm-3">
+          {% render_field form.band_number class+="form-control" %}
+        </div>
+      </div>
+
+
+      <div class="form-group {% if form.location.errors %}has-error{% endif %}">
+        <label for="id_location" class="col-sm-2 control-label">Location</label>
+        <div class="col-sm-5">
+          {% render_field form.location class+="form-control" %}
+        </div>
+      </div>
+
+      <div class="form-group {% if form.user.errors %}has-error{% endif %}">
+        <label for="id_user" class="col-sm-2 control-label">Entered by</label>
+        <div class="col-sm-3">
+          {% render_field form.user class+="form-control" %}
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="col-sm-offset-2 col-sm-10">
+          <button type="submit" class="btn btn-default">Go</button>
+        </div>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+{% endblock %}

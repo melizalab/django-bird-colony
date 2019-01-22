@@ -24,7 +24,7 @@
 
 <div class="panel panel-default">
   <div class="panel-heading">
-    <h3 class="panel-title">Band entry</h3>
+    <h3 class="panel-title">New bird entry</h3>
   </div>
   <div class="panel-body">
     <form action="{% url 'birds:new_animal' %}" class="form-horizontal" method="post" role="form">
@@ -32,8 +32,12 @@
       <p><strong>Instructions</strong>: This form is for adding a single banded
       bird to the database. For birds hatched in the breeding colony, determine
       hatch date in a clutch using the nest observation sheet. Parents are
-      required, and species will be inferred from the parents. Zebra finches
-      should be banded between 12 to 18 days of age.</p>
+      required, and species will be inferred from the parents.</p>
+
+      <p>Zebra finches should be banded between 12 to 18 days of age. If you've
+        already added the bird to the database (for example, using the
+        <a href="{% url 'birds:clutch' %}">new clutch</a> form), use the
+        <a href="{% url 'birds:new_band' %}">new band</a> form instead.</p>
 
       <p>For birds acquired by other methods (including capture), parents are
       not required, but species must be set manually.</p>
@@ -43,7 +47,7 @@
       {% endif %}
 
       <div class="form-group {% if form.acq_status.errors %}has-error{% endif %}">
-        <label for="id_acq_status" class="col-sm-2 control-label">Acquired method</label>
+        <label for="id_acq_status" class="col-sm-2 control-label">Acquisition method</label>
         <div class="col-sm-5">
           {% render_field form.acq_status class+="form-control" %}
         </div>

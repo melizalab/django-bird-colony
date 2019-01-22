@@ -20,6 +20,9 @@
   <dt>reserved by</dt><dd><span class="text-warning">{{ animal.reserved_by }}</span></dd>
 </dl>
 <a href="{% url 'admin:birds_animal_change' animal.uuid %}">edit bird</a><br/>
+{% if not animal.band_number %}
+<a href="{% url 'birds:new_band' animal.uuid %}">band bird</a><br/>
+{% endif %}
 
 <h3>Events</h3>
 

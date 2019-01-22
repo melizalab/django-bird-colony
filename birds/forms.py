@@ -17,7 +17,38 @@ class LivingEventForm(EventForm):
     animal = forms.ModelChoiceField(queryset=Animal.living.all())
 
 
-class BandingForm(forms.Form):
+class NewBandForm(forms.Form):
+    animal = forms.ModelChoiceField(queryset=Animal.living.filter(band_number__isnull=True))
+    banding_date = forms.DateField()
+    band_color = forms.ModelChoiceField(queryset=Color.objects.all(), required=False)
+    band_number = forms.IntegerField(min_value=1)
+    location = forms.ModelChoiceField(queryset=Location.objects.all(), required=False)
+    user = forms.ModelChoiceField(queryset=User.objects.all())
+
+    def clean(self):
+        super(NewBandForm, self).clean()
+        data = self.cleaned_data
+        try:
+            data['band_status'] = Status.objects.get(name__startswith="band")
+        except ObjectDoesNotExist:
+            raise forms.ValidationError("No 'banded' status type - add one in admin")
+
+    def add_band(self):
+        data = self.cleaned_data
+        animal = data['animal']
+        animal.band_color = data['band_color']
+        animal.band_number = data['band_number']
+        animal.save()
+        evt = Event(animal=animal, date=data['banding_date'],
+                    status=data['band_status'],
+                    location=data['location'],
+                    description=animal.band(),
+                    entered_by=data['user'])
+        evt.save()
+        return animal
+
+
+class NewAnimalForm(forms.Form):
     acq_status = forms.ModelChoiceField(queryset=Status.objects.filter(adds=True))
     acq_date = forms.DateField()
     sex = forms.ChoiceField(choices=Animal.SEX_CHOICES, required=True)
@@ -34,7 +65,7 @@ class BandingForm(forms.Form):
     user = forms.ModelChoiceField(queryset=User.objects.all())
 
     def clean(self):
-        super(BandingForm, self).clean()
+        super(NewAnimalForm, self).clean()
         data = self.cleaned_data
         try:
             data['band_status'] = Status.objects.get(name__startswith="band")

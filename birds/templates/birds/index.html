@@ -4,25 +4,6 @@
 
 {% block content %}
 
-<!-- <h2>Current denizens</h2> -->
-
-<!-- <table class="table table-striped table-condensed"> -->
-<!--   <thead> -->
-<!--     <th>Age</th> -->
-<!--     <th>Species</th> -->
-<!--     <th>Count</th> -->
-<!--   </thead> -->
-<!--   <tbody> -->
-<!--     {% for group in groups %} -->
-<!--     <tr> -->
-<!--       <td>{{ group.name }}</td> -->
-<!--       <td>{{ group.species }}</td> -->
-<!--       <td>{{ group.count }}</td> -->
-<!--     </tr> -->
-<!--     {% endfor %} -->
-<!--   </tbody> -->
-<!-- </table> -->
-
 This web application allows you to access the animal database. Here are some things you can do:
 
 <h3>Lists</h3>
@@ -41,6 +22,7 @@ This web application allows you to access the animal database. Here are some thi
 
 <p><a href="{% url 'birds:new_animal' %}">add new bird</a></p>
 <p><a href="{% url 'birds:new_event' %}">add new event</a></p>
+<p><a href="{% url 'birds:new_band' %}">add a band for an existing bird</a>
 <p><a href="{% url 'birds:clutch' %}">add clutch of birds</a></p>
 
 <h3>API</h3>

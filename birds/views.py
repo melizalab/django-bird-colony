@@ -2,6 +2,7 @@
 # -*- mode: python -*-
 import datetime
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import render
 from django.http import HttpResponseRedirect
 from django.urls import reverse
@@ -13,7 +14,7 @@ from django_filters.views import FilterView
 
 from birds.models import Animal, Event
 from birds.serializers import AnimalSerializer, AnimalDetailSerializer, EventSerializer
-from birds.forms import ClutchForm, BandingForm, LivingEventForm, EventForm
+from birds.forms import ClutchForm, NewAnimalForm, NewBandForm, LivingEventForm, EventForm
 
 
 class AnimalFilter(filters.FilterSet):
@@ -114,18 +115,42 @@ class ClutchEntry(generic.FormView):
                        'header_text': 'Hatch events for new clutch'})
 
 
-class BandingEntry(generic.FormView):
-    template_name = "birds/banding_entry.html"
-    form_class = BandingForm
+class NewAnimalEntry(generic.FormView):
+    template_name = "birds/animal_entry.html"
+    form_class = NewAnimalForm
 
     def get_initial(self):
-        initial = super(BandingEntry, self).get_initial()
+        initial = super(NewAnimalEntry, self).get_initial()
         initial["user"] = self.request.user
         return initial
 
     def form_valid(self, form, **kwargs):
         chick = form.create_chick()
         return HttpResponseRedirect(reverse('birds:animal', args=(chick.pk,)))
+
+
+class NewBandEntry(generic.FormView):
+    template_name = "birds/band_entry.html"
+    form_class = NewBandForm
+
+    def get_form(self):
+        form = super(NewBandEntry, self).get_form()
+        try:
+            uuid = self.kwargs["uuid"]
+            form.fields['animal'].queryset = Animal.objects.filter(uuid=uuid)
+            form.initial['animal'] = Animal.objects.get(uuid=uuid)
+        except (KeyError, ObjectDoesNotExist):
+            pass
+        return form
+
+    def get_initial(self):
+        initial = super(NewBandEntry, self).get_initial()
+        initial["user"] = self.request.user
+        return initial
+
+    def form_valid(self, form, **kwargs):
+        animal = form.add_band()
+        return HttpResponseRedirect(reverse('birds:animal', args=(animal.pk,)))
 
 
 class EventEntry(generic.FormView):
@@ -138,7 +163,7 @@ class EventEntry(generic.FormView):
             uuid = self.kwargs["uuid"]
             animal = Animal.objects.get(uuid=uuid)
             initial['animal'] = animal
-        except KeyError:
+        except (KeyError, ObjectDoesNotExist):
             pass
         initial['entered_by'] = self.request.user
         return initial
