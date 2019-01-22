@@ -109,7 +109,7 @@ class ClutchEntry(generic.FormView):
     def form_valid(self, form, **kwargs):
         """ For valid entries, render a page with a list of the created events """
         objs = form.create_clutch()
-        return render(self.request, 'birds/events.html',
+        return render(self.request, 'birds/event_list.html',
                       {'event_list': objs['events'],
                        'header_text': 'Hatch events for new clutch'})
 

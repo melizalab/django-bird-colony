@@ -20,6 +20,7 @@ class LivingEventForm(EventForm):
 class BandingForm(forms.Form):
     acq_status = forms.ModelChoiceField(queryset=Status.objects.filter(adds=True))
     acq_date = forms.DateField()
+    sex = forms.ChoiceField(choices=Animal.SEX_CHOICES, required=True)
     sire = forms.ModelChoiceField(queryset=Animal.living.filter(sex__exact='M'),
                                   required=False)
     dam  = forms.ModelChoiceField(queryset=Animal.living.filter(sex__exact='F'),
@@ -54,7 +55,7 @@ class BandingForm(forms.Form):
 
     def create_chick(self):
         data = self.cleaned_data
-        chick = Animal(species=data['species'], sex='U',
+        chick = Animal(species=data['species'], sex=data['sex'],
                        band_color=data['band_color'], band_number=data['band_number'])
         chick.save()
         if data['sire'] and data['dam']:
@@ -89,13 +90,11 @@ class ClutchForm(forms.Form):
         super(ClutchForm, self).clean()
         try:
             self.cleaned_data['status'] = Status.objects.get(name__startswith="hatch")
-        except:
+        except ObjectDoesNotExist:
             raise forms.ValidationError("No 'hatch' status type - add one in admin")
-        if ('dam' in self.cleaned_data and 'sire' in self.cleaned_data and
-            self.cleaned_data['dam'].species != self.cleaned_data['sire'].species):
+        if ('dam' in self.cleaned_data and 'sire' in self.cleaned_data and self.cleaned_data['dam'].species != self.cleaned_data['sire'].species):
             raise forms.ValidationError("Parents must be the same species")
         return self.cleaned_data
-
 
     def create_clutch(self):
         ret = {'chicks': [], 'events': []}
