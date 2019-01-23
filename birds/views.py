@@ -22,10 +22,14 @@ class AnimalFilter(filters.FilterSet):
     color = filters.CharFilter(field_name="band_color__name", lookup_expr="iexact")
     band = filters.NumberFilter(field_name="band_number", lookup_expr="exact")
     species = filters.CharFilter(field_name="species__code", lookup_expr="iexact")
+    living = filters.BooleanFilter(field_name="dead", method="is_alive")
     available = filters.BooleanFilter(field_name="reserved_by", lookup_expr="isnull")
     reserved_by = filters.CharFilter(field_name="reserved_by__username", lookup_expr="iexact")
     parent = filters.CharFilter(field_name="parents__uuid", lookup_expr="istartswith")
     child = filters.CharFilter(field_name="children__uuid", lookup_expr="istartswith")
+
+    def is_alive(self, queryset, name, value):
+        return queryset.filter(dead=0)
 
     class Meta:
         model = Animal
@@ -53,13 +57,6 @@ class AnimalList(FilterView):
     filterset_class = AnimalFilter
     template_name = "birds/animal_list.html"
     strict = False
-
-    def get_queryset(self):
-        if self.request.GET.get("living", False):
-            qs = Animal.living.annotate(acq_date=Min("event__date")).order_by("acq_date")
-        else:
-            qs = Animal.objects.all()
-        return qs
 
 
 class AnimalLocationList(FilterView):
@@ -93,7 +90,7 @@ class AnimalView(generic.DetailView):
     def get_context_data(self, **kwargs):
         context = super(AnimalView, self).get_context_data(**kwargs)
         animal = context['animal']
-        context['animal_list'] = animal.children.all()
+        context['animal_list'] = animal.children.all().order_by("dead")
         context['event_list'] = animal.event_set.all().order_by("date")
         return context
 

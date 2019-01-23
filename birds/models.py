@@ -87,13 +87,9 @@ class Age(models.Model):
 
 class AnimalManager(models.Manager):
     def get_queryset(self):
+        from django.db.models import Count, Q
         qs = super(AnimalManager, self).get_queryset()
-        return qs
-
-
-class LivingAnimalManager(AnimalManager):
-    def get_queryset(self):
-        return super(LivingAnimalManager, self).get_queryset().exclude(event__status__removes=True)
+        return qs.annotate(dead=Count('event', filter=Q(event__status__removes=True)))
 
 
 class LastEventManager(models.Manager):
@@ -160,7 +156,7 @@ class Animal(models.Model):
         return self.name()
 
     def alive(self):
-        return self.event_set.filter(status__removes=True).count() == 0
+        return not self.dead
 
     def sire(self):
         return self.parents.filter(sex__exact='M').first()
@@ -175,7 +171,6 @@ class Animal(models.Model):
                 chicks.count())
 
     objects = AnimalManager()
-    living = LivingAnimalManager()
 
     def acquisition_event(self):
         """Returns event when bird was acquired.
@@ -210,6 +205,7 @@ class Animal(models.Model):
 
     class Meta:
         ordering = ['band_color', 'band_number']
+        unique_together = ("band_color", "band_number")
 
 
 @python_2_unicode_compatible

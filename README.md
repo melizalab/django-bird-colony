@@ -2,7 +2,7 @@
 ## bird-colony
 
 bird-colony is a Django application used to manage bird colonies (including breeding colonies).
-You may find that it can also be used for non-avian species.
+You may find that it can also be used for non-avian species. There's also support for storing information about samples associated with animals in the colony, like genomic DNA or song recordings.
 
 The admin interface is the primary tool used to create and update bird records, but there is a growing collection of views that can be used to browse the database and perform common updates (like adding clutches). There is also a JSON API that supports a variety of search queries.
 
@@ -28,7 +28,7 @@ INSTALLED_APPS = (
 2. Include the birds URLconf in your project urls.py like this::
 
 ```python
-url(r'^birds/', include('birds.urls', namespace='birds'))
+url(r'^birds/', include('birds.urls'))
 ```
 
 3. Run `python manage.py migrate` to create the database tables. If this is a new django install, run `python migrate.py createsuperuser` to create your admin user.
@@ -56,6 +56,7 @@ to set up some tables using the Django admin app.
 #### Optional steps:
 
 1. If your bands are colored, add your colors to the `Colors` table. This will affect the short name for your animals.
+2. If you're going to be adding samples to the databse, add or edit `Sample locations` and `Sample types` in the admin interface.
 2. Add additional users to the database. This is particularly useful if you want to allow specific users to reserve animals.
 3. If you want to change some of the boilerplate text on the entry forms, you'll need to install the app from source. The templates are found under `birds/templates/birds` in the source directory.
 
