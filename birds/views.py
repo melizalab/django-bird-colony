@@ -2,6 +2,7 @@
 # -*- mode: python -*-
 import datetime
 
+from django.shortcuts import get_object_or_404
 from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import render
 from django.http import HttpResponseRedirect
@@ -14,7 +15,7 @@ from django_filters.views import FilterView
 
 from birds.models import Animal, Event, Sample
 from birds.serializers import AnimalSerializer, AnimalDetailSerializer, EventSerializer
-from birds.forms import ClutchForm, NewAnimalForm, NewBandForm, LivingEventForm, EventForm
+from birds.forms import ClutchForm, NewAnimalForm, NewBandForm, LivingEventForm, EventForm, SampleForm
 
 
 class AnimalFilter(filters.FilterSet):
@@ -92,6 +93,7 @@ class AnimalView(generic.DetailView):
         animal = context['animal']
         context['animal_list'] = animal.children.all().order_by("dead")
         context['event_list'] = animal.event_set.all().order_by("date")
+        context['sample_list'] = animal.sample_set.all().order_by("type", "date")
         return context
 
 
@@ -154,18 +156,20 @@ class EventEntry(generic.FormView):
     template_name = "birds/event_entry.html"
     form_class = EventForm
 
+    def get_context_data(self, **kwargs):
+        context = super(EventEntry, self).get_context_data(**kwargs)
+        self.animal = get_object_or_404(Animal, uuid=self.kwargs["uuid"])
+        context["animal"] = self.animal
+        return context
+
     def get_initial(self):
         initial = super(EventEntry, self).get_initial()
-        try:
-            uuid = self.kwargs["uuid"]
-            animal = Animal.objects.get(uuid=uuid)
-            initial['animal'] = animal
-        except (KeyError, ObjectDoesNotExist):
-            pass
         initial['entered_by'] = self.request.user
         return initial
 
     def form_valid(self, form, **kwargs):
+        event = form.save(commit=False)
+        event.animal = get_object_or_404(Animal, uuid=self.kwargs["uuid"])
         event = form.save()
         return HttpResponseRedirect(reverse('birds:animal', args=(event.animal.pk,)))
 
@@ -210,8 +214,12 @@ class SampleFilter(filters.FilterSet):
     uuid = filters.CharFilter(field_name="uuid", lookup_expr="istartswith")
     type = filters.CharFilter(field_name="type__name", lookup_expr="istartswith")
     location = filters.CharFilter(field_name="location__name", lookup_expr="istartswith")
+    available = filters.BooleanFilter(field_name="location", method="is_available")
     animal = filters.CharFilter(field_name="animal__name", lookup_expr="istartswith")
     collected_by = filters.CharFilter(field_name="collected_by__username", lookup_expr="iexact")
+
+    def is_available(self, queryset, name, value):
+        return queryset.exclude(location__isnull=True)
 
     class Meta:
         model = Sample
@@ -224,8 +232,11 @@ class SampleList(FilterView):
     model = Sample
     filterset_class = SampleFilter
     template_name = "birds/sample_list.html"
-    queryset = Sample.objects.all()
     strict = False
+
+    def get_queryset(self):
+        qs = Sample.objects.filter(**self.kwargs)
+        return qs.order_by("-date")
 
 
 class SampleView(generic.DetailView):
@@ -233,6 +244,33 @@ class SampleView(generic.DetailView):
     template_name = "birds/sample.html"
     slug_field = "uuid"
     slug_url_kwarg = "uuid"
+
+
+class SampleEntry(generic.FormView):
+    template_name = "birds/sample_entry.html"
+    form_class = SampleForm
+
+    def get_context_data(self, **kwargs):
+        context = super(SampleEntry, self).get_context_data(**kwargs)
+        context["animal"] = self.animal
+        return context
+
+    def get_form(self):
+        form = super(SampleEntry, self).get_form()
+        self.animal = get_object_or_404(Animal, uuid=self.kwargs["uuid"])
+        form.fields["source"].queryset = Sample.objects.filter(animal=self.animal)
+        return form
+
+    def get_initial(self):
+        initial = super(SampleEntry, self).get_initial()
+        initial['collected_by'] = self.request.user
+        return initial
+
+    def form_valid(self, form, **kwargs):
+        sample = form.save(commit=False)
+        sample.animal = self.animal
+        sample.save()
+        return HttpResponseRedirect(reverse('birds:animal', args=(sample.animal.pk,)))
 
 
 ### API

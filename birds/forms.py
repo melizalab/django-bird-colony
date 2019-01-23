@@ -4,13 +4,22 @@ from django import forms
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
-from birds.models import Animal, Event, Status, Location, Color, Species, Parent
+from birds.models import Animal, Event, Status, Location, Color, Species, Parent, Sample
 
 
 class EventForm(forms.ModelForm):
+    date = forms.DateField()
+
     class Meta:
         model = Event
-        fields = ["animal", "date", "status", "location", "description", "entered_by"]
+        fields = ["date", "status", "location", "description", "entered_by"]
+
+
+class SampleForm(forms.ModelForm):
+
+    class Meta:
+        model = Sample
+        fields = ["type", "source", "location", "comments", "date", "collected_by"]
 
 
 class LivingEventForm(EventForm):

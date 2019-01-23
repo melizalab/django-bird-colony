@@ -20,7 +20,14 @@
 <hr>
 <h4>additional attributes</h4>
 
+{{ sample.attributes }}
+
 <hr>
 <h4>comments</h4>
+
+<p>{{ sample.comments}}</p>
+
+<hr>
+<a href="{% url 'admin:birds_sample_change' sample.uuid %}">edit sample</a><br/>
 
 {% endblock %}

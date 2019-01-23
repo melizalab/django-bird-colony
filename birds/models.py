@@ -263,13 +263,11 @@ class SampleLocation(models.Model):
 @python_2_unicode_compatible
 class Sample(models.Model):
     """ Defines a specific sample, which may be derived from another sample """
-
     uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, unique=True)
     type = models.ForeignKey(SampleType, on_delete=models.CASCADE)
     animal = models.ForeignKey("Animal", on_delete=models.CASCADE)
     source = models.ForeignKey("self", blank=True, null=True, on_delete=models.SET_NULL)
-    location = models.ForeignKey(SampleLocation, null=True, on_delete=models.SET_NULL)
-    consumed = models.BooleanField(default=False, help_text="set this field if the sample is no longer available")
+    location = models.ForeignKey(SampleLocation, blank=True, null=True, on_delete=models.SET_NULL)
     attributes = JSONField(default=dict, blank=True,
                            help_text="specify additional sample-specific attributes")
     comments = models.TextField(blank=True)

@@ -12,6 +12,7 @@ This web application allows you to access the animal database. Here are some thi
 <p><a href="{% url 'birds:animals' %}?living=True&available=True">all the available birds</a></p>
 <p><a href="{% url 'birds:animals' %}">all the birds</a></p>
 <p><a href="{% url 'birds:events' %}">all events</a></p>
+<p>sample types</p>
 
 <h3>Summary Reports</h3>
 
@@ -21,7 +22,6 @@ This web application allows you to access the animal database. Here are some thi
 <h3>Data Entry Forms</h3>
 
 <p><a href="{% url 'birds:new_animal' %}">add new bird</a></p>
-<p><a href="{% url 'birds:new_event' %}">add new event</a></p>
 <p><a href="{% url 'birds:new_band' %}">add a band for an existing bird</a>
 <p><a href="{% url 'birds:clutch' %}">add clutch of birds</a></p>
 
