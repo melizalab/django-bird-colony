@@ -7,12 +7,14 @@
 <table class="table table-striped table-condensed">
   <thead>
     <th>Sample Type</th>
+    <th>Count</th>
     <th>Description</th>
   </thead>
   <tbody>
     {% for type in sampletype_list %}
         <tr>
           <td><a href="{% url 'birds:samples' %}?type={{ type.name }}">{{ type.name }}</a></td>
+          <td>{{ type.sample_set.count }}</td>
           <td>{{ type.description }}</td>
         </tr>
     {% endfor %}

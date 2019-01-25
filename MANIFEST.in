@@ -2,5 +2,5 @@ include README.md
 include COPYING
 include ez_setup.py
 recursive-include birds/templates *
+recursive-include birds/fixtures *
 recursive-include docs *
-
