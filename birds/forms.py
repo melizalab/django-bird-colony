@@ -5,7 +5,7 @@ from django import forms
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
 from birds.models import Animal, Event, Status, Location, Color, Species, Parent, Sample
-
+from django.utils.translation import gettext_lazy as _
 
 class EventForm(forms.ModelForm):
     date = forms.DateField()
@@ -91,6 +91,12 @@ class NewAnimalForm(forms.Form):
                 raise forms.ValidationError("Species required for non-hatch acquisition")
             data['dam'] = None
             data['sire'] = None
+        if Animal.objects.filter(band_color=data['band_color'], band_number=data['band_number']).exists():
+            raise forms.ValidationError(
+                _("A bird already exists with band color %(band_color)s and number %(band_number)d."),
+                code="invalid",
+                params = data,
+            )
         return data
 
     def create_chick(self):

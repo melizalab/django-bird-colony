@@ -6,6 +6,7 @@ import uuid
 import datetime
 
 from django.contrib.postgres.fields import JSONField
+from django.core.exceptions import ValidationError
 from django.utils.encoding import python_2_unicode_compatible
 from django.urls import reverse
 from django.db import models
@@ -205,7 +206,6 @@ class Animal(models.Model):
 
     class Meta:
         ordering = ['band_color', 'band_number']
-        unique_together = ("band_color", "band_number")
 
 
 @python_2_unicode_compatible
