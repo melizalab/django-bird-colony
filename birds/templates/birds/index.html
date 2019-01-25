@@ -12,7 +12,7 @@ This web application allows you to access the animal database. Here are some thi
 <p><a href="{% url 'birds:animals' %}?living=True&available=True">all the available birds</a></p>
 <p><a href="{% url 'birds:animals' %}">all the birds</a></p>
 <p><a href="{% url 'birds:events' %}">all events</a></p>
-<p>sample types</p>
+<p><a href="{% url 'birds:sampletypes' %}">sample types</a></p>
 
 <h3>Summary Reports</h3>
 
@@ -25,17 +25,17 @@ This web application allows you to access the animal database. Here are some thi
 <p><a href="{% url 'birds:new_band' %}">add a band for an existing bird</a>
 <p><a href="{% url 'birds:clutch' %}">add clutch of birds</a></p>
 
+<p>Note: add samples and events for birds from the bird's page.</p>
+
 <h3>API</h3>
 
 <p>You can also query the database using the HTTP API. Specify query parameters using the URL.</p>
 
 <h4>Entry Points</h4>
 
-<p><code>{% url 'birds:animals_api' %}</code> retrieves a list of animals. Supported query parameters are <code>uuid</code>, <code>color</code>, <code>band</code>, <code>species</code>, <code>sex</code>, <code>available</code>, <code>reserved_by</code>. Most text-based query parameters are case-insensitive and will do partial matches.</p>
+<p><a href="{% url 'birds:animals_api' %}">{% url 'birds:animals_api' %}</a> retrieves a list of animals. Supported query parameters are <code>uuid</code>, <code>color</code>, <code>band</code>, <code>species</code>, <code>sex</code>, <code>available</code>, <code>reserved_by</code>. Most text-based query parameters are case-insensitive and will do partial matches. <code>{% url 'birds:animals_api' %}my-uuid/</code> retrieves the record for a single animal by by uuid. This includes some additional information not returned by the list query.</p>
 
-<p><code>{% url 'birds:animals_api' %}my-uuid/</code> retrieves the record for a single animal by by uuid. Includes some additional information not returned by the list query.</p>
-
-<p><code>{% url 'birds:events_api' %}</code> retrieves a list of events. Supported query parameters: <code>animal</code> (uuid), <code>color</code>, <code>band</code>, <code>species</code>, <code>location</code>, <code>entered_by</code>, <code>description</code>.</p>
+<p><a href="{% url 'birds:events_api' %}">{% url 'birds:events_api' %}</a> retrieves a list of events. Supported query parameters: <code>animal</code> (uuid), <code>color</code>, <code>band</code>, <code>species</code>, <code>location</code>, <code>entered_by</code>, <code>description</code>.</p>
 
 <h4>Examples</h4>
 

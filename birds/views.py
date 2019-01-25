@@ -13,7 +13,7 @@ from rest_framework import generics
 from django_filters import rest_framework as filters
 from django_filters.views import FilterView
 
-from birds.models import Animal, Event, Sample
+from birds.models import Animal, Event, Sample, SampleType
 from birds.serializers import AnimalSerializer, AnimalDetailSerializer, EventSerializer
 from birds.forms import ClutchForm, NewAnimalForm, NewBandForm, LivingEventForm, EventForm, SampleForm
 
@@ -57,6 +57,7 @@ class AnimalList(FilterView):
     model = Animal
     filterset_class = AnimalFilter
     template_name = "birds/animal_list.html"
+    paginate_by = 25
     strict = False
 
 
@@ -226,6 +227,10 @@ class SampleFilter(filters.FilterSet):
         fields = {
             'date': ['exact', 'year', 'range'],
         }
+
+class SampleTypeList(generic.ListView):
+    model = SampleType
+    template_name = "birds/sample_type_list.html"
 
 
 class SampleList(FilterView):

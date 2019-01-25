@@ -60,7 +60,7 @@ class NewBandForm(forms.Form):
 class NewAnimalForm(forms.Form):
     acq_status = forms.ModelChoiceField(queryset=Status.objects.filter(adds=True))
     acq_date = forms.DateField()
-    sex = forms.ChoiceField(choices=Animal.SEX_CHOICES, required=True)
+    sex = forms.ChoiceField(choices=Animal.SEX_CHOICES, initial=Animal.UNKNOWN_SEX, required=True)
     sire = forms.ModelChoiceField(queryset=Animal.objects.filter(dead=0, sex__exact='M'),
                                   required=False)
     dam  = forms.ModelChoiceField(queryset=Animal.objects.filter(dead=0, sex__exact='F'),
