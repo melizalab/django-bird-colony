@@ -60,6 +60,15 @@ class AnimalList(FilterView):
     paginate_by = 25
     strict = False
 
+    def get_context_data(self, **kwargs):
+        context = super(AnimalList, self).get_context_data(**kwargs)
+        context['query'] = self.request.GET.copy()
+        try:
+            del context['query']['page']
+        except KeyError:
+            pass
+        return context
+
 
 class AnimalLocationList(FilterView):
     model = Event
@@ -77,6 +86,15 @@ class EventList(FilterView, generic.list.MultipleObjectMixin):
     template_name = "birds/event_list.html"
     paginate_by = 25
     strict = False
+
+    def get_context_data(self, **kwargs):
+        context = super(EventList, self).get_context_data(**kwargs)
+        context['query'] = self.request.GET.copy()
+        try:
+            del context['query']['page']
+        except KeyError:
+            pass
+        return context
 
     def get_queryset(self):
         qs = Event.objects.filter(**self.kwargs)
@@ -228,6 +246,7 @@ class SampleFilter(filters.FilterSet):
             'date': ['exact', 'year', 'range'],
         }
 
+
 class SampleTypeList(generic.ListView):
     model = SampleType
     template_name = "birds/sample_type_list.html"
@@ -237,7 +256,17 @@ class SampleList(FilterView):
     model = Sample
     filterset_class = SampleFilter
     template_name = "birds/sample_list.html"
+    paginate_by = 25
     strict = False
+
+    def get_context_data(self, **kwargs):
+        context = super(SampleList, self).get_context_data(**kwargs)
+        context['query'] = self.request.GET.copy()
+        try:
+            del context['query']['page']
+        except KeyError:
+            pass
+        return context
 
     def get_queryset(self):
         qs = Sample.objects.filter(**self.kwargs)
