@@ -7,8 +7,10 @@ from django.core.exceptions import ObjectDoesNotExist
 from birds.models import Animal, Event, Status, Location, Color, Species, Parent, Sample
 from django.utils.translation import gettext_lazy as _
 
+
 class EventForm(forms.ModelForm):
     date = forms.DateField()
+    entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
 
     class Meta:
         model = Event
@@ -32,7 +34,7 @@ class NewBandForm(forms.Form):
     band_color = forms.ModelChoiceField(queryset=Color.objects.all(), required=False)
     band_number = forms.IntegerField(min_value=1)
     location = forms.ModelChoiceField(queryset=Location.objects.all(), required=False)
-    user = forms.ModelChoiceField(queryset=User.objects.all())
+    user = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
 
     def clean(self):
         super(NewBandForm, self).clean()
@@ -71,7 +73,7 @@ class NewAnimalForm(forms.Form):
     band_number = forms.IntegerField(min_value=1)
     location = forms.ModelChoiceField(queryset=Location.objects.all())
     comments = forms.CharField(widget=forms.Textarea, required=False)
-    user = forms.ModelChoiceField(queryset=User.objects.all())
+    user = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
 
     def clean(self):
         super(NewAnimalForm, self).clean()
@@ -130,7 +132,7 @@ class ClutchForm(forms.Form):
     hatch_date = forms.DateField()
     location = forms.ModelChoiceField(queryset=Location.objects.all())
     comments = forms.CharField(widget=forms.Textarea, required=False)
-    user = forms.ModelChoiceField(queryset=User.objects.all())
+    user = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
 
     def clean(self):
         super(ClutchForm, self).clean()
