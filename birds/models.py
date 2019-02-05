@@ -273,7 +273,8 @@ class Sample(models.Model):
     comments = models.TextField(blank=True)
 
     date = models.DateField(default=datetime.date.today,
-                            help_text="date of sample collection")
+                            blank=True, null=True,
+                            help_text="date of sample collection (blank if not known)")
     collected_by = models.ForeignKey(settings.AUTH_USER_MODEL,
                                      on_delete=models.SET(get_sentinel_user))
 
