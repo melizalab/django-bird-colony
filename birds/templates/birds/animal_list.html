@@ -1,9 +1,25 @@
 {% extends "base_view.html" %}
+{% load widget_tweaks %}
 
 {% block title %} meliza-lab : animals {% endblock %}
 
 {% block content %}
 <h2>Birds</h2>
+
+<form class="form-horizontal" method="get" role="form">
+  <div class="form-group">
+    <div class="col-sm-3">
+      {% render_field filter.form.color placeholder="Band color" class+="form-control" %}
+    </div>
+    <div class="col-sm-3">
+      {% render_field filter.form.band placeholder="Band number" class+="form-control" %}
+    </div>
+    <button type="submit" class="btn btn-primary">
+      <span class="glyphicon glyphicon-search"></span> Search
+    </button>
+  </div>
+</form>
+
 {% include "birds/animal_table.html" %}
 <div class="pagination">
     <span class="step-links">
@@ -20,5 +36,9 @@
         {% endif %}
     </span>
 </div>
+
+<p>NB: When alive is False, age is at death or release</p>
+
 <p><a href="{% url 'birds:new_animal' %}">add new animal</a></p>
+
 {% endblock %}

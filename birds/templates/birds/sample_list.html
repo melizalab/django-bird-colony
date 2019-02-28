@@ -1,9 +1,32 @@
 {% extends "base_view.html" %}
+{% load widget_tweaks %}
 
 {% block title %} meliza-lab : samples {% endblock %}
 
 {% block content %}
 <h2>Samples</h2>
+
+<form class="form-horizontal" method="get" role="form">
+  <div class="form-group">
+    <div class="col-sm-2">
+      {% render_field filter.form.color placeholder="Band color" class+="form-control" %}
+    </div>
+    <div class="col-sm-2">
+      {% render_field filter.form.band placeholder="Band number" class+="form-control" %}
+    </div>
+    <div class="col-sm-2">
+      {% render_field filter.form.type placeholder="Sample type" class+="form-control" %}
+    </div>
+    <div class="col-sm-2">
+      {% render_field filter.form.location placeholder="Location" class+="form-control" %}
+    </div>
+    <button type="submit" class="btn btn-primary">
+      <span class="glyphicon glyphicon-search"></span> Search
+    </button>
+  </div>
+</form>
+
+
 {% include "birds/sample_table.html" %}
 <div class="pagination">
     <span class="step-links">

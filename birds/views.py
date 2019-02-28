@@ -13,7 +13,7 @@ from rest_framework import generics
 from django_filters import rest_framework as filters
 from django_filters.views import FilterView
 
-from birds.models import Animal, Event, Sample, SampleType
+from birds.models import Animal, Event, Sample, SampleType, Color
 from birds.serializers import AnimalSerializer, AnimalDetailSerializer, EventSerializer
 from birds.forms import ClutchForm, NewAnimalForm, NewBandForm, LivingEventForm, EventForm, SampleForm
 
@@ -21,6 +21,7 @@ from birds.forms import ClutchForm, NewAnimalForm, NewBandForm, LivingEventForm,
 class AnimalFilter(filters.FilterSet):
     uuid = filters.CharFilter(field_name="uuid", lookup_expr="istartswith")
     color = filters.CharFilter(field_name="band_color__name", lookup_expr="iexact")
+    #color_id = filters.ModelChoiceFilter(queryset=Color.objects.all(), field_name="band_color")
     band = filters.NumberFilter(field_name="band_number", lookup_expr="exact")
     species = filters.CharFilter(field_name="species__code", lookup_expr="iexact")
     living = filters.BooleanFilter(field_name="dead", method="is_alive")
@@ -42,6 +43,7 @@ class EventFilter(filters.FilterSet):
     color = filters.CharFilter(field_name="animal__band_color__name", lookup_expr="iexact")
     band = filters.NumberFilter(field_name="animal__band_number", lookup_expr="exact")
     species = filters.CharFilter(field_name="animal__species__code", lookup_expr="iexact")
+    status = filters.CharFilter(field_name="status__name", lookup_expr="istartswith")
     location = filters.CharFilter(field_name="location__name", lookup_expr="icontains")
     entered_by = filters.CharFilter(field_name="entered_by__username", lookup_expr="icontains")
     description = filters.CharFilter(field_name="description", lookup_expr="icontains")
@@ -234,7 +236,9 @@ class SampleFilter(filters.FilterSet):
     type = filters.CharFilter(field_name="type__name", lookup_expr="istartswith")
     location = filters.CharFilter(field_name="location__name", lookup_expr="istartswith")
     available = filters.BooleanFilter(field_name="location", method="is_available")
-    animal = filters.CharFilter(field_name="animal__name", lookup_expr="istartswith")
+    color = filters.CharFilter(field_name="animal__band_color__name", lookup_expr="iexact")
+    band = filters.NumberFilter(field_name="animal__band_number", lookup_expr="exact")
+    species = filters.CharFilter(field_name="animal__species__code", lookup_expr="iexact")
     collected_by = filters.CharFilter(field_name="collected_by__username", lookup_expr="iexact")
 
     def is_available(self, queryset, name, value):
