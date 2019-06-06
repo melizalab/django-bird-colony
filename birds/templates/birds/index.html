@@ -1,10 +1,28 @@
 {% extends "base_view.html" %}
+{% load widget_tweaks %}
 
 {% block title %} meliza-lab : bird colony {% endblock %}
 
 {% block content %}
 
 This web application allows you to access the animal database. Here are some things you can do:
+
+<h3>Find an animal</h3>
+
+<form class="form-horizontal" action="{% url 'birds:animals' %}" method="get" role="form">
+  <div class="form-group">
+    <div class="col-sm-3">
+      <input type="text" name="color" class="form-control" placeholder="Band color" id="id_color">
+    </div>
+    <div class="col-sm-3">
+      <input type="number" name="band" step="any" class="form-control" placeholder="Band number" id="id_band">
+    </div>
+    <button type="submit" class="btn btn-primary">
+      <span class="glyphicon glyphicon-search"></span> Search
+    </button>
+  </div>
+</form>
+
 
 <h3>Lists</h3>
 
