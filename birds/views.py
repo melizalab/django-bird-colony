@@ -158,7 +158,9 @@ class NewBandEntry(generic.FormView):
         try:
             uuid = self.kwargs["uuid"]
             form.fields['animal'].queryset = Animal.objects.filter(uuid=uuid)
-            form.initial['animal'] = Animal.objects.get(uuid=uuid)
+            animal = Animal.objects.get(uuid=uuid)
+            form.initial['animal'] = animal
+            form.initial['sex'] = animal.sex
         except (KeyError, ObjectDoesNotExist):
             pass
         return form

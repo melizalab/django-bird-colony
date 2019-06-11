@@ -33,6 +33,7 @@ class NewBandForm(forms.Form):
     banding_date = forms.DateField()
     band_color = forms.ModelChoiceField(queryset=Color.objects.all(), required=False)
     band_number = forms.IntegerField(min_value=1)
+    sex = forms.ChoiceField(choices=Animal.SEX_CHOICES, required=True)
     location = forms.ModelChoiceField(queryset=Location.objects.all(), required=False)
     user = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
 
@@ -43,12 +44,19 @@ class NewBandForm(forms.Form):
             data['band_status'] = Status.objects.get(name__startswith="band")
         except ObjectDoesNotExist:
             raise forms.ValidationError("No 'banded' status type - add one in admin")
+        if Animal.objects.filter(band_color=data['band_color'], band_number=data['band_number']).exists():
+            raise forms.ValidationError(
+                _("A bird already exists with band color %(band_color)s and number %(band_number)d."),
+                code="invalid",
+                params = data,
+            )
 
     def add_band(self):
         data = self.cleaned_data
         animal = data['animal']
         animal.band_color = data['band_color']
         animal.band_number = data['band_number']
+        animal.sex = data['sex']
         animal.save()
         evt = Event(animal=animal, date=data['banding_date'],
                     status=data['band_status'],
