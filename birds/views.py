@@ -8,7 +8,7 @@ from django.shortcuts import render
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.views import generic
-from django.db.models import Min
+from django.db.models import Min, Count, Q
 from rest_framework import generics
 from django_filters import rest_framework as filters
 from django_filters.views import FilterView
@@ -341,10 +341,20 @@ class APIEventsList(generics.ListAPIView):
 
 
 class APIAnimalPedigree(generics.ListAPIView):
-    queryset = Animal.objects.all()
+    """A list of animals and their parents.
+
+    If query param restrict is True, only includes animals useful in constructing a pedigree."""
     serializer_class = AnimalPedigreeSerializer
     filter_backends = (filters.DjangoFilterBackend,)
     filter_class = AnimalFilter
     pagination_class = LargeResultsSetPagination
+
+    def get_queryset(self):
+        if self.request.GET.get("restrict", False):
+            qs = Animal.objects.annotate(nchildren=Count('children')).filter(Q(dead=0) | Q(nchildren__gt=0))
+        else:
+            qs = Animal.objects.all()
+        return qs
+
 
 # Create your views here.

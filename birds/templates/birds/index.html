@@ -55,6 +55,9 @@ This web application allows you to access the animal database. Here are some thi
 
 <p><a href="{% url 'birds:events_api' %}">{% url 'birds:events_api' %}</a> retrieves a list of events. Supported query parameters: <code>animal</code> (uuid), <code>color</code>, <code>band</code>, <code>species</code>, <code>location</code>, <code>entered_by</code>, <code>description</code>.</p>
 
+<p><a href="{% url 'birds:pedigree_api' %}">{% url 'birds:pedigree_api' %}</a> retrieves a list of birds and parents. Use <code>restrict=True</code> to limit this to birds that are living (leaves) or that have children (stems).</p>
+
+
 <h4>Examples</h4>
 
 <p><code>curl http://my.domain{% url 'birds:animals_api' %}?species=zebf&available=True</code> will retrieve all available (unreserved) zebra finches.</p>
