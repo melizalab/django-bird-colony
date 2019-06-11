@@ -20,6 +20,16 @@ class AnimalSerializer(serializers.ModelSerializer):
                   'sire', 'dam', 'alive', 'reserved_by', 'attributes')
 
 
+class AnimalPedigreeSerializer(serializers.ModelSerializer):
+    sire = serializers.PrimaryKeyRelatedField(read_only=True)
+    dam = serializers.PrimaryKeyRelatedField(read_only=True)
+    alive = serializers.BooleanField(required=False)
+
+    class Meta:
+        model = Animal
+        fields = ('uuid', 'sire', 'dam', 'alive')
+
+
 class AnimalDetailSerializer(AnimalSerializer):
     last_location = serializers.StringRelatedField()
 

@@ -12,10 +12,17 @@ from django.db.models import Min
 from rest_framework import generics
 from django_filters import rest_framework as filters
 from django_filters.views import FilterView
+from drf_link_header_pagination import LinkHeaderPagination
 
 from birds.models import Animal, Event, Sample, SampleType, Color
-from birds.serializers import AnimalSerializer, AnimalDetailSerializer, EventSerializer
+from birds.serializers import AnimalSerializer, AnimalPedigreeSerializer, AnimalDetailSerializer, EventSerializer
 from birds.forms import ClutchForm, NewAnimalForm, NewBandForm, LivingEventForm, EventForm, SampleForm
+
+
+class LargeResultsSetPagination(LinkHeaderPagination):
+    page_size = 1000
+    page_size_query_param = 'page_size'
+    max_page_size = 10000
 
 
 class AnimalFilter(filters.FilterSet):
@@ -320,13 +327,6 @@ class APIAnimalsList(generics.ListAPIView):
     filter_backends = (filters.DjangoFilterBackend,)
     filter_class = AnimalFilter
 
-    def get_queryset(self):
-        if self.request.GET.get("living", False):
-            qs = Animal.living.annotate(acq_date=Min("event__date")).order_by("acq_date")
-        else:
-            qs = Animal.objects.all()
-        return qs
-
 
 class APIAnimalDetail(generics.RetrieveAPIView):
     queryset = Animal.objects.all()
@@ -339,5 +339,12 @@ class APIEventsList(generics.ListAPIView):
     filter_backends = (filters.DjangoFilterBackend,)
     filter_class = EventFilter
 
+
+class APIAnimalPedigree(generics.ListAPIView):
+    queryset = Animal.objects.all()
+    serializer_class = AnimalPedigreeSerializer
+    filter_backends = (filters.DjangoFilterBackend,)
+    filter_class = AnimalFilter
+    pagination_class = LargeResultsSetPagination
 
 # Create your views here.
