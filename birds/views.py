@@ -343,14 +343,14 @@ class APIEventsList(generics.ListAPIView):
 class APIAnimalPedigree(generics.ListAPIView):
     """A list of animals and their parents.
 
-    If query param restrict is True, only includes animals useful in constructing a pedigree."""
+    If query param restrict is False, includes all animals, not just those useful in constructing a pedigree."""
     serializer_class = AnimalPedigreeSerializer
     filter_backends = (filters.DjangoFilterBackend,)
     filter_class = AnimalFilter
     pagination_class = LargeResultsSetPagination
 
     def get_queryset(self):
-        if self.request.GET.get("restrict", False):
+        if self.request.GET.get("restrict", True):
             qs = Animal.objects.annotate(nchildren=Count('children')).filter(Q(dead=0) | Q(nchildren__gt=0))
         else:
             qs = Animal.objects.all()
