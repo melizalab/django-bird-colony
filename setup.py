@@ -24,6 +24,7 @@ setup(
     version=VERSION,
     description="A simple Django app for managing a bird breeding colony",
     long_description=open(os.path.join(os.path.dirname(__file__), 'README.md')).read(),
+    long_description_content_type="text/markdown",
     classifiers=[x for x in cls_txt.split("\n") if x],
     author='C Daniel Meliza',
     maintainer='C Daniel Meliza',
