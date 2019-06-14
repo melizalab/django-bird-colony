@@ -7,7 +7,7 @@ if sys.hexversion < 0x03050000:
     raise RuntimeError("Python 3.5 or higher required")
 
 
-VERSION = '0.7.4'
+VERSION = '0.7.5'
 cls_txt = """
 Development Status :: 4 - Beta
 Framework :: Django
