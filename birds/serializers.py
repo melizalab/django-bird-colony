@@ -27,7 +27,7 @@ class AnimalPedigreeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Animal
-        fields = ('uuid', 'sire', 'dam', 'alive')
+        fields = ('uuid', 'sire', 'dam', 'sex', 'alive')
 
 
 class AnimalDetailSerializer(AnimalSerializer):
