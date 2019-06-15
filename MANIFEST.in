@@ -1,6 +1,5 @@
 include README.md
 include COPYING
-include ez_setup.py
+include colony.R
 recursive-include birds/templates *
 recursive-include birds/fixtures *
-recursive-include docs *
