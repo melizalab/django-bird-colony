@@ -47,6 +47,20 @@ class Color(models.Model):
 
 
 @python_2_unicode_compatible
+class Plumage(models.Model):
+    name = models.CharField(max_length=16, unique=True)
+    description = models.TextField()
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        ordering = ['name']
+        verbose_name_plural = 'plumage variants'
+
+
+
+@python_2_unicode_compatible
 class Status(models.Model):
     name = models.CharField(max_length=16, unique=True)
     adds = models.BooleanField(default=False, help_text="select for acquisition events")
@@ -136,6 +150,7 @@ class Animal(models.Model):
                                     on_delete=models.SET(get_sentinel_user),
                                     help_text="mark a bird as reserved for a specific user")
     created = models.DateTimeField(auto_now_add=True)
+    plumage = models.ForeignKey('Plumage', on_delete=models.SET_NULL, blank=True, null=True)
     attributes = JSONField(default=dict, blank=True, help_text="specify additional attributes for the animal")
 
     def short_uuid(self):

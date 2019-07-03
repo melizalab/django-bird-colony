@@ -12,10 +12,10 @@ class ParentInline(admin.TabularInline):
 
 
 class AnimalAdmin(admin.ModelAdmin):
-    fields = ('species', 'sex', 'band_color', 'band_number', 'reserved_by', 'attributes')
-    list_display = ('name', 'species', 'band', 'uuid', 'sex', 'reserved_by')
-    list_filter = ('species', 'sex', 'band_color', 'parents', 'reserved_by')
-    search_fields = ('band_number', 'uuid', 'attributes__icontains')
+    fields = ('species', 'sex', 'band_color', 'band_number', 'plumage', 'reserved_by', 'attributes')
+    list_display = ('name', 'species', 'band', 'uuid', 'sex', 'plumage', 'reserved_by')
+    list_filter = ('species', 'sex', 'band_color', 'parents', 'plumage', 'reserved_by')
+    search_fields = ('band_number', 'uuid', 'plumage', 'attributes__icontains')
     inlines = (ParentInline,)
 
 
@@ -44,5 +44,5 @@ admin.site.register(models.Event, EventAdmin)
 admin.site.register(models.Status, StatusAdmin)
 admin.site.register(models.Sample, SampleAdmin)
 
-for model in (models.Species, models.Color, models.Location, models.Age, models.SampleType, models.SampleLocation):
+for model in (models.Species, models.Color, models.Plumage, models.Location, models.Age, models.SampleType, models.SampleLocation):
     admin.site.register(model)

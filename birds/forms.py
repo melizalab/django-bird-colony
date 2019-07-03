@@ -4,7 +4,7 @@ from django import forms
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
-from birds.models import Animal, Event, Status, Location, Color, Species, Parent, Sample
+from birds.models import Animal, Event, Status, Location, Color, Plumage, Species, Parent, Sample
 from django.utils.translation import gettext_lazy as _
 
 
@@ -34,6 +34,7 @@ class NewBandForm(forms.Form):
     band_color = forms.ModelChoiceField(queryset=Color.objects.all(), required=False)
     band_number = forms.IntegerField(min_value=1)
     sex = forms.ChoiceField(choices=Animal.SEX_CHOICES, required=True)
+    plumage = forms.ModelChoiceField(queryset=Plumage.objects.all(), required=False)
     location = forms.ModelChoiceField(queryset=Location.objects.all(), required=False)
     user = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
 
@@ -48,7 +49,7 @@ class NewBandForm(forms.Form):
             raise forms.ValidationError(
                 _("A bird already exists with band color %(band_color)s and number %(band_number)d."),
                 code="invalid",
-                params = data,
+                params=data,
             )
 
     def add_band(self):
@@ -57,6 +58,7 @@ class NewBandForm(forms.Form):
         animal.band_color = data['band_color']
         animal.band_number = data['band_number']
         animal.sex = data['sex']
+        animal.plumage = data['plumage']
         animal.save()
         evt = Event(animal=animal, date=data['banding_date'],
                     status=data['band_status'],
@@ -71,6 +73,7 @@ class NewAnimalForm(forms.Form):
     acq_status = forms.ModelChoiceField(queryset=Status.objects.filter(adds=True))
     acq_date = forms.DateField()
     sex = forms.ChoiceField(choices=Animal.SEX_CHOICES, initial=Animal.UNKNOWN_SEX, required=True)
+    plumage = forms.ModelChoiceField(queryset=Plumage.objects.all(), required=False)
     sire = forms.ModelChoiceField(queryset=Animal.objects.filter(dead=0, sex__exact='M'),
                                   required=False)
     dam  = forms.ModelChoiceField(queryset=Animal.objects.filter(dead=0, sex__exact='F'),
@@ -105,13 +108,13 @@ class NewAnimalForm(forms.Form):
             raise forms.ValidationError(
                 _("A bird already exists with band color %(band_color)s and number %(band_number)d."),
                 code="invalid",
-                params = data,
+                params=data,
             )
         return data
 
     def create_chick(self):
         data = self.cleaned_data
-        chick = Animal(species=data['species'], sex=data['sex'],
+        chick = Animal(species=data['species'], sex=data['sex'], plumage=data['plumage'],
                        band_color=data['band_color'], band_number=data['band_number'])
         chick.save()
         if data['sire'] and data['dam']:

@@ -9,6 +9,7 @@ from birds.models import Animal, Parent, Event, Color, Species, Status, Location
 class AnimalSerializer(serializers.ModelSerializer):
     species = serializers.StringRelatedField()
     band_color = serializers.StringRelatedField()
+    plumage = serializers.StringRelatedField()
     reserved_by = serializers.StringRelatedField()
     sire = serializers.PrimaryKeyRelatedField(read_only=True)
     dam = serializers.PrimaryKeyRelatedField(read_only=True)
@@ -16,27 +17,35 @@ class AnimalSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Animal
-        fields = ('name', 'uuid', 'species', 'sex', 'band_color', 'band_number',
-                  'sire', 'dam', 'alive', 'reserved_by', 'attributes')
+        fields = ('name', 'uuid', 'species', 'sex', 'plumage', 'band_color', 'band_number',
+                  'sire', 'dam', 'alive', 'reserved_by',)
 
 
 class AnimalPedigreeSerializer(serializers.ModelSerializer):
     sire = serializers.PrimaryKeyRelatedField(read_only=True)
     dam = serializers.PrimaryKeyRelatedField(read_only=True)
+    plumage = serializers.StringRelatedField()
     alive = serializers.BooleanField(required=False)
 
     class Meta:
         model = Animal
-        fields = ('uuid', 'sire', 'dam', 'sex', 'alive')
+        fields = ('uuid', 'sire', 'dam', 'sex', 'alive', 'plumage')
 
 
 class AnimalDetailSerializer(AnimalSerializer):
+    species = serializers.StringRelatedField()
+    band_color = serializers.StringRelatedField()
+    plumage = serializers.StringRelatedField()
+    reserved_by = serializers.StringRelatedField()
+    sire = serializers.PrimaryKeyRelatedField(read_only=True)
+    dam = serializers.PrimaryKeyRelatedField(read_only=True)
+    alive = serializers.BooleanField(required=False)
     last_location = serializers.StringRelatedField()
 
     class Meta:
         model = Animal
-        fields = ('name', 'uuid', 'species', 'sex', 'band_color', 'band_number',
-                  'sire', 'dam', 'reserved_by', "age_days", "alive", "last_location",)
+        fields = ('name', 'uuid', 'species', 'sex', 'plumage', 'band_color', 'band_number',
+                  'sire', 'dam', 'reserved_by', "age_days", "alive", "last_location", 'attributes')
 
 
 class StatusSerializer(serializers.ModelSerializer):

@@ -51,11 +51,11 @@ This web application allows you to access the animal database. Here are some thi
 
 <h4>Entry Points</h4>
 
-<p><a href="{% url 'birds:animals_api' %}">{% url 'birds:animals_api' %}</a> retrieves a list of animals. Supported query parameters are <code>uuid</code>, <code>color</code>, <code>band</code>, <code>species</code>, <code>sex</code>, <code>available</code>, <code>reserved_by</code>. Most text-based query parameters are case-insensitive and will do partial matches. <code>{% url 'birds:animals_api' %}my-uuid/</code> retrieves the record for a single animal by by uuid. This includes some additional information not returned by the list query.</p>
+<p><a href="{% url 'birds:animals_api' %}">{% url 'birds:animals_api' %}</a> retrieves a list of animals. Supported query parameters are <code>uuid</code>, <code>color</code>, <code>band</code>, <code>species</code>, <code>sex</code>, <code>plumage</code>, <code>available</code>, <code>reserved_by</code>. Most text-based query parameters are case-insensitive and will do partial matches. <code>{% url 'birds:animals_api' %}my-uuid/</code> retrieves the record for a single animal by by uuid. This includes some additional information not returned by the list query.</p>
 
 <p><a href="{% url 'birds:events_api' %}">{% url 'birds:events_api' %}</a> retrieves a list of events. Supported query parameters: <code>animal</code> (uuid), <code>color</code>, <code>band</code>, <code>species</code>, <code>location</code>, <code>entered_by</code>, <code>description</code>.</p>
 
-<p><a href="{% url 'birds:pedigree_api' %}">{% url 'birds:pedigree_api' %}</a> retrieves a list of birds and parents. Use <code>restrict=True</code> to limit this to birds that are living (leaves) or that have children (stems).</p>
+<p><a href="{% url 'birds:pedigree_api' %}">{% url 'birds:pedigree_api' %}</a> retrieves a list of birds and parents with sex and heritable traits (e.g. plumage). Use <code>restrict=True</code> to limit this to birds that are living (leaves) or that have children (stems).</p>
 
 
 <h4>Examples</h4>

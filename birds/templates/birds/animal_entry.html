@@ -79,6 +79,13 @@
         </div>
       </div>
 
+      <div class="form-group {% if form.plumage.errors %}has-error{% endif %}">
+        <label for="id_plumage" class="col-sm-2 control-label">Plumage</label>
+        <div class="col-sm-5">
+          {% render_field form.plumage class+="form-control" %}
+        </div>
+      </div>
+
       <div class="form-group {% if form.sire.errors %}has-error{% endif %}">
         <label for="id_sire" class="col-sm-2 control-label">Sire</label>
         <div class="col-sm-5">

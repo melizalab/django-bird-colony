@@ -28,9 +28,9 @@ class LargeResultsSetPagination(LinkHeaderPagination):
 class AnimalFilter(filters.FilterSet):
     uuid = filters.CharFilter(field_name="uuid", lookup_expr="istartswith")
     color = filters.CharFilter(field_name="band_color__name", lookup_expr="iexact")
-    #color_id = filters.ModelChoiceFilter(queryset=Color.objects.all(), field_name="band_color")
     band = filters.NumberFilter(field_name="band_number", lookup_expr="exact")
     species = filters.CharFilter(field_name="species__code", lookup_expr="iexact")
+    plumage = filters.CharFilter(field_name="plumage__name", lookup_expr="icontains")
     living = filters.BooleanFilter(field_name="dead", method="is_alive")
     available = filters.BooleanFilter(field_name="reserved_by", lookup_expr="isnull")
     reserved_by = filters.CharFilter(field_name="reserved_by__username", lookup_expr="iexact")
