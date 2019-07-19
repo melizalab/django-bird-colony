@@ -10,10 +10,13 @@ from django.urls import reverse
 from django.views import generic
 from django.db.models import Min, Count, Q
 from rest_framework import generics
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
 from django_filters import rest_framework as filters
 from django_filters.views import FilterView
 from drf_link_header_pagination import LinkHeaderPagination
 
+from birds import __version__, api_version
 from birds.models import Animal, Event, Sample, SampleType, Color
 from birds.serializers import AnimalSerializer, AnimalPedigreeSerializer, AnimalDetailSerializer, EventSerializer
 from birds.forms import ClutchForm, NewAnimalForm, NewBandForm, LivingEventForm, EventForm, SampleForm
@@ -321,6 +324,15 @@ class SampleEntry(generic.FormView):
 
 
 ### API
+@api_view(['GET'])
+def api_info(request, format=None):
+    return Response({
+        'name': 'django-bird-colony',
+        'version': __version__,
+        'api_version': api_version
+    })
+
+
 class APIAnimalsList(generics.ListAPIView):
     queryset = Animal.objects.all()
     serializer_class = AnimalSerializer

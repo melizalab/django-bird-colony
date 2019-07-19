@@ -6,8 +6,7 @@ from setuptools import setup, find_packages
 if sys.hexversion < 0x03050000:
     raise RuntimeError("Python 3.5 or higher required")
 
-
-VERSION = '0.7.6'
+from birds import __version__
 cls_txt = """
 Development Status :: 4 - Beta
 Framework :: Django
@@ -21,7 +20,7 @@ Topic :: Internet :: WWW/HTTP :: Dynamic Content
 
 setup(
     name="django-bird-colony",
-    version=VERSION,
+    version=__version__,
     description="A simple Django app for managing a bird breeding colony",
     long_description=open(os.path.join(os.path.dirname(__file__), 'README.md')).read(),
     long_description_content_type="text/markdown",
