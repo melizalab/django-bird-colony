@@ -132,6 +132,22 @@ class ClutchEntry(generic.FormView):
     template_name = "birds/clutch_entry.html"
     form_class = ClutchForm
 
+    def get_form(self):
+        form = super(ClutchEntry, self).get_form()
+        try:
+            uuid = self.kwargs["uuid"]
+            animal = Animal.objects.get(uuid=uuid)
+            if animal.sex == Animal.MALE:
+                form.fields['sire'].queryset = Animal.objects.filter(uuid=uuid)
+                form.initial['sire'] = animal
+            elif animal.sex == Animal.FEMALE:
+                form.fields['dam'].queryset = Animal.objects.filter(uuid=uuid)
+                print(form.fields)
+                form.initial['dam'] = animal
+        except (KeyError, ObjectDoesNotExist):
+            pass
+        return form
+
     def get_initial(self):
         initial = super(ClutchEntry, self).get_initial()
         initial["user"] = self.request.user
