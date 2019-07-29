@@ -122,9 +122,9 @@ class AnimalView(generic.DetailView):
     def get_context_data(self, **kwargs):
         context = super(AnimalView, self).get_context_data(**kwargs)
         animal = context['animal']
-        context['animal_list'] = animal.children.all().order_by("dead", "-created")
-        context['event_list'] = animal.event_set.all().order_by("-date")
-        context['sample_list'] = animal.sample_set.all().order_by("-date")
+        context['animal_list'] = animal.children.order_by("dead", "-created")
+        context['event_list'] = animal.event_set.order_by("-date")
+        context['sample_list'] = animal.sample_set.order_by("-date")
         return context
 
 
