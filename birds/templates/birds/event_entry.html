@@ -31,8 +31,8 @@
       <p><strong>Instructions</strong>: This form is for adding an event to the
         database. Events track each individual's life history and allow us to
         determine its current status and location. For convenience, you can only
-        add events on this form for living birds. You can use the <a href="{%
-        url 'admin:birds_event_add' %}">admin interface</a> to add events for
+        add events on this form for living birds. You can use the
+        <a href="{% url 'admin:birds_event_add' %}">admin interface</a> to add events for
         other birds, or edit existing events.</p>
 
       {% if form.non_field_errors %}
