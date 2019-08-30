@@ -22,7 +22,7 @@ class AnimalAdmin(admin.ModelAdmin):
 class EventAdmin(admin.ModelAdmin):
     date_hierarchy = 'date'
     fields = ('animal', 'status', 'location', 'description', 'date', 'entered_by')
-    list_display = ('animal', 'date', 'status', 'description')
+    list_display = ('animal', 'date', 'status', 'location', 'description', 'entered_by')
     list_filter = ('animal', 'entered_by', 'status', 'location')
     search_fields = ('description',)
 
