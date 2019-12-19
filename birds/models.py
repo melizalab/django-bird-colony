@@ -104,7 +104,7 @@ class AnimalManager(models.Manager):
     def get_queryset(self):
         from django.db.models import Count, Q
         qs = super(AnimalManager, self).get_queryset()
-        return qs.annotate(dead=Count('event', filter=Q(event__status__removes=True)))
+        return qs.annotate(dead=Count('event', filter=Q(event__status__removes=True))).order_by("band_color", "band_number")
 
 
 class LastEventManager(models.Manager):

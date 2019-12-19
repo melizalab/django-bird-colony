@@ -353,7 +353,7 @@ class APIAnimalsList(generics.ListAPIView):
     queryset = Animal.objects.all()
     serializer_class = AnimalSerializer
     filter_backends = (filters.DjangoFilterBackend,)
-    filter_class = AnimalFilter
+    filterset_class = AnimalFilter
 
 
 class APIAnimalDetail(generics.RetrieveAPIView):
@@ -365,7 +365,7 @@ class APIEventsList(generics.ListAPIView):
     queryset = Event.objects.all()
     serializer_class = EventSerializer
     filter_backends = (filters.DjangoFilterBackend,)
-    filter_class = EventFilter
+    filterset_class = EventFilter
 
 
 class APIAnimalPedigree(generics.ListAPIView):
@@ -374,7 +374,7 @@ class APIAnimalPedigree(generics.ListAPIView):
     If query param restrict is False, includes all animals, not just those useful in constructing a pedigree."""
     serializer_class = AnimalPedigreeSerializer
     filter_backends = (filters.DjangoFilterBackend,)
-    filter_class = AnimalFilter
+    filterset_class = AnimalFilter
     pagination_class = LargeResultsSetPagination
 
     def get_queryset(self):
