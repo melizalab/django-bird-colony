@@ -107,6 +107,12 @@ class AnimalManager(models.Manager):
         return qs.annotate(dead=Count('event', filter=Q(event__status__removes=True))).order_by("band_color", "band_number")
 
 
+class LivingAnimalManager(AnimalManager):
+    def get_queryset(self):
+        qs = super(LivingAnimalManager, self).get_queryset()
+        return qs.exclude(dead=1)
+
+
 class LastEventManager(models.Manager):
     """ Filters queryset so that only the most recent event is returned """
     def get_queryset(self):
@@ -187,6 +193,7 @@ class Animal(models.Model):
                 chicks.count())
 
     objects = AnimalManager()
+    living = LivingAnimalManager()
 
     def acquisition_event(self):
         """Returns event when bird was acquired.

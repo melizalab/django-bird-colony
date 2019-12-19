@@ -26,6 +26,7 @@ This web application allows you to access the animal database. Here are some thi
 
 <h3>Lists</h3>
 
+<p><a href="{% url 'birds:animal-locations' %}">all living birds, sorted by location</a></p>
 <p><a href="{% url 'birds:animals' %}?living=True">all the living birds</a></p>
 <p><a href="{% url 'birds:animals' %}?living=True&available=True">all the available birds</a></p>
 <p><a href="{% url 'birds:animals' %}">all the birds</a></p>

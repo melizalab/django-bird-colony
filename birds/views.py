@@ -82,14 +82,13 @@ class AnimalList(FilterView):
         return context
 
 
-class AnimalLocationList(FilterView):
+class AnimalLocationList(generic.ListView):
     model = Event
-    filterset_class = EventFilter
     template_name = "birds/animal_location_list.html"
 
     def get_queryset(self):
-        qs = Event.latest.exclude(status__removes=True).filter(**self.kwargs)
-        return qs.order_by("location__name")
+        alive = Animal.living.all()
+        return Event.latest.filter(animal__in=alive)
 
 
 class EventList(FilterView, generic.list.MultipleObjectMixin):

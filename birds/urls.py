@@ -18,10 +18,8 @@ urlpatterns = [
     url(r'^animals/(?P<uuid>[a-f0-9\-]{36})/samples/new/$', login_required(views.SampleEntry.as_view()), name='new_sample'),
     url(r'^animals/(?P<uuid>[a-f0-9\-]{36})/new-band/$', login_required(views.NewBandEntry.as_view()), name='new_band'),
     url(r'^animals/(?P<uuid>[a-f0-9\-]{36})/new-clutch/$', login_required(views.ClutchEntry.as_view()), name='clutch'),
-
+    url(r'^animal-locations/$', views.AnimalLocationList.as_view(), name="animal-locations"),
     url(r'^events/$', views.EventList.as_view(), name='events'),
-    url(r'^latest-events/$', views.AnimalLocationList.as_view(), name='latest-events'),
-    #url(r'^locations/$', views.LocationSummary.as_view(), name="locations"),
     url(r'^sampletypes/$', views.SampleTypeList.as_view(), name='sampletypes'),
     url(r'^samples/$', views.SampleList.as_view(), name='samples'),
     url(r'^samples/(?P<uuid>[a-f0-9\-]{36})/$', views.SampleView.as_view(), name='sample'),
