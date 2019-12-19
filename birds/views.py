@@ -8,7 +8,7 @@ from django.shortcuts import render
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.views import generic
-from django.db.models import Min, Count, Q
+from django.db.models import Count, Q
 from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
@@ -17,9 +17,10 @@ from django_filters.views import FilterView
 from drf_link_header_pagination import LinkHeaderPagination
 
 from birds import __version__, api_version
-from birds.models import Animal, Event, Sample, SampleType, Color
+from birds.models import Animal, Event, Sample, SampleType
 from birds.serializers import AnimalSerializer, AnimalPedigreeSerializer, AnimalDetailSerializer, EventSerializer
 from birds.forms import ClutchForm, NewAnimalForm, NewBandForm, LivingEventForm, EventForm, SampleForm
+from birds.tools import sort_and_group, classify_all
 
 
 class LargeResultsSetPagination(LinkHeaderPagination):
@@ -89,6 +90,24 @@ class AnimalLocationList(generic.ListView):
     def get_queryset(self):
         alive = Animal.living.all()
         return Event.latest.filter(animal__in=alive)
+
+
+class LocationSummary(AnimalLocationList):
+    template_name = "birds/animal_location_summary.html"
+
+    def get_context_data(self, **kwargs):
+        from collections import Counter
+        from operator import attrgetter
+        context = super(LocationSummary, self).get_context_data(**kwargs)
+        counts = []
+        animalgetter = attrgetter("animal")
+        for location, events in sort_and_group(context['object_list'], key=lambda evt: evt.location.name):
+            animals = map(animalgetter, events)
+            c = Counter(a[1] for a in classify_all(animals))
+            print(c)
+            counts.append((location, dict(c)))
+        context['location_counts'] = counts
+        return context
 
 
 class EventList(FilterView, generic.list.MultipleObjectMixin):

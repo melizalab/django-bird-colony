@@ -35,8 +35,9 @@ This web application allows you to access the animal database. Here are some thi
 
 <h3>Summary Reports</h3>
 
-<p><a href="{% url 'birds:event_summary' today.year today.month %}">for this month</a></p>
-<p><a href="{% url 'birds:event_summary' lastmonth.year lastmonth.month %}">for last month</a></p>
+<p><a href="{% url 'birds:location-summary' %}">bird counts by location</a></p>
+<p><a href="{% url 'birds:event_summary' today.year today.month %}">events for this month</a></p>
+<p><a href="{% url 'birds:event_summary' lastmonth.year lastmonth.month %}">events for last month</a></p>
 
 <h3>Data Entry Forms</h3>
 

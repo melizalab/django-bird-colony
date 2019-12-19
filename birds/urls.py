@@ -24,6 +24,7 @@ urlpatterns = [
     url(r'^samples/$', views.SampleList.as_view(), name='samples'),
     url(r'^samples/(?P<uuid>[a-f0-9\-]{36})/$', views.SampleView.as_view(), name='sample'),
     # summary views
+    url(r'^summary/locations/$', views.LocationSummary.as_view(), name="location-summary"),
     url(r'^summary/events/([0-9]{4})/([0-9]{1,2})/$', views.EventSummary.as_view(),
         name="event_summary"),
     # forms

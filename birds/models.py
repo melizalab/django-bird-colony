@@ -90,11 +90,10 @@ class Location(models.Model):
 class Age(models.Model):
     name = models.CharField(max_length=16,)
     min_days = models.PositiveIntegerField()
-    max_days = models.PositiveIntegerField()
     species = models.ForeignKey('Species', on_delete=models.CASCADE)
 
     def __str__(self):
-        return "%s %s (%d-%d days)" % (self.species, self.name, self.min_days, self.max_days)
+        return "%s % (≥ %d days)" % (self.species, self.name, self.min_days)
 
     class Meta:
         unique_together = ("name", "species")

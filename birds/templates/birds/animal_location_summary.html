@@ -1,0 +1,22 @@
+{% extends "base_view.html" %}
+{% load date_fmt %}
+
+{% block title %} meliza-lab : location summary {% endblock %}
+
+{% block content %}
+<h2>Location Summary</h2>
+<hr/>
+
+{% for location, counts in location_counts %}
+
+<p><strong> {{ location }} </strong></p>
+
+<ul>
+  {% for group, count in counts.items %}
+  <li>{{ group }}: {{count}}</li>
+  {% endfor %}
+</ul>
+
+{% endfor %}
+
+{% endblock %}
