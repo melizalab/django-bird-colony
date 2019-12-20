@@ -104,13 +104,24 @@ class AnimalManager(models.Manager):
     def get_queryset(self):
         from django.db.models import Count, Q
         qs = super(AnimalManager, self).get_queryset()
-        return qs.annotate(dead=Count('event', filter=Q(event__status__removes=True))).order_by("band_color", "band_number")
+        return qs.annotate(
+            dead=Count('event', filter=Q(event__status__removes=True))).order_by("band_color", "band_number")
+
+    def dead_by(self, date):
+        """ Annotate as dead only if it died on or before date """
+        from django.db.models import Count, Q
+        qs = super(AnimalManager, self).get_queryset()
+        return qs.annotate(dead=Count('event', filter=Q(event__date__lte=date, event__status__removes=True))).order_by("band_color", "band_number")
 
 
 class LivingAnimalManager(AnimalManager):
     def get_queryset(self):
         qs = super(LivingAnimalManager, self).get_queryset()
         return qs.exclude(dead=1)
+
+    def before(self, date):
+        """ Only include birds that were alive before date """
+        return self.dead_by(date).exclude(dead=1)
 
 
 class LastEventManager(models.Manager):
