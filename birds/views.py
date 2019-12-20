@@ -104,7 +104,6 @@ class LocationSummary(AnimalLocationList):
         for location, events in sort_and_group(context['object_list'], key=lambda evt: evt.location.name):
             animals = map(animalgetter, events)
             c = Counter(a[1] for a in classify_all(animals))
-            print(c)
             counts.append((location, dict(c)))
         context['location_counts'] = counts
         return context

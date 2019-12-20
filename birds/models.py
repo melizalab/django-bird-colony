@@ -78,6 +78,7 @@ class Status(models.Model):
 @python_2_unicode_compatible
 class Location(models.Model):
     name = models.CharField(max_length=45, unique=True)
+    nest = models.BooleanField(default=False, help_text="select for locations used for breeding")
 
     def __str__(self):
         return self.name
