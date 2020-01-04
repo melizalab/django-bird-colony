@@ -101,27 +101,38 @@ class Age(models.Model):
 
 
 class AnimalManager(models.Manager):
-    def get_queryset(self):
-        from django.db.models import Count, Q
-        qs = super(AnimalManager, self).get_queryset()
-        return qs.annotate(
-            dead=Count('event', filter=Q(event__status__removes=True))).order_by("band_color", "band_number")
+    """Custom manager annotates animal list with 'dead' field if any event marked
+    the animal as removed. Use dead_by() to restrict by date the joined events
+    used to calculate this field.
 
-    def dead_by(self, date):
-        """ Annotate as dead only if it died on or before date """
-        from django.db.models import Count, Q
+    """
+    def get_queryset(self):
+        from django.db.models import Count, Q, Value
         qs = super(AnimalManager, self).get_queryset()
-        return qs.annotate(dead=Count('event', filter=Q(event__date__lte=date, event__status__removes=True))).order_by("band_color", "band_number")
+        return (qs
+                .annotate(alive=Value(1) - Count('event', filter=Q(event__status__removes=True)))
+                .order_by("band_color", "band_number"))
+
+    def alive_on(self, date):
+        """ Annotate as alive if animal was alive on date (i.e. was born and had not died) """
+        from django.db.models import Count, Q, F
+        qs = super(AnimalManager, self).get_queryset()
+        return (qs
+                .annotate(alive=Count('event', filter=Q(event__date__lte=date,
+                                                          event__status__adds=True)) -
+                          Count('event', filter=Q(event__date__lte=date,
+                                                        event__status__removes=True)))
+                .order_by("band_color", "band_number"))
 
 
 class LivingAnimalManager(AnimalManager):
     def get_queryset(self):
         qs = super(LivingAnimalManager, self).get_queryset()
-        return qs.exclude(dead=1)
+        return qs.exclude(alive__lte=0)
 
-    def before(self, date):
-        """ Only include birds that were alive before date """
-        return self.dead_by(date).exclude(dead=1)
+    def on(self, date):
+        """ Only include birds that were alive on date """
+        return self.alive_on(date).exclude(alive__lte=0)
 
 
 class LastEventManager(models.Manager):
@@ -187,9 +198,6 @@ class Animal(models.Model):
 
     def __str__(self):
         return self.name()
-
-    def alive(self):
-        return not self.dead
 
     def sire(self):
         return self.parents.filter(sex__exact='M').first()

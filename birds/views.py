@@ -35,14 +35,14 @@ class AnimalFilter(filters.FilterSet):
     band = filters.NumberFilter(field_name="band_number", lookup_expr="exact")
     species = filters.CharFilter(field_name="species__code", lookup_expr="iexact")
     plumage = filters.CharFilter(field_name="plumage__name", lookup_expr="icontains")
-    living = filters.BooleanFilter(field_name="dead", method="is_alive")
+    living = filters.BooleanFilter(field_name="alive", method="is_alive")
     available = filters.BooleanFilter(field_name="reserved_by", lookup_expr="isnull")
     reserved_by = filters.CharFilter(field_name="reserved_by__username", lookup_expr="iexact")
     parent = filters.CharFilter(field_name="parents__uuid", lookup_expr="istartswith")
     child = filters.CharFilter(field_name="children__uuid", lookup_expr="istartswith")
 
     def is_alive(self, queryset, name, value):
-        return queryset.filter(dead=0)
+        return queryset.filter(alive__gt=0)
 
     class Meta:
         model = Animal
@@ -139,7 +139,7 @@ class AnimalView(generic.DetailView):
     def get_context_data(self, **kwargs):
         context = super(AnimalView, self).get_context_data(**kwargs)
         animal = context['animal']
-        context['animal_list'] = animal.children.order_by("dead", "-created")
+        context['animal_list'] = animal.children.order_by("-alive", "-created")
         context['event_list'] = animal.event_set.order_by("-date")
         context['sample_list'] = animal.sample_set.order_by("-date")
         return context
@@ -396,7 +396,8 @@ class APIAnimalPedigree(generics.ListAPIView):
 
     def get_queryset(self):
         if self.request.GET.get("restrict", True):
-            qs = Animal.objects.annotate(nchildren=Count('children')).filter(Q(dead=0) | Q(nchildren__gt=0))
+            qs = Animal.objects.annotate(
+                nchildren=Count('children')).filter(Q(alive__gt=0) | Q(nchildren__gt=0))
         else:
             qs = Animal.objects.all()
         return qs
