@@ -20,7 +20,7 @@ from birds import __version__, api_version
 from birds.models import Animal, Event, Sample, SampleType
 from birds.serializers import AnimalSerializer, AnimalPedigreeSerializer, AnimalDetailSerializer, EventSerializer
 from birds.forms import ClutchForm, NewAnimalForm, NewBandForm, LivingEventForm, EventForm, SampleForm
-from birds.tools import sort_and_group, classify_all
+from birds.tools import sort_and_group, classify_ages, tabulate_animals
 
 
 class LargeResultsSetPagination(LinkHeaderPagination):
@@ -66,6 +66,14 @@ class EventFilter(filters.FilterSet):
         }
 
 
+class EventDate(filters.FilterSet):
+    class Meta:
+        model = Event
+        fields = {
+            'date': ['range', 'gt'],
+        }
+
+
 class AnimalList(FilterView):
     model = Animal
     filterset_class = AnimalFilter
@@ -91,21 +99,45 @@ class AnimalLocationList(generic.ListView):
         alive = Animal.living.all()
         return Event.latest.filter(animal__in=alive)
 
+    def sort_and_group(self, qs):
+        from operator import attrgetter
+        animalgetter = attrgetter("animal")
+        loc_data = []
+        for location, events in sort_and_group(qs, key=lambda evt: evt.location.name):
+            animals = tuple(classify_ages(map(animalgetter, events)))
+            males = tuple(animal for animal, age in animals if age == "adult" and animal.sex == Animal.MALE)
+            females = tuple(animal for animal, age in animals if age == "adult" and animal.sex == Animal.FEMALE)
+            juvs = tuple(animal for animal, age in animals if age != "adult")
+            loc_data.append({"location": location, "males": males, "females": females, "juveniles": juvs})
+        return loc_data
+
 
 class LocationSummary(AnimalLocationList):
     template_name = "birds/animal_location_summary.html"
 
     def get_context_data(self, **kwargs):
-        from collections import Counter
-        from operator import attrgetter
         context = super(LocationSummary, self).get_context_data(**kwargs)
-        counts = []
-        animalgetter = attrgetter("animal")
-        for location, events in sort_and_group(context['object_list'], key=lambda evt: evt.location.name):
-            animals = map(animalgetter, events)
-            c = Counter(a[1] for a in classify_all(animals))
-            counts.append((location, dict(c)))
-        context['location_counts'] = counts
+        latest = context['object_list']
+        context['location_list'] = self.sort_and_group(latest)
+        return context
+
+
+class NestReport(AnimalLocationList):
+    n_days = 7
+    template_name = "birds/nest_check.html"
+
+    def get_context_data(self, **kwargs):
+        context = super(NestReport, self).get_context_data(**kwargs)
+        n_days = self.request.GET.get("days", self.n_days)
+        today = datetime.date.today()
+        data = []
+        for i in range(n_days):
+            date = today - datetime.timedelta(days=i)
+            alive = Animal.living.before(date)
+            latest = Event.latest.filter(animal__in=alive)
+            data.append({"date": date, "locations": self.sort_and_group(latest)})
+        context['location_list'] = data
+        print(data)
         return context
 
 

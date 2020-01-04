@@ -7,14 +7,15 @@
 <h2>Location Summary</h2>
 <hr/>
 
-{% for location, counts in location_counts %}
+{% for location in location_list %}
 
-<p><strong> {{ location }} </strong></p>
+<p><strong> {{ location.location }} </strong></p>
 
 <ul>
-  {% for group, count in counts.items %}
-  <li>{{ group }}: {{count}}</li>
-  {% endfor %}
+  {% if location.males %} <li> Adult males: {{ location.males|url_list }}</li> {% endif %}
+  {% if location.females %} <li> Adult females: {{ location.females|url_list }}</li> {% endif %}
+  {% if location.juveniles %} <li> Juveniles: {{ location.juveniles|url_list }}</li> {% endif %}
+
 </ul>
 
 {% endfor %}
