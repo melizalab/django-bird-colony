@@ -17,7 +17,7 @@ from django_filters.views import FilterView
 from drf_link_header_pagination import LinkHeaderPagination
 
 from birds import __version__, api_version
-from birds.models import Animal, Event, Sample, SampleType
+from birds.models import Animal, Event, Sample, SampleType, Location
 from birds.serializers import AnimalSerializer, AnimalPedigreeSerializer, AnimalDetailSerializer, EventSerializer
 from birds.forms import ClutchForm, NewAnimalForm, NewBandForm, LivingEventForm, EventForm, SampleForm
 from birds.tools import sort_and_group, classify_ages, tabulate_animals
@@ -63,14 +63,6 @@ class EventFilter(filters.FilterSet):
         model = Event
         fields = {
             'date': ['exact', 'year', 'range'],
-        }
-
-
-class EventDate(filters.FilterSet):
-    class Meta:
-        model = Event
-        fields = {
-            'date': ['range', 'gt'],
         }
 
 
@@ -122,22 +114,33 @@ class LocationSummary(AnimalLocationList):
         return context
 
 
-class NestReport(AnimalLocationList):
-    n_days = 7
+class NestReport(generic.ListView):
+    default_days = 7
+    model = Location
     template_name = "birds/nest_check.html"
 
     def get_context_data(self, **kwargs):
+        from datetime import datetime, timedelta
         context = super(NestReport, self).get_context_data(**kwargs)
-        n_days = self.request.GET.get("days", self.n_days)
-        today = datetime.date.today()
+        now = datetime.now()
+        until = self.request.GET.get("until", now.date())
+        since = self.request.GET.get("since", (now - timedelta(days=self.default_days)).date())
+        # in principle, it would be best to do this by using the database to
+        # generate a summary for day 0, then march through the subsequent days
+        # and use new events to generate new summaries. However, in practice
+        # it's not trivial to update this memory structure, so we're taking the
+        # lazy but probably more inefficient route of querying the database for
+        # each day. Consider the other option if it becomes too slow.
+        repdate = since
         data = []
-        for i in range(n_days):
-            date = today - datetime.timedelta(days=i)
-            alive = Animal.living.before(date)
-            latest = Event.latest.filter(animal__in=alive)
-            data.append({"date": date, "locations": self.sort_and_group(latest)})
-        context['location_list'] = data
-        print(data)
+        while repdate <= until:
+            alive = Animal.living.alive_on(repdate)
+            latest = Event.latest.filter(date__lte=repdate, animal__in=alive)
+            animals = [{"animal": event.animal, "location": event.location} for event in latest]
+            data.append({"date": repdate, "animals": animals})
+            repdate += timedelta(days=1)
+        context.update(since=since, until=until, dates=data)
+        print(context)
         return context
 
 
@@ -295,8 +298,8 @@ class EventSummary(generic.base.TemplateView):
         tots = Counter()
         year, month = map(int, self.args[:2])
         # aggregation by month does not appear to work properly with postgres
-        # backend. Event counts per month will be relatively small, so this
-        # shouldn't be too slow
+        # backend, so we have to do it in python. Event counts per month will be
+        # relatively small, though, so shouldn't be too slow.
         for event in Event.objects.filter(date__year=year, date__month=month):
             tots[event.status.name] += 1
         return {
