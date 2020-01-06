@@ -101,38 +101,44 @@ class Age(models.Model):
 
 
 class AnimalManager(models.Manager):
-    """Custom manager annotates animal list with 'dead' field if any event marked
-    the animal as removed. Use dead_by() to restrict by date the joined events
-    used to calculate this field.
-
-    """
+    """Annotates animal list with 'alive' field by counting add/remove events """
     def get_queryset(self):
         from django.db.models import Count, Q, Value
         qs = super(AnimalManager, self).get_queryset()
         return (qs
-                .annotate(alive=Value(1) - Count('event', filter=Q(event__status__removes=True)))
-                .order_by("band_color", "band_number"))
-
-    def alive_on(self, date):
-        """ Annotate as alive if animal was alive on date (i.e. was born and had not died) """
-        from django.db.models import Count, Q, F
-        qs = super(AnimalManager, self).get_queryset()
-        return (qs
-                .annotate(alive=Count('event', filter=Q(event__date__lte=date,
-                                                          event__status__adds=True)) -
-                          Count('event', filter=Q(event__date__lte=date,
-                                                        event__status__removes=True)))
+                .annotate(alive=Count('event', filter=Q(event__status__adds=True)) -
+                          Count('event', filter=Q(event__status__removes=True)))
                 .order_by("band_color", "band_number"))
 
 
 class LivingAnimalManager(AnimalManager):
     def get_queryset(self):
         qs = super(LivingAnimalManager, self).get_queryset()
-        return qs.exclude(alive__lte=0)
+        return qs.filter(alive__gt=0)
 
     def on(self, date):
-        """ Only include birds that were alive on date """
-        return self.alive_on(date).exclude(alive__lte=0)
+        """ Only include birds that were alive on date (added and not removed) """
+        from django.db.models import Count, Q
+        qs = super(AnimalManager, self).get_queryset()
+        return (qs
+                .annotate(alive=Count('event', filter=Q(event__date__lte=date,
+                                                        event__status__adds=True)) -
+                          Count('event', filter=Q(event__date__lte=date,
+                                                  event__status__removes=True)))
+                .filter(alive__gt=0)
+                .order_by("band_color", "band_number"))
+
+    def exists(self, date):
+        """ Only include birds that existed on date (created but not removed) """
+        from django.db.models import Count, Q
+        qs = super(AnimalManager, self).get_queryset()
+        return (qs
+                .annotate(noted=Count('event', filter=Q(event__date__lte=date,
+                                                        event__status__removes=False)),
+                          removed=Count('event', filter=Q(event__date__lte=date,
+                                                          event__status__removes=True)))
+                .filter(noted__gt=0, removed__lte=0)
+                .order_by("band_color", "band_number"))
 
 
 class LastEventManager(models.Manager):
