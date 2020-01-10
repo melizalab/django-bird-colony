@@ -279,7 +279,7 @@ class Event(models.Model):
 
     class Meta:
         ordering = ['-date']
-        get_latest_by = 'date'
+        get_latest_by = ['date', 'created']
 
 
 @python_2_unicode_compatible
