@@ -6,7 +6,7 @@ import uuid
 import datetime
 
 from django.contrib.postgres.fields import JSONField
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.utils.encoding import python_2_unicode_compatible
 from django.urls import reverse
 from django.db import models
@@ -24,6 +24,7 @@ class Species(models.Model):
     genus = models.CharField(max_length=45)
     species = models.CharField(max_length=45)
     code = models.CharField(max_length=4, unique=True)
+    incubation_days = models.PositiveIntegerField(blank=True, null=True)
 
     def __str__(self):
         return self.common_name
@@ -94,7 +95,7 @@ class Age(models.Model):
     species = models.ForeignKey('Species', on_delete=models.CASCADE)
 
     def __str__(self):
-        return "%s % (≥ %d days)" % (self.species, self.name, self.min_days)
+        return "%s %s (≥ %d days)" % (self.species, self.name, self.min_days)
 
     class Meta:
         unique_together = ("name", "species")
@@ -227,19 +228,41 @@ class Animal(models.Model):
         Returns None if no acquisition events
 
         """
-        return self.event_set.filter(status__adds=True).order_by('date').last()
+        try:
+            return self.event_set.filter(status__adds=True).latest()
+        except ObjectDoesNotExist:
+            pass
 
     def age_days(self):
         """ Returns days since birthdate if alive, age at death if dead, or None if unknown"""
-        q_birth = self.event_set.filter(status__name="hatched").aggregate(d=models.Min("date"))
-        if q_birth["d"] is None:
+        try:
+            evt_birth = self.event_set.filter(status__name="hatched").earliest()
+        except ObjectDoesNotExist:
             return None
-        q_death = self.event_set.filter(status__removes=True)
-        if q_death.count() == 0:
-            return (datetime.date.today() - q_birth["d"]).days
+        try:
+            evt_death = self.event_set.filter(status__removes=True).latest()
+        except ObjectDoesNotExist:
+            return (datetime.date.today() - evt_birth.date).days
         else:
-            qq = q_death.aggregate(d=models.Max("date"))
-            return (qq["d"] - q_birth["d"]).days
+            return (evt_death.date - evt_birth.date).days
+
+    def expected_hatch(self):
+        """ For eggs, returns the expected hatch date.
+
+        None if not an egg, already hatched, or incubation time is not known. """
+        days = self.species.incubation_days
+        if days is None:
+            return None
+        try:
+            q = self.event_set.filter(status__name="hatched").get()
+            return None
+        except ObjectDoesNotExist:
+            pass
+        try:
+            evt_laid = self.event_set.filter(status__name="laid").earliest()
+            return evt_laid.date + datetime.timedelta(days=days)
+        except ObjectDoesNotExist:
+            return None
 
     def last_location(self):
         """ Returns the location recorded in the most recent event """
@@ -278,7 +301,7 @@ class Event(models.Model):
         return "%s on %s" % (self.status, self.date)
 
     class Meta:
-        ordering = ['-date']
+        ordering = ['-date', '-created']
         get_latest_by = ['date', 'created']
 
 

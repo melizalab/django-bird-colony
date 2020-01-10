@@ -115,7 +115,7 @@ class LocationSummary(AnimalLocationList):
 
 
 class NestReport(generic.ListView):
-    default_days = 7
+    default_days = 2
     model = Location
     template_name = "birds/nest_check.html"
 
@@ -134,7 +134,7 @@ class NestReport(generic.ListView):
         repdate = since
         data = []
         while repdate <= until:
-            alive = Animal.living.alive_on(repdate)
+            alive = Animal.living.exists(repdate)
             latest = Event.latest.filter(date__lte=repdate, animal__in=alive)
             animals = [{"animal": event.animal, "location": event.location} for event in latest]
             data.append({"date": repdate, "animals": animals})
@@ -162,7 +162,7 @@ class EventList(FilterView, generic.list.MultipleObjectMixin):
 
     def get_queryset(self):
         qs = Event.objects.filter(**self.kwargs)
-        return qs.order_by("-date")
+        return qs.order_by("-date", "-created")
 
 
 class AnimalView(generic.DetailView):
@@ -175,7 +175,7 @@ class AnimalView(generic.DetailView):
         context = super(AnimalView, self).get_context_data(**kwargs)
         animal = context['animal']
         context['animal_list'] = animal.children.order_by("-alive", "-created")
-        context['event_list'] = animal.event_set.order_by("-date")
+        context['event_list'] = animal.event_set.order_by("-date", "-created")
         context['sample_list'] = animal.sample_set.order_by("-date")
         return context
 

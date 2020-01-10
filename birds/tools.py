@@ -17,13 +17,16 @@ def find_first(iterable, predicate):
             return item
 
 
-def classify_ages(iterable, default_age="adult"):
+def classify_ages(iterable, default_age="adult", unborn_name="egg"):
     """ Classifies birds by age using the age table, probably very inefficiently"""
     # this seems horrendously inefficient to create a lambda for each animal, but for
     # some reason it doesn't work to pre-generate the lambdas.
     ages = tuple(Age.objects.order_by("species", "-min_days").values_list("species", "min_days", "name"))
     for animal in iterable:
         species = animal.species.id
+        if animal.expected_hatch() is not None:
+            yield (animal, unborn_name)
+            continue
         age_days = animal.age_days()
         try:
             age_name = find_first(ages, lambda age: (age[0] == species) and (age[1] <= age_days))[2]

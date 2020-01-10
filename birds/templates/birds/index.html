@@ -26,16 +26,16 @@ This web application allows you to access the animal database. Here are some thi
 
 <h3>Lists</h3>
 
-<p><a href="{% url 'birds:animal-locations' %}">all living birds, sorted by location</a></p>
-<p><a href="{% url 'birds:animals' %}?living=True">all the living birds</a></p>
 <p><a href="{% url 'birds:animals' %}?living=True&available=True">all the available birds</a></p>
+<p><a href="{% url 'birds:animals' %}?living=True">all the living birds</a></p>
 <p><a href="{% url 'birds:animals' %}">all the birds</a></p>
 <p><a href="{% url 'birds:events' %}">all events</a></p>
 <p><a href="{% url 'birds:sampletypes' %}">sample types</a></p>
 
 <h3>Summary Reports</h3>
 
-<p><a href="{% url 'birds:location-summary' %}">bird counts by location</a></p>
+<p><a href="{% url 'birds:nest-summary' %}">nest report</a></p>
+<p><a href="{% url 'birds:location-summary' %}">birds in each location</a></p>
 <p><a href="{% url 'birds:event_summary' today.year today.month %}">events for this month</a></p>
 <p><a href="{% url 'birds:event_summary' lastmonth.year lastmonth.month %}">events for last month</a></p>
 
