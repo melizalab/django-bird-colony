@@ -96,11 +96,19 @@ class LocationSummary(generic.ListView):
         animalgetter = attrgetter("animal")
         loc_data = []
         for location, events in sort_and_group(qs, key=lambda evt: evt.location.name):
-            animals = tuple(classify_ages(map(animalgetter, events)))
-            males = tuple(animal for animal, age in animals if age == "adult" and animal.sex == Animal.MALE)
-            females = tuple(animal for animal, age in animals if age == "adult" and animal.sex == Animal.FEMALE)
-            juvs = tuple(animal for animal, age in animals if age != "adult")
-            loc_data.append({"location": location, "males": males, "females": females, "juveniles": juvs})
+            d = {"location": location, "males": [], "females": [], "others": []}
+            for event in events:
+                animal = event.animal
+                if animal.age_group() == "adult":
+                    if animal.sex == Animal.MALE:
+                        d["males"].append(animal)
+                    elif animal.sex == Animal.FEMALE:
+                        d["females"].append(animal)
+                    else:
+                        d["others"].append(animal)
+                else:
+                    d["others"].append(animal)
+            loc_data.append(d)
         return loc_data
 
     def get_context_data(self, **kwargs):
