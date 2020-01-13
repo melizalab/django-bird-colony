@@ -34,6 +34,7 @@
     <th>Date</th>
     <th>Location</th>
     <th>Comments</th>
+    <th></th>
   </thead>
   <tbody>
     {% for event in event_list|slice:":10" %}
@@ -42,7 +43,8 @@
           <td>{{ event.date }}</td>
           <td>{{ event.location }}</td>
           <td>{{ event.description }}</td>
-          <td></td>
+          <td><a href="{% url 'admin:birds_event_change' event.id %}"
+                 class="glyphicon glyphicon-edit" alt="[edit]" aria-label="[Edit]"></a></td>
         </tr>
     {% endfor %}
   </tbody>
