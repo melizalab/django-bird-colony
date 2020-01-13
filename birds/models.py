@@ -13,6 +13,10 @@ from django.db import models
 from django.conf import settings
 from django.contrib.auth import get_user_model
 
+BIRTH_EVENT_NAME = "hatched"
+UNBORN_ANIMAL_NAME = "egg"
+UNBORN_CREATION_EVENT_NAME = "laid"
+ADULT_ANIMAL_NAME = "adult"
 
 def get_sentinel_user():
     return get_user_model().objects.get_or_create(username='deleted')[0]
@@ -90,6 +94,8 @@ class Location(models.Model):
 
 @python_2_unicode_compatible
 class Age(models.Model):
+    DEFAULT = "unclassified"
+
     name = models.CharField(max_length=16,)
     min_days = models.PositiveIntegerField()
     species = models.ForeignKey('Species', on_delete=models.CASCADE)
@@ -225,41 +231,64 @@ class Animal(models.Model):
         """Returns event when bird was acquired.
 
         If there are multiple acquisition events, returns the most recent one.
-        Returns None if no acquisition events
+        Returns None if no acquisition events.
 
         """
-        try:
-            return self.event_set.filter(status__adds=True).latest()
-        except ObjectDoesNotExist:
-            pass
+        return self.event_set.filter(status__adds=True).last()
 
-    def age_days(self):
-        """ Returns days since birthdate if alive, age at death if dead, or None if unknown"""
-        try:
-            evt_birth = self.event_set.filter(status__name="hatched").earliest()
-        except ObjectDoesNotExist:
+    def age_days(self, date=None):
+        """ Returns days since birthdate (as of date) if alive, age at death if dead, or None if unknown"""
+        refdate = date or datetime.date.today()
+        event_set = self.event_set.filter(date__lte=refdate)
+        evt_birth = event_set.filter(status__name=BIRTH_EVENT_NAME).first()
+        if evt_birth is None:
             return None
-        try:
-            evt_death = self.event_set.filter(status__removes=True).latest()
-        except ObjectDoesNotExist:
-            return (datetime.date.today() - evt_birth.date).days
+        evt_death = event_set.filter(status__removes=True).last()
+        if evt_death is None:
+            return (refdate - evt_birth.date).days
         else:
             return (evt_death.date - evt_birth.date).days
 
-    def expected_hatch(self):
-        """ For eggs, returns the expected hatch date.
+    def age_group(self, date=None):
+        """Returns the age group of the animal (as of date) by joining on the Age model.
 
-        None if not an egg, already hatched, or incubation time is not known. """
+        Classified as an adult if there was a non-hatch acquisition event.
+        Otherwise, an egg if there was at least one non-acquisition event.
+        Otherwise, None. Returns "unclassified" if there is no match in the Age
+        table (this can only happen if there is not an object with min_age = 0).
+
+        """
+        refdate = date or datetime.date.today()
+        event_set = self.event_set.filter(date__lte=refdate)
+        event_set_adds = event_set.filter(status__adds=True)
+        event_birth = event_set_adds.filter(status__name=BIRTH_EVENT_NAME).first()
+        if event_birth is None:
+            if event_set_adds.count() > 0:
+                return ADULT_ANIMAL_NAME
+            elif event_set.count() == 0:
+                return None
+            else:
+                return UNBORN_ANIMAL_NAME
+        else:
+            event_death = event_set.filter(status__removes=True).last()
+            if event_death is None:
+                age_days = (refdate - evt_birth.date).days
+            else:
+                age_days = (evt_death.date - evt_birth.date).days
+            return self.species.age_set.filter(min_days__lte=age_days).order_by('-min_days').first() or Age.DEFAULT
+
+    def expected_hatch(self):
+        """ For eggs, expected hatch date. None if not an egg, already hatched, or incubation time is not known. """
         days = self.species.incubation_days
         if days is None:
             return None
         try:
-            q = self.event_set.filter(status__name="hatched").get()
+            q = self.event_set.filter(status__name=BIRTH_EVENT_NAME).get()
             return None
         except ObjectDoesNotExist:
             pass
         try:
-            evt_laid = self.event_set.filter(status__name="laid").earliest()
+            evt_laid = self.event_set.filter(status__name=UNBORN_CREATION_EVENT_NAME).earliest()
             return evt_laid.date + datetime.timedelta(days=days)
         except ObjectDoesNotExist:
             return None
