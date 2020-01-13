@@ -36,3 +36,8 @@ def url_list(values):
     """ Generate a comma-separated list of links to birds """
     return format_html_join(", ", '<a href="{}">{}</a>',
                             ((obj.get_absolute_url(), obj) for obj in values))
+
+@register.filter
+def count_summary(counter):
+    """ Generate a summary of counts """
+    return format_html_join(", ", '{}s: {}', ((k, v) for k, v in counter.items()))

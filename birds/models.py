@@ -272,10 +272,12 @@ class Animal(models.Model):
         else:
             event_death = event_set.filter(status__removes=True).last()
             if event_death is None:
-                age_days = (refdate - evt_birth.date).days
+                age_days = (refdate - event_birth.date).days
             else:
-                age_days = (evt_death.date - evt_birth.date).days
-            return self.species.age_set.filter(min_days__lte=age_days).order_by('-min_days').first() or Age.DEFAULT
+                age_days = (event_death.date - event_birth.date).days
+            grp = self.species.age_set.filter(min_days__lte=age_days).order_by('-min_days').first()
+            return grp.name if grp is not None else Age.DEFAULT
+
 
     def expected_hatch(self):
         """ For eggs, expected hatch date. None if not an egg, already hatched, or incubation time is not known. """

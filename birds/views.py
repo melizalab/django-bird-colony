@@ -17,10 +17,10 @@ from django_filters.views import FilterView
 from drf_link_header_pagination import LinkHeaderPagination
 
 from birds import __version__, api_version
-from birds.models import Animal, Event, Sample, SampleType, Location
+from birds.models import Animal, Event, Sample, SampleType, Location, ADULT_ANIMAL_NAME
 from birds.serializers import AnimalSerializer, AnimalPedigreeSerializer, AnimalDetailSerializer, EventSerializer
 from birds.forms import ClutchForm, NewAnimalForm, NewBandForm, LivingEventForm, EventForm, SampleForm
-from birds.tools import sort_and_group, classify_ages, tabulate_animals
+from birds.tools import sort_and_group
 
 
 class LargeResultsSetPagination(LinkHeaderPagination):
@@ -99,7 +99,7 @@ class LocationSummary(generic.ListView):
             d = {"location": location, "males": [], "females": [], "others": []}
             for event in events:
                 animal = event.animal
-                if animal.age_group() == "adult":
+                if animal.age_group() == ADULT_ANIMAL_NAME:
                     if animal.sex == Animal.MALE:
                         d["males"].append(animal)
                     elif animal.sex == Animal.FEMALE:
@@ -124,12 +124,18 @@ class NestReport(generic.ListView):
     template_name = "birds/nest_check.html"
 
     def get_context_data(self, **kwargs):
-        from collections import defaultdict
+        from collections import defaultdict, Counter
         from datetime import datetime, timedelta
         context = super(NestReport, self).get_context_data(**kwargs)
         now = datetime.now()
-        until = self.request.GET.get("until", now.date())
-        since = self.request.GET.get("since", (now - timedelta(days=self.default_days)).date())
+        try:
+            until = datetime.fromisoformat(self.request.GET["until"]).date()
+        except (ValueError, KeyError):
+            until = now.date()
+        try:
+            since = datetime.fromisoformat(self.request.GET["since"]).date()
+        except (ValueError, KeyError):
+            since = (until - timedelta(days=self.default_days))
         # in principle, it would be best to do this by using the database to
         # generate a summary for day 0, then march through the subsequent days
         # and use new events to generate new summaries. However, in practice
@@ -138,21 +144,33 @@ class NestReport(generic.ListView):
         # each day. Consider the other option if it becomes too slow.
         repdate = since
         nests = set()
+        dates = []
         data = {}
         while repdate <= until:
-            data[repdate] = {}
             locations = defaultdict(list)
             alive = Animal.living.exists(repdate)
             for event in Event.latest.filter(date__lte=repdate, animal__in=alive):
                 if event.location.nest:
                     nests.add(event.location.name)
                     locations[event.location.name].append(event.animal)
-            for location, animals in locations.items():
-                animal_ages = tuple(classify_ages(animals))
-                data[repdate][location] = animal_ages
+            data[repdate] = locations
+            dates.append(repdate)
             repdate += timedelta(days=1)
-        context.update(since=since, until=until, nest_set=nests, nest_data=data)
-        print(context)
+        # pivot the structure while tabulating to help the template engine
+        nest_data = {}
+        for nest in nests:
+            nest_data[nest] = {}
+            for date in dates:
+                animals = data[date].get(nest, [])
+                locdata = {"adult": [], "count": Counter()}
+                for animal in animals:
+                    age_group = animal.age_group(date)
+                    if age_group == ADULT_ANIMAL_NAME:
+                        locdata["adult"].append(animal)
+                    else:
+                        locdata["count"][age_group] += 1
+                nest_data[nest][date] = locdata
+        context.update(since=since, until=until, dates=dates, nest_set=nests, nest_data=nest_data)
         return context
 
 
