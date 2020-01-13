@@ -83,9 +83,9 @@ class AnimalList(FilterView):
         return context
 
 
-class AnimalLocationList(generic.ListView):
+class LocationSummary(generic.ListView):
     model = Event
-    template_name = "birds/animal_location_list.html"
+    template_name = "birds/animal_location_summary.html"
 
     def get_queryset(self):
         alive = Animal.living.all()
@@ -103,10 +103,6 @@ class AnimalLocationList(generic.ListView):
             loc_data.append({"location": location, "males": males, "females": females, "juveniles": juvs})
         return loc_data
 
-
-class LocationSummary(AnimalLocationList):
-    template_name = "birds/animal_location_summary.html"
-
     def get_context_data(self, **kwargs):
         context = super(LocationSummary, self).get_context_data(**kwargs)
         latest = context['object_list']
@@ -120,6 +116,7 @@ class NestReport(generic.ListView):
     template_name = "birds/nest_check.html"
 
     def get_context_data(self, **kwargs):
+        from collections import defaultdict
         from datetime import datetime, timedelta
         context = super(NestReport, self).get_context_data(**kwargs)
         now = datetime.now()
@@ -132,14 +129,21 @@ class NestReport(generic.ListView):
         # lazy but probably more inefficient route of querying the database for
         # each day. Consider the other option if it becomes too slow.
         repdate = since
-        data = []
+        nests = set()
+        data = {}
         while repdate <= until:
+            data[repdate] = {}
+            locations = defaultdict(list)
             alive = Animal.living.exists(repdate)
-            latest = Event.latest.filter(date__lte=repdate, animal__in=alive)
-            animals = [{"animal": event.animal, "location": event.location} for event in latest]
-            data.append({"date": repdate, "animals": animals})
+            for event in Event.latest.filter(date__lte=repdate, animal__in=alive):
+                if event.location.nest:
+                    nests.add(event.location.name)
+                    locations[event.location.name].append(event.animal)
+            for location, animals in locations.items():
+                animal_ages = tuple(classify_ages(animals))
+                data[repdate][location] = animal_ages
             repdate += timedelta(days=1)
-        context.update(since=since, until=until, dates=data)
+        context.update(since=since, until=until, nest_set=nests, nest_data=data)
         print(context)
         return context
 

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
 """ Tools for classifying birds and computing summaries """
+from django.core.exceptions import ObjectDoesNotExist
 from birds.models import Age
 
 
@@ -17,21 +18,25 @@ def find_first(iterable, predicate):
             return item
 
 
-def classify_ages(iterable, default_age="adult", unborn_name="egg"):
+def classify_ages(iterable, date=None, default_age="adult", unborn_name="egg"):
     """ Classifies birds by age using the age table, probably very inefficiently"""
+    from datetime import datetime
     # this seems horrendously inefficient to create a lambda for each animal, but for
     # some reason it doesn't work to pre-generate the lambdas.
     ages = tuple(Age.objects.order_by("species", "-min_days").values_list("species", "min_days", "name"))
+    refdate = date or datetime.now()
     for animal in iterable:
         species = animal.species.id
         if animal.expected_hatch() is not None:
             yield (animal, unborn_name)
             continue
-        age_days = animal.age_days()
         try:
-            age_name = find_first(ages, lambda age: (age[0] == species) and (age[1] <= age_days))[2]
-        except TypeError:
+            evt_birth = animal.event_set.filter(status__name="hatched").earliest()
+        except ObjectDoesNotExist:
             age_name = default_age
+        else:
+            age_days = (refdate - evt_birth.date).days
+            age_name = find_first(ages, lambda age: (age[0] == species) and (age[1] <= age_days))[2]
         yield (animal, age_name)
 
 
