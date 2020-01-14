@@ -114,7 +114,6 @@ class LocationSummary(generic.ListView):
         context = super(LocationSummary, self).get_context_data(**kwargs)
         latest = context['object_list']
         context['location_list'] = self.sort_and_group(latest)
-        print(context)
         return context
 
 
@@ -124,18 +123,20 @@ class NestReport(generic.ListView):
     template_name = "birds/nest_report.html"
 
     def get_context_data(self, **kwargs):
+        from django.utils import dateparse
         from collections import defaultdict, Counter
         from datetime import datetime, timedelta
         context = super(NestReport, self).get_context_data(**kwargs)
-        now = datetime.now()
         try:
-            until = datetime.fromisoformat(self.request.GET["until"]).date()
+            until = dateparse.parse_date(self.request.GET["until"])
         except (ValueError, KeyError):
-            until = now.date()
+            until = None
         try:
-            since = datetime.fromisoformat(self.request.GET["since"]).date()
+            since = dateparse.parse_date(self.request.GET["since"])
         except (ValueError, KeyError):
-            since = (until - timedelta(days=self.default_days))
+            since = None
+        until = until or datetime.now().date()
+        since = since or (until - timedelta(days=self.default_days))
         # in principle, it would be best to do this by using the database to
         # generate a summary for day 0, then march through the subsequent days
         # and use new events to generate new summaries. However, in practice
