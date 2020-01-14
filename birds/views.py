@@ -119,7 +119,7 @@ class LocationSummary(generic.ListView):
 
 
 class NestReport(generic.ListView):
-    default_days = 2
+    default_days = 4
     model = Location
     template_name = "birds/nest_check.html"
 

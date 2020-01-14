@@ -1,0 +1,32 @@
+{% extends "base_view.html" %}
+{% load date_fmt %}
+
+{% block title %} meliza-lab : nest report {% endblock %}
+
+{% block content %}
+<h2>Nest Report</h2>
+<hr/>
+
+<table class="table table-striped">
+  <thead>
+    <th></th>
+    {% for date in dates %}
+    <th>{{ date|date:"SHORT_DATE_FORMAT" }}</th>
+    {% endfor %}
+  </thead>
+  <tbody>
+    {% for nest,ndata in nest_data.items %}
+    <tr>
+      <td><strong>{{ nest }}<strong></td>
+      {% for date,ddata in ndata.items %}
+      <td>
+        {{ ddata.adult|url_list }}
+        <br/>{{ ddata.count|count_summary }}
+      </td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}
