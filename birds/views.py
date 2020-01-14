@@ -160,7 +160,7 @@ class NestReport(generic.ListView):
         # pivot the structure while tabulating to help the template engine
         nest_data = {}
         for nest in nests:
-            nest_data[nest] = {}
+            nest_data[nest] = []
             for date in dates:
                 animals = data[date].get(nest, [])
                 locdata = {"adult": [], "count": Counter()}
@@ -170,7 +170,7 @@ class NestReport(generic.ListView):
                         locdata["adult"].append(animal)
                     else:
                         locdata["count"][age_group] += 1
-                nest_data[nest][date] = locdata
+                nest_data[nest].append(locdata)
         context.update(since=since, until=until, dates=dates, nest_set=nests, nest_data=nest_data)
         return context
 
