@@ -93,35 +93,35 @@ class LocationSummary(generic.ListView):
 
     def sort_and_group(self, qs):
         from operator import attrgetter
+        from collections import defaultdict
         animalgetter = attrgetter("animal")
-        loc_data = []
+        sex_choices = dict(Animal.SEX_CHOICES)
+        loc_data = {}
         for location, events in sort_and_group(qs, key=lambda evt: evt.location.name):
-            d = {"location": location, "males": [], "females": [], "others": []}
+            d = defaultdict(list)
             for event in events:
                 animal = event.animal
-                if animal.age_group() == ADULT_ANIMAL_NAME:
-                    if animal.sex == Animal.MALE:
-                        d["males"].append(animal)
-                    elif animal.sex == Animal.FEMALE:
-                        d["females"].append(animal)
-                    else:
-                        d["others"].append(animal)
+                age_group = animal.age_group()
+                if age_group == ADULT_ANIMAL_NAME:
+                    group_name = "{} {}".format(age_group, sex_choices[animal.sex])
+                    d[group_name].append(animal)
                 else:
-                    d["others"].append(animal)
-            loc_data.append(d)
+                    d[age_group].append(animal)
+            loc_data[location] = dict(d)
         return loc_data
 
     def get_context_data(self, **kwargs):
         context = super(LocationSummary, self).get_context_data(**kwargs)
         latest = context['object_list']
         context['location_list'] = self.sort_and_group(latest)
+        print(context)
         return context
 
 
 class NestReport(generic.ListView):
     default_days = 4
     model = Location
-    template_name = "birds/nest_check.html"
+    template_name = "birds/nest_report.html"
 
     def get_context_data(self, **kwargs):
         from collections import defaultdict, Counter
