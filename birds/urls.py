@@ -28,6 +28,7 @@ urlpatterns = [
     url(r'^summary/events/([0-9]{4})/([0-9]{1,2})/$', views.EventSummary.as_view(),
         name="event_summary"),
     # forms
+    url(r'^nest-check/$', login_required(views.NestCheck.as_view()), name='nest-check'),
     url(r'^new-clutch/$', login_required(views.ClutchEntry.as_view()), name='clutch'),
     url(r'^new-band/$', login_required(views.NewBandEntry.as_view()), name='new_band'),
     # api

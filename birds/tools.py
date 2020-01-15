@@ -14,3 +14,49 @@ def find_first(iterable, predicate):
     for item in iterable:
         if predicate(item):
             return item
+
+
+def tabulate_locations(since, until):
+    """Determines which animals are in which nests by date.
+
+    In principle, it would be best to do this by using the database to
+    generate a summary for day 0, then march through the subsequent days and
+    use new events to generate new summaries. However, in practice it's not
+    trivial to update this structure, so we're taking the lazy but probably
+    more inefficient route of querying the database for each day. Consider
+    the other option if it becomes too slow.
+
+    """
+    from birds.models import Animal, Event, ADULT_ANIMAL_NAME
+    from datetime import timedelta
+    from collections import defaultdict, Counter
+    repdate = since
+    nests = set()
+    dates = []
+    data = {}
+    while repdate <= until:
+        locations = defaultdict(list)
+        alive = Animal.living.exists(repdate)
+        for event in Event.latest.filter(date__lte=repdate, animal__in=alive):
+            if event.location.nest:
+                nests.add(event.location.name)
+                locations[event.location.name].append(event.animal)
+        data[repdate] = locations
+        dates.append(repdate)
+        repdate += timedelta(days=1)
+    # pivot the structure while tabulating to help the template engine
+    nest_data = []
+    for nest in nests:
+        days = []
+        for date in dates:
+            animals = data[date].get(nest, [])
+            locdata = {"adults": [], "counts": Counter()}
+            for animal in animals:
+                age_group = animal.age_group(date)
+                if age_group == ADULT_ANIMAL_NAME:
+                    locdata["adults"].append(animal)
+                else:
+                    locdata["counts"][age_group] += 1
+            days.append(locdata)
+        nest_data.append({"name": nest, "days": days})
+    return dates, nest_data

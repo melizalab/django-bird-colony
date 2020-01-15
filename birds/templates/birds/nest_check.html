@@ -1,0 +1,52 @@
+{% extends "base_view.html" %}
+{% load widget_tweaks %}
+{% load date_fmt %}
+
+{% block title %} meliza-lab : nest report {% endblock %}
+
+{% block content %}
+<h2>Nest Report</h2>
+<hr/>
+
+<form action="" class="form-horizontal" method="post" role="form">
+  {% csrf_token %}
+<table class="table table-striped">
+  <thead>
+    <th></th>
+    {% for date in dates %}
+    <th>{{ date|date:"SHORT_DATE_FORMAT" }}</th>
+    {% endfor %}
+    <th>Nest Check</th>
+  </thead>
+  <tbody>
+    {% for nest, form in nest_data %}
+    <tr>
+      <td><strong>{{ nest.name }}<strong></td>
+      {% for day in nest.days %}
+      <td>
+        {{ day.adults|url_list }}
+        <br/>{{ day.counts|count_summary }}
+      </td>
+      {% endfor %}
+      <td>
+        {{ form.location }}
+        <div class="form-group">
+          <label for="{{ form.eggs.id_for_label}}" class="col-sm-2 control-label">Eggs </label>
+          <div class="col-sm-2">
+          {% render_field form.eggs class+="form-control" %}
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="{{ form.chicks.id_for_label}}" class="col-sm-2 control-label">Chicks </label>
+          <div class="col-sm-2">
+            {% render_field form.chicks class+="form-control" %}
+          </div>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</form>
+
+{% endblock %}

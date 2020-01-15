@@ -15,13 +15,13 @@
     {% endfor %}
   </thead>
   <tbody>
-    {% for nest,ndata in nest_data.items %}
+    {% for nest in nest_data %}
     <tr>
-      <td><strong>{{ nest }}<strong></td>
-      {% for ddata in ndata %}
+      <td><strong>{{ nest.name }}<strong></td>
+      {% for day in nest.days %}
       <td>
-        {{ ddata.adult|url_list }}
-        <br/>{{ ddata.count|count_summary }}
+        {{ day.adults|url_list }}
+        <br/>{{ day.counts|count_summary }}
       </td>
       {% endfor %}
     </tr>

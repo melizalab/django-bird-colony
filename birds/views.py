@@ -17,10 +17,9 @@ from django_filters.views import FilterView
 from drf_link_header_pagination import LinkHeaderPagination
 
 from birds import __version__, api_version
-from birds.models import Animal, Event, Sample, SampleType, Location, ADULT_ANIMAL_NAME
+from birds.models import Animal, Event, Sample, SampleType, ADULT_ANIMAL_NAME
 from birds.serializers import AnimalSerializer, AnimalPedigreeSerializer, AnimalDetailSerializer, EventSerializer
-from birds.forms import ClutchForm, NewAnimalForm, NewBandForm, LivingEventForm, EventForm, SampleForm
-from birds.tools import sort_and_group
+from birds.forms import ClutchForm, NewAnimalForm, NewBandForm, EventForm, SampleForm
 
 
 class LargeResultsSetPagination(LinkHeaderPagination):
@@ -74,7 +73,7 @@ class AnimalList(FilterView):
     strict = False
 
     def get_context_data(self, **kwargs):
-        context = super(AnimalList, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         context['query'] = self.request.GET.copy()
         try:
             del context['query']['page']
@@ -92,9 +91,8 @@ class LocationSummary(generic.ListView):
         return Event.latest.filter(animal__in=alive)
 
     def sort_and_group(self, qs):
-        from operator import attrgetter
         from collections import defaultdict
-        animalgetter = attrgetter("animal")
+        from birds.tools import sort_and_group
         sex_choices = dict(Animal.SEX_CHOICES)
         loc_data = {}
         for location, events in sort_and_group(qs, key=lambda evt: evt.location.name):
@@ -111,22 +109,21 @@ class LocationSummary(generic.ListView):
         return loc_data
 
     def get_context_data(self, **kwargs):
-        context = super(LocationSummary, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         latest = context['object_list']
         context['location_list'] = self.sort_and_group(latest)
         return context
 
 
-class NestReport(generic.ListView):
+class NestReport(generic.TemplateView):
     default_days = 4
-    model = Location
     template_name = "birds/nest_report.html"
 
     def get_context_data(self, **kwargs):
         from django.utils import dateparse
-        from collections import defaultdict, Counter
         from datetime import datetime, timedelta
-        context = super(NestReport, self).get_context_data(**kwargs)
+        from birds.tools import tabulate_locations
+        context = super().get_context_data(**kwargs)
         try:
             until = dateparse.parse_date(self.request.GET["until"])
         except (ValueError, KeyError):
@@ -137,41 +134,35 @@ class NestReport(generic.ListView):
             since = None
         until = until or datetime.now().date()
         since = since or (until - timedelta(days=self.default_days))
-        # in principle, it would be best to do this by using the database to
-        # generate a summary for day 0, then march through the subsequent days
-        # and use new events to generate new summaries. However, in practice
-        # it's not trivial to update this memory structure, so we're taking the
-        # lazy but probably more inefficient route of querying the database for
-        # each day. Consider the other option if it becomes too slow.
-        repdate = since
-        nests = set()
-        dates = []
-        data = {}
-        while repdate <= until:
-            locations = defaultdict(list)
-            alive = Animal.living.exists(repdate)
-            for event in Event.latest.filter(date__lte=repdate, animal__in=alive):
-                if event.location.nest:
-                    nests.add(event.location.name)
-                    locations[event.location.name].append(event.animal)
-            data[repdate] = locations
-            dates.append(repdate)
-            repdate += timedelta(days=1)
-        # pivot the structure while tabulating to help the template engine
-        nest_data = {}
-        for nest in nests:
-            nest_data[nest] = []
-            for date in dates:
-                animals = data[date].get(nest, [])
-                locdata = {"adult": [], "count": Counter()}
-                for animal in animals:
-                    age_group = animal.age_group(date)
-                    if age_group == ADULT_ANIMAL_NAME:
-                        locdata["adult"].append(animal)
-                    else:
-                        locdata["count"][age_group] += 1
-                nest_data[nest].append(locdata)
-        context.update(since=since, until=until, dates=dates, nest_set=nests, nest_data=nest_data)
+        dates, nest_data = tabulate_locations(since, until)
+        context.update(since=since, until=until, dates=dates, nest_data=nest_data)
+        return context
+
+
+class NestCheck(generic.TemplateView):
+    default_days = 2
+    template_name = "birds/nest_check.html"
+
+    def get_context_data(self, **kwargs):
+        from django.utils import dateparse
+        from datetime import datetime, timedelta
+        from birds.tools import tabulate_locations
+        from django.forms import formset_factory
+        from birds.forms import NestCheckForm
+        context = super().get_context_data(**kwargs)
+        until = datetime.now().date()
+        since = until - timedelta(days=self.default_days)
+        dates, nest_data = tabulate_locations(since, until)
+        NestCheckFormSet = formset_factory(NestCheckForm)
+        initial = []
+        for nest in nest_data:
+            today_counts = nest["days"][-1]["counts"]
+            total_count = sum(today_counts.values())
+            eggs = today_counts['egg']
+            initial.append({'location': nest["name"], 'eggs': eggs, 'chicks': total_count - eggs})
+        formset = NestCheckFormSet(initial=initial)
+        context.update(since=since, until=until, dates=dates, nest_data=zip(nest_data, formset))
+        print(formset[0].as_p())
         return context
 
 
@@ -183,7 +174,7 @@ class EventList(FilterView, generic.list.MultipleObjectMixin):
     strict = False
 
     def get_context_data(self, **kwargs):
-        context = super(EventList, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         context['query'] = self.request.GET.copy()
         try:
             del context['query']['page']
@@ -203,7 +194,7 @@ class AnimalView(generic.DetailView):
     slug_url_kwarg = 'uuid'
 
     def get_context_data(self, **kwargs):
-        context = super(AnimalView, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         animal = context['animal']
         context['animal_list'] = animal.children.order_by("-alive", "-created")
         context['event_list'] = animal.event_set.order_by("-date", "-created")
@@ -216,7 +207,7 @@ class ClutchEntry(generic.FormView):
     form_class = ClutchForm
 
     def get_form(self):
-        form = super(ClutchEntry, self).get_form()
+        form = super().get_form()
         try:
             uuid = self.kwargs["uuid"]
             animal = Animal.objects.get(uuid=uuid)
@@ -232,7 +223,7 @@ class ClutchEntry(generic.FormView):
         return form
 
     def get_initial(self):
-        initial = super(ClutchEntry, self).get_initial()
+        initial = super().get_initial()
         initial["user"] = self.request.user
         return initial
 
@@ -249,7 +240,7 @@ class NewAnimalEntry(generic.FormView):
     form_class = NewAnimalForm
 
     def get_initial(self):
-        initial = super(NewAnimalEntry, self).get_initial()
+        initial = super().get_initial()
         initial["user"] = self.request.user
         return initial
 
@@ -263,7 +254,7 @@ class NewBandEntry(generic.FormView):
     form_class = NewBandForm
 
     def get_form(self):
-        form = super(NewBandEntry, self).get_form()
+        form = super().get_form()
         try:
             uuid = self.kwargs["uuid"]
             form.fields['animal'].queryset = Animal.objects.filter(uuid=uuid)
@@ -275,7 +266,7 @@ class NewBandEntry(generic.FormView):
         return form
 
     def get_initial(self):
-        initial = super(NewBandEntry, self).get_initial()
+        initial = super().get_initial()
         initial["user"] = self.request.user
         return initial
 
@@ -289,13 +280,13 @@ class EventEntry(generic.FormView):
     form_class = EventForm
 
     def get_context_data(self, **kwargs):
-        context = super(EventEntry, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         self.animal = get_object_or_404(Animal, uuid=self.kwargs["uuid"])
         context["animal"] = self.animal
         return context
 
     def get_initial(self):
-        initial = super(EventEntry, self).get_initial()
+        initial = super().get_initial()
         initial['entered_by'] = self.request.user
         return initial
 
@@ -304,10 +295,6 @@ class EventEntry(generic.FormView):
         event.animal = get_object_or_404(Animal, uuid=self.kwargs["uuid"])
         event = form.save()
         return HttpResponseRedirect(reverse('birds:animal', args=(event.animal.pk,)))
-
-
-class LivingEventEntry(EventEntry):
-    form_class = LivingEventForm
 
 
 class IndexView(generic.base.TemplateView):
@@ -375,7 +362,7 @@ class SampleList(FilterView):
     strict = False
 
     def get_context_data(self, **kwargs):
-        context = super(SampleList, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         context['query'] = self.request.GET.copy()
         try:
             del context['query']['page']
@@ -400,18 +387,18 @@ class SampleEntry(generic.FormView):
     form_class = SampleForm
 
     def get_context_data(self, **kwargs):
-        context = super(SampleEntry, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         context["animal"] = self.animal
         return context
 
     def get_form(self):
-        form = super(SampleEntry, self).get_form()
+        form = super().get_form()
         self.animal = get_object_or_404(Animal, uuid=self.kwargs["uuid"])
         form.fields["source"].queryset = Sample.objects.filter(animal=self.animal)
         return form
 
     def get_initial(self):
-        initial = super(SampleEntry, self).get_initial()
+        initial = super().get_initial()
         initial['collected_by'] = self.request.user
         return initial
 

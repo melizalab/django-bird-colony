@@ -24,8 +24,11 @@ class SampleForm(forms.ModelForm):
         fields = ["type", "source", "location", "comments", "date", "collected_by"]
 
 
-class LivingEventForm(EventForm):
-    animal = forms.ModelChoiceField(queryset=Animal.living.all())
+class NestCheckForm(forms.Form):
+    location = forms.ModelChoiceField(queryset=Location.objects.filter(nest=True),
+                                    widget=forms.HiddenInput())
+    eggs = forms.IntegerField(label='eggs')
+    chicks = forms.IntegerField(label='chicks')
 
 
 class NewBandForm(forms.Form):
