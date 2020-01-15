@@ -17,10 +17,10 @@
   <tbody>
     {% for nest in nest_data %}
     <tr>
-      <td><strong>{{ nest.name }}<strong></td>
+      <td><strong>{{ nest.location.name }}<strong></td>
       {% for day in nest.days %}
       <td>
-        {{ day.adults|url_list }}
+        {{ day.animals.adult|url_list }}
         <br/>{{ day.counts|count_summary }}
       </td>
       {% endfor %}

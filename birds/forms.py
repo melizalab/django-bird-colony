@@ -26,9 +26,29 @@ class SampleForm(forms.ModelForm):
 
 class NestCheckForm(forms.Form):
     location = forms.ModelChoiceField(queryset=Location.objects.filter(nest=True),
-                                    widget=forms.HiddenInput())
-    eggs = forms.IntegerField(label='eggs')
-    chicks = forms.IntegerField(label='chicks')
+                                      widget=forms.HiddenInput())
+    eggs = forms.IntegerField(label='eggs', min_value=0)
+    chicks = forms.IntegerField(label='chicks', min_value=0)
+
+    def clean(self):
+        from django.template.defaultfilters import pluralize
+        cleaned_data = super().clean()
+        location_name = self.initial['location'].name
+        delta_chicks = cleaned_data['chicks'] - self.initial['chicks']
+        delta_eggs = cleaned_data['eggs'] - self.initial['eggs']
+        if delta_chicks < 0:
+            raise forms.ValidationError("Missing chicks need to be removed manually")
+        elif delta_chicks > self.initial['eggs']:
+            raise forms.ValidationError("Not enough eggs to make {} new chick{}".format(delta_chicks,
+                                                                                        pluralize(delta_chicks)))
+        elif delta_eggs < 0:
+            raise forms.ValidationError("Missing eggs need to be removed manually".format(location_name))
+        return cleaned_data
+
+
+class NestCheckUser(forms.Form):
+    confirmed = forms.BooleanField()
+    entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
 
 
 class NewBandForm(forms.Form):

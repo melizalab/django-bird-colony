@@ -8,7 +8,7 @@ from django.shortcuts import render
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.views import generic
-from django.db.models import Count, Q
+from django.views.decorators.http import require_http_methods
 from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
@@ -139,31 +139,94 @@ class NestReport(generic.TemplateView):
         return context
 
 
-class NestCheck(generic.TemplateView):
-    default_days = 2
-    template_name = "birds/nest_check.html"
+@require_http_methods(["GET","POST"])
+def nest_check(request):
+    """Nest check view.
 
-    def get_context_data(self, **kwargs):
-        from django.utils import dateparse
-        from datetime import datetime, timedelta
-        from birds.tools import tabulate_locations
-        from django.forms import formset_factory
-        from birds.forms import NestCheckForm
-        context = super().get_context_data(**kwargs)
-        until = datetime.now().date()
-        since = until - timedelta(days=self.default_days)
-        dates, nest_data = tabulate_locations(since, until)
-        NestCheckFormSet = formset_factory(NestCheckForm)
-        initial = []
-        for nest in nest_data:
-            today_counts = nest["days"][-1]["counts"]
-            total_count = sum(today_counts.values())
-            eggs = today_counts['egg']
-            initial.append({'location': nest["name"], 'eggs': eggs, 'chicks': total_count - eggs})
-        formset = NestCheckFormSet(initial=initial)
-        context.update(since=since, until=until, dates=dates, nest_data=zip(nest_data, formset))
-        print(formset[0].as_p())
-        return context
+    This view is a two-stage form. With GET requests the user is shown a nest
+    report for the past 3 days and is able to update egg and chick counts for
+    each nest. POST requests do not get immediately committed to the database,
+    but instead are used to generate a confirmation form that summarizes
+    everything that will change. Submitting this form will then redirect to the
+    main nest-report page.
+
+    """
+    from datetime import datetime, timedelta
+    from django.forms import formset_factory
+    from birds.forms import NestCheckForm, NestCheckUser
+    from birds.tools import tabulate_locations
+
+    NestCheckFormSet = formset_factory(NestCheckForm, extra=0)
+    until = datetime.now().date()
+    since = until - timedelta(days=2)
+    dates, nest_data = tabulate_locations(since, until)
+    initial = []
+    for nest in nest_data:
+        today_counts = nest["days"][-1]["counts"]
+        total_count = sum(today_counts.values())
+        eggs = today_counts['egg']
+        initial.append({'location': nest["location"], 'eggs': eggs, 'chicks': total_count - eggs})
+
+    if request.method == "POST":
+        nest_formset = NestCheckFormSet(request.POST, initial=initial, prefix='nests')
+        user_form = NestCheckUser(request.POST, prefix='user')
+        if nest_formset.is_valid():
+            # determine what changes need to be made:
+            changes = []
+            for nest_form, nest in zip(nest_formset, nest_data):
+                initial = nest_form.initial
+                if not nest_form.has_changed():
+                    changes.append({"location": initial['location'], "action": None})
+                    continue
+                updated = nest_form.cleaned_data
+                location = updated['location']
+                delta_chicks = updated['chicks'] - initial['chicks']
+                delta_eggs = updated['eggs'] - initial['eggs']
+                # validation logic to keep users from removing any animals is in
+                # the form
+                if delta_chicks > 0:
+                    import pdb; pdb.set_trace()  ## DEBUG ##
+                    for i in range(delta_chicks):
+                        changes.append({"location": location, "action": "hatch egg"})
+                        delta_eggs -= 1
+                        # then, add subtract each new chick successfully created from
+                        # delta_eggs because these eggs are accounted for
+                if delta_eggs > 0:
+                    adults = nest['days'][-1]['animals']['adult']
+                    if len(adults) != 2:
+                        changes.append({"location": location,
+                                        "action": "unable to add egg - incorrect number of adults"})
+                    else:
+                        sire = next((animal for animal in adults if animal.sex == Animal.MALE), None)
+                        dam = next((animal for animal in adults if animal.sex == Animal.FEMALE), None)
+                        if sire is None:
+                            changes.append({"location": location, "action": "unable to add egg - no sire"})
+                        elif dam is None:
+                            changes.append({"location": location, "action": "unable to add egg - no dam"})
+                        else:
+                            for i in range(delta_eggs):
+                                changes.append(
+                                    {"location": location,
+                                     "action": "egg laid by {} and {}".format(sire.name(), dam.name()),
+                                     "parents": (sire, dam)})
+            print(changes)
+            if user_form.is_valid():
+                print("make the changes!")
+                return HttpResponseRedirect(reverse('birds:nest-summary'))
+            else:
+                # if user_form is invalid, present the confirmation page
+                return render(request, "birds/nest_check_confirm.html",
+                              {'nest_formset': nest_formset, 'user_form': user_form})
+        else:
+            pass
+    else:
+        nest_formset = NestCheckFormSet(initial=initial, prefix='nests')
+
+    # render with default template for user entry
+    return render(request, "birds/nest_check.html",
+                  {'dates': dates, 'nest_data': zip(nest_data, nest_formset), 'nest_formset': nest_formset})
+
+
 
 
 class EventList(FilterView, generic.list.MultipleObjectMixin):
@@ -448,6 +511,7 @@ class APIAnimalPedigree(generics.ListAPIView):
     pagination_class = LargeResultsSetPagination
 
     def get_queryset(self):
+        from django.db.models import Count, Q
         if self.request.GET.get("restrict", True):
             qs = Animal.objects.annotate(
                 nchildren=Count('children')).filter(Q(alive__gt=0) | Q(nchildren__gt=0))

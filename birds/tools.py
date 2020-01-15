@@ -39,8 +39,8 @@ def tabulate_locations(since, until):
         alive = Animal.living.exists(repdate)
         for event in Event.latest.filter(date__lte=repdate, animal__in=alive):
             if event.location.nest:
-                nests.add(event.location.name)
-                locations[event.location.name].append(event.animal)
+                nests.add(event.location)
+                locations[event.location].append(event.animal)
         data[repdate] = locations
         dates.append(repdate)
         repdate += timedelta(days=1)
@@ -50,13 +50,12 @@ def tabulate_locations(since, until):
         days = []
         for date in dates:
             animals = data[date].get(nest, [])
-            locdata = {"adults": [], "counts": Counter()}
+            locdata = {"animals": defaultdict(list), "counts": Counter()}
             for animal in animals:
                 age_group = animal.age_group(date)
-                if age_group == ADULT_ANIMAL_NAME:
-                    locdata["adults"].append(animal)
-                else:
+                locdata["animals"][age_group].append(animal)
+                if age_group != ADULT_ANIMAL_NAME:
                     locdata["counts"][age_group] += 1
             days.append(locdata)
-        nest_data.append({"name": nest, "days": days})
+        nest_data.append({"location": nest, "days": days})
     return dates, nest_data
