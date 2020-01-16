@@ -176,11 +176,11 @@ def nest_check(request):
             changes = defaultdict(list)
             for nest_form, nest in zip(nest_formset, nest_data):
                 initial = nest_form.initial
-                if not nest_form.has_changed():
-                    changes.append({"location": initial['location'], "action": None})
-                    continue
                 updated = nest_form.cleaned_data
                 location = updated['location']
+                if not nest_form.has_changed():
+                    changes[location].append({"status": None})
+                    continue
                 # most of the validation logic to keep users from removing any
                 # animals is in the form; but we do checks against current
                 # occupants here
@@ -228,8 +228,22 @@ def nest_check(request):
                                        'nest_data': zip(nest_data, nest_formset),
                                        'nest_formset': nest_formset})
 
-            if user_form.is_valid():
-                print("make the changes!")
+            if user_form.is_valid() and user_form.cleaned_data["confirmed"]:
+                user = user_form.cleaned_data["entered_by"]
+                for items in changes.values():
+                    for item in items:
+                        if item["status"] == updated["hatch_status"]:
+                            event = Event(date=datetime.now().date(), entered_by=user, **item)
+                            event.save()
+                        elif item["status"] == updated["laid_status"]:
+                            animal = Animal(species=item["sire"].species, sex=Animal.UNKNOWN_SEX)
+                            animal.save()
+                            animal.parents.set([item["sire"], item["dam"]])
+                            animal.save()
+                            event = Event(animal=animal,
+                                          date=datetime.now().date(), entered_by=user,
+                                          status=item["status"], location=item["location"])
+                            event.save()
                 return HttpResponseRedirect(reverse('birds:nest-summary'))
             else:
                 # if user_form is invalid, present the confirmation page
