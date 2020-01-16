@@ -61,6 +61,7 @@ class NestCheckForm(forms.Form):
 class NestCheckUser(forms.Form):
     confirmed = forms.BooleanField()
     entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
+    comments = forms.CharField(widget=forms.Textarea, required=False)
 
 
 class NewBandForm(forms.Form):

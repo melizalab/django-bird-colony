@@ -44,5 +44,5 @@ admin.site.register(models.Event, EventAdmin)
 admin.site.register(models.Status, StatusAdmin)
 admin.site.register(models.Sample, SampleAdmin)
 
-for model in (models.Species, models.Color, models.Plumage, models.Location, models.Age, models.SampleType, models.SampleLocation):
+for model in (models.Species, models.Color, models.Plumage, models.Location, models.Age, models.SampleType, models.SampleLocation, models.NestCheck):
     admin.site.register(model)

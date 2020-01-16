@@ -17,7 +17,7 @@ from django_filters.views import FilterView
 from drf_link_header_pagination import LinkHeaderPagination
 
 from birds import __version__, api_version
-from birds.models import Animal, Event, Sample, SampleType, ADULT_ANIMAL_NAME
+from birds.models import Animal, Event, Sample, SampleType, NestCheck
 from birds.serializers import AnimalSerializer, AnimalPedigreeSerializer, AnimalDetailSerializer, EventSerializer
 from birds.forms import ClutchForm, NewAnimalForm, NewBandForm, EventForm, SampleForm
 
@@ -93,6 +93,7 @@ class LocationSummary(generic.ListView):
     def sort_and_group(self, qs):
         from collections import defaultdict
         from birds.tools import sort_and_group
+        from birds.models import ADULT_ANIMAL_NAME
         sex_choices = dict(Animal.SEX_CHOICES)
         loc_data = {}
         for location, events in sort_and_group(qs, key=lambda evt: evt.location.name):
@@ -135,7 +136,8 @@ class NestReport(generic.TemplateView):
         until = until or datetime.now().date()
         since = since or (until - timedelta(days=self.default_days))
         dates, nest_data = tabulate_locations(since, until)
-        context.update(since=since, until=until, dates=dates, nest_data=nest_data)
+        checks = NestCheck.objects.filter(datetime__date__gte=since, datetime__date__lte=until).order_by("datetime")
+        context.update(since=since, until=until, dates=dates, nest_data=nest_data, nest_checks=checks)
         return context
 
 
@@ -162,6 +164,7 @@ def nest_check(request):
     since = until - timedelta(days=2)
     dates, nest_data = tabulate_locations(since, until)
     initial = []
+    previous_checks = NestCheck.objects.filter(datetime__date__gte=(until - timedelta(days=7))).order_by("datetime")
     for nest in nest_data:
         today_counts = nest["days"][-1]["counts"]
         total_count = sum(today_counts.values())
@@ -208,26 +211,29 @@ def nest_check(request):
                                 None,
                                 ValidationError("unable to add egg - no dam")
                             )
-                if nest_form.is_valid():
-                    eggs = nest['days'][-1]['animals']['egg']
-                    for i in range(delta_chicks):
-                        hatch = dict(animal=eggs[i],
-                                     status=updated['hatch_status'],
-                                     location=location)
-                        changes[location].append(hatch)
-                    for i in range(delta_eggs):
-                        egg = dict(status=updated['laid_status'],
-                                   sire=sire,
-                                   dam=dam,
-                                   location=location)
-                        changes[location].append(egg)
-                else:
-                        return render(request,
-                                      "birds/nest_check.html",
-                                      {'dates': dates,
-                                       'nest_data': zip(nest_data, nest_formset),
-                                       'nest_formset': nest_formset})
+                # return user to initial view if there are errors
+                if not nest_form.is_valid():
+                    return render(request,
+                                  "birds/nest_check.html",
+                                  {'dates': dates,
+                                   'nest_checks': previous_checks,
+                                   'nest_data': zip(nest_data, nest_formset),
+                                   'nest_formset': nest_formset})
+                eggs = nest['days'][-1]['animals']['egg']
+                for i in range(delta_chicks):
+                    hatch = dict(animal=eggs[i],
+                                 status=updated['hatch_status'],
+                                 location=location)
+                    changes[location].append(hatch)
+                for i in range(delta_eggs):
+                    egg = dict(status=updated['laid_status'],
+                               sire=sire,
+                               dam=dam,
+                               location=location)
+                    changes[location].append(egg)
 
+            # if the user form is valid, we are coming from the confirmation
+            # page; if it's invalid, we're coming from the initial view
             if user_form.is_valid() and user_form.cleaned_data["confirmed"]:
                 user = user_form.cleaned_data["entered_by"]
                 for items in changes.values():
@@ -244,10 +250,10 @@ def nest_check(request):
                                           date=datetime.now().date(), entered_by=user,
                                           status=item["status"], location=item["location"])
                             event.save()
+                check = NestCheck(entered_by=user, comments=user_form.cleaned_data["comments"])
+                check.save()
                 return HttpResponseRedirect(reverse('birds:nest-summary'))
             else:
-                # if user_form is invalid, present the confirmation page
-                print(changes)
                 return render(request, "birds/nest_check_confirm.html",
                               {'changes': dict(changes), 'nest_formset': nest_formset, 'user_form': user_form})
         else:
@@ -255,9 +261,12 @@ def nest_check(request):
     else:
         nest_formset = NestCheckFormSet(initial=initial, prefix='nests')
 
-    # render with default template for user entry
+    # the initial view is returned by default
     return render(request, "birds/nest_check.html",
-                  {'dates': dates, 'nest_data': zip(nest_data, nest_formset), 'nest_formset': nest_formset})
+                  {'dates': dates,
+                   'nest_checks': previous_checks,
+                   'nest_data': zip(nest_data, nest_formset),
+                   'nest_formset': nest_formset})
 
 
 

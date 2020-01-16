@@ -2,7 +2,8 @@
 {% load widget_tweaks %}
 {% load date_fmt %}
 
-{% block title %} meliza-lab : nest report {% endblock %}
+{% block title %} meliza-lab : nest check confirmation {% endblock %}
+
 
 {% block content %}
 <h2>Nest Check — Confirm</h2>
@@ -39,6 +40,14 @@
   {{ form.eggs.as_hidden }}
   {{ form.chicks.as_hidden }}
   {% endfor %}
+
+  <div class="form-group {% if user_form.comments.errors %}has-error{% endif %}">
+    <label for="{{ user_form.comments.id_for_label" class="col-sm-2 control-label">Comments </label>
+    <div class="col-sm-3">
+      {% render_field user_form.comments class+="form-control" %}
+    </div>
+  </div>
+
 
   <div class="form-group {% if user_form.entered_by.errors %}has-error{% endif %}">
     <label for="{{ user_form.entered_by.id_for_label" class="col-sm-2 control-label">Entered by * </label>

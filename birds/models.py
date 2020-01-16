@@ -335,6 +335,16 @@ class Event(models.Model):
         ordering = ['-date', '-created']
         get_latest_by = ['date', 'created']
 
+@python_2_unicode_compatible
+class NestCheck(models.Model):
+    entered_by = models.ForeignKey(settings.AUTH_USER_MODEL,
+                                   on_delete=models.SET(get_sentinel_user))
+    datetime = models.DateTimeField(default=datetime.datetime.now)
+    comments = models.TextField(blank=True)
+
+    def __str__(self):
+        return "{} at {}".format(self.entered_by, self.datetime)
+
 
 @python_2_unicode_compatible
 class SampleType(models.Model):

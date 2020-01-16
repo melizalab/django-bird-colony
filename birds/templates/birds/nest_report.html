@@ -29,4 +29,23 @@
   </tbody>
 </table>
 
+<h4>Nest checks</h4>
+
+<table class="table table-striped">
+  <thead>
+    <th>Date</th>
+    <th>User</th>
+    <th>Comments</th>
+  </thead>
+  <tbody>
+    {% for check in nest_checks %}
+    <tr>
+      <td>{{ check.datetime.date }}</td>
+      <td>{{ check.entered_by }}</td>
+      <td>{{ check.comments }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
 {% endblock %}

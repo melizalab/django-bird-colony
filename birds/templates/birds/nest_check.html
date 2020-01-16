@@ -2,20 +2,15 @@
 {% load widget_tweaks %}
 {% load date_fmt %}
 
-{% block title %} meliza-lab : nest report {% endblock %}
+{% block title %} meliza-lab : nest check {% endblock %}
 
 {% block content %}
 <h2>Nest Check</h2>
 
 <hr/>
-
-<h3>Previous nest checks</h3>
-
-<p>(table of the last 7 nest checks)</p>
-
 <h3>Today's nest check</h3>
 
-<p><strong>Instructions</strong>: This form is for entering data from the daily nest check. Count the eggs and chicks in each nest, update the values in the last column of the table, then click Submit. Note: if chicks die, you need to add events for the specific animals, then come back and complete the nest check.</p>
+<p><strong>Instructions</strong>: This form is for entering data from the daily nest check. Count the eggs and chicks in each nest, update the values in the last column of the table, then click Submit. Note: if chicks die, you need to add events for the specific animals, then come back and complete the nest check. You may enter more than one nest check per day.</p>
 
 <form action="" class="form-horizontal" method="post" role="form">
   {% csrf_token %}
@@ -71,5 +66,25 @@ removed from the database.</p>
   </div>
 </div>
 </form>
+
+<hr/>
+<h3>Previous nest checks</h3>
+
+<table class="table table-striped">
+  <thead>
+    <th>Date</th>
+    <th>User</th>
+    <th>Comments</th>
+  </thead>
+  <tbody>
+    {% for check in nest_checks %}
+    <tr>
+      <td>{{ check.datetime.date }}</td>
+      <td>{{ check.entered_by }}</td>
+      <td>{{ check.comments }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
 
 {% endblock %}
