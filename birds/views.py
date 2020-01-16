@@ -152,7 +152,8 @@ def nest_check(request):
 
     """
     from datetime import datetime, timedelta
-    from django.forms import formset_factory
+    from collections import defaultdict
+    from django.forms import formset_factory, ValidationError
     from birds.forms import NestCheckForm, NestCheckUser
     from birds.tools import tabulate_locations
 
@@ -172,7 +173,7 @@ def nest_check(request):
         user_form = NestCheckUser(request.POST, prefix='user')
         if nest_formset.is_valid():
             # determine what changes need to be made:
-            changes = []
+            changes = defaultdict(list)
             for nest_form, nest in zip(nest_formset, nest_data):
                 initial = nest_form.initial
                 if not nest_form.has_changed():
@@ -180,43 +181,61 @@ def nest_check(request):
                     continue
                 updated = nest_form.cleaned_data
                 location = updated['location']
+                # most of the validation logic to keep users from removing any
+                # animals is in the form; but we do checks against current
+                # occupants here
                 delta_chicks = updated['chicks'] - initial['chicks']
-                delta_eggs = updated['eggs'] - initial['eggs']
-                # validation logic to keep users from removing any animals is in
-                # the form
-                if delta_chicks > 0:
-                    import pdb; pdb.set_trace()  ## DEBUG ##
-                    for i in range(delta_chicks):
-                        changes.append({"location": location, "action": "hatch egg"})
-                        delta_eggs -= 1
-                        # then, add subtract each new chick successfully created from
-                        # delta_eggs because these eggs are accounted for
+                delta_eggs = updated['eggs'] - initial['eggs'] + delta_chicks
                 if delta_eggs > 0:
                     adults = nest['days'][-1]['animals']['adult']
                     if len(adults) != 2:
-                        changes.append({"location": location,
-                                        "action": "unable to add egg - incorrect number of adults"})
+                        nest_form.add_error(
+                            None,
+                            ValidationError("unable to add egg - incorrect number of adults")
+                        )
                     else:
-                        sire = next((animal for animal in adults if animal.sex == Animal.MALE), None)
-                        dam = next((animal for animal in adults if animal.sex == Animal.FEMALE), None)
-                        if sire is None:
-                            changes.append({"location": location, "action": "unable to add egg - no sire"})
-                        elif dam is None:
-                            changes.append({"location": location, "action": "unable to add egg - no dam"})
-                        else:
-                            for i in range(delta_eggs):
-                                changes.append(
-                                    {"location": location,
-                                     "action": "egg laid by {} and {}".format(sire.name(), dam.name()),
-                                     "parents": (sire, dam)})
-            print(changes)
+                        try:
+                            sire = next((animal for animal in adults if animal.sex == Animal.MALE))
+                        except StopIteration:
+                            nest_form.add_error(
+                                None,
+                                ValidationError("unable to add egg - no sire")
+                            )
+                        try:
+                            dam = next((animal for animal in adults if animal.sex == Animal.FEMALE))
+                        except StopIteration:
+                            nest_form.add_error(
+                                None,
+                                ValidationError("unable to add egg - no dam")
+                            )
+                if nest_form.is_valid():
+                    eggs = nest['days'][-1]['animals']['egg']
+                    for i in range(delta_chicks):
+                        hatch = dict(animal=eggs[i],
+                                     status=updated['hatch_status'],
+                                     location=location)
+                        changes[location].append(hatch)
+                    for i in range(delta_eggs):
+                        egg = dict(status=updated['laid_status'],
+                                   sire=sire,
+                                   dam=dam,
+                                   location=location)
+                        changes[location].append(egg)
+                else:
+                        return render(request,
+                                      "birds/nest_check.html",
+                                      {'dates': dates,
+                                       'nest_data': zip(nest_data, nest_formset),
+                                       'nest_formset': nest_formset})
+
             if user_form.is_valid():
                 print("make the changes!")
                 return HttpResponseRedirect(reverse('birds:nest-summary'))
             else:
                 # if user_form is invalid, present the confirmation page
+                print(changes)
                 return render(request, "birds/nest_check_confirm.html",
-                              {'nest_formset': nest_formset, 'user_form': user_form})
+                              {'changes': dict(changes), 'nest_formset': nest_formset, 'user_form': user_form})
         else:
             pass
     else:

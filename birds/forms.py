@@ -31,18 +31,30 @@ class NestCheckForm(forms.Form):
     chicks = forms.IntegerField(label='chicks', min_value=0)
 
     def clean(self):
+        from birds.models import BIRTH_EVENT_NAME, UNBORN_CREATION_EVENT_NAME
         from django.template.defaultfilters import pluralize
         cleaned_data = super().clean()
         location_name = self.initial['location'].name
         delta_chicks = cleaned_data['chicks'] - self.initial['chicks']
-        delta_eggs = cleaned_data['eggs'] - self.initial['eggs']
+        delta_eggs = cleaned_data['eggs'] - self.initial['eggs'] + delta_chicks
+        try:
+            cleaned_data['hatch_status'] = Status.objects.get(name=BIRTH_EVENT_NAME)
+        except ObjectDoesNotExist:
+            raise forms.ValidationError("No %(name)s status type - add one in admin",
+                                        params={"name": BIRTH_EVENT_NAME})
+        try:
+            cleaned_data['laid_status'] = Status.objects.get(name=UNBORN_CREATION_EVENT_NAME)
+        except ObjectDoesNotExist:
+            raise forms.ValidationError("No %(name)s status type - add one in admin",
+                                        params={"name": UNBORN_CREATION_EVENT_NAME})
         if delta_chicks < 0:
             raise forms.ValidationError("Missing chicks need to be removed manually")
-        elif delta_chicks > self.initial['eggs']:
-            raise forms.ValidationError("Not enough eggs to make {} new chick{}".format(delta_chicks,
-                                                                                        pluralize(delta_chicks)))
         elif delta_eggs < 0:
-            raise forms.ValidationError("Missing eggs need to be removed manually".format(location_name))
+            raise forms.ValidationError("Missing eggs need to be removed manually")
+        elif delta_chicks > self.initial['eggs']:
+            raise forms.ValidationError("Not enough eggs to make %(chicks)d new chick%(plural)s",
+                                        params={"chicks": delta_chicks, "plural": pluralize(delta_chicks)})
+
         return cleaned_data
 
 
