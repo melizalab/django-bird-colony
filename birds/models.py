@@ -111,10 +111,12 @@ class AnimalManager(models.Manager):
     """Annotates animal list with 'alive' field by counting add/remove events """
     def get_queryset(self):
         from django.db.models import Count, Q, Value
+        from django.db.models.functions import Greatest
         qs = super(AnimalManager, self).get_queryset()
         return (qs
-                .annotate(alive=Count('event', filter=Q(event__status__adds=True)) -
-                          Count('event', filter=Q(event__status__removes=True)))
+                .annotate(alive=Greatest(0,
+                                         Count('event', filter=Q(event__status__adds=True)) -
+                                         Count('event', filter=Q(event__status__removes=True))))
                 .order_by("band_color", "band_number"))
 
 
@@ -126,12 +128,14 @@ class LivingAnimalManager(AnimalManager):
     def on(self, date):
         """ Only include birds that were alive on date (added and not removed) """
         from django.db.models import Count, Q
+        from django.db.models.functions import Greatest
         qs = super(AnimalManager, self).get_queryset()
         return (qs
-                .annotate(alive=Count('event', filter=Q(event__date__lte=date,
-                                                        event__status__adds=True)) -
-                          Count('event', filter=Q(event__date__lte=date,
-                                                  event__status__removes=True)))
+                .annotate(alive=Greatest(0,
+                                         Count('event', filter=Q(event__date__lte=date,
+                                                                 event__status__adds=True)) -
+                                         Count('event', filter=Q(event__date__lte=date,
+                                                                 event__status__removes=True))))
                 .filter(alive__gt=0)
                 .order_by("band_color", "band_number"))
 
