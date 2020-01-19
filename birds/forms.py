@@ -31,7 +31,7 @@ class NestCheckForm(forms.Form):
     chicks = forms.IntegerField(label='chicks', min_value=0)
 
     def clean(self):
-        from birds.models import BIRTH_EVENT_NAME, UNBORN_CREATION_EVENT_NAME
+        from birds.models import BIRTH_EVENT_NAME, UNBORN_CREATION_EVENT_NAME, LOST_EVENT_NAME
         from django.template.defaultfilters import pluralize
         cleaned_data = super().clean()
         location_name = self.initial['location'].name
@@ -47,10 +47,13 @@ class NestCheckForm(forms.Form):
         except ObjectDoesNotExist:
             raise forms.ValidationError("No %(name)s status type - add one in admin",
                                         params={"name": UNBORN_CREATION_EVENT_NAME})
+        try:
+            cleaned_data['lost_status'] = Status.objects.get(name=LOST_EVENT_NAME)
+        except ObjectDoesNotExist:
+            raise forms.ValidationError("No %(name)s status type - add one in admin",
+                                        params={"name": LOST_EVENT_NAME})
         if delta_chicks < 0:
             raise forms.ValidationError("Missing chicks need to be removed manually")
-        elif delta_eggs < 0:
-            raise forms.ValidationError("Missing eggs need to be removed manually")
         elif delta_chicks > self.initial['eggs']:
             raise forms.ValidationError("Not enough eggs to make %(chicks)d new chick%(plural)s",
                                         params={"chicks": delta_chicks, "plural": pluralize(delta_chicks)})

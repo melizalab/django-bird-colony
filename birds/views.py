@@ -221,16 +221,23 @@ def nest_check(request):
                                    'nest_formset': nest_formset})
                 eggs = nest['days'][-1]['animals']['egg']
                 for i in range(delta_chicks):
-                    hatch = dict(animal=eggs[i],
+                    hatch = dict(animal=eggs.pop(),
                                  status=updated['hatch_status'],
                                  location=location)
                     changes[location].append(hatch)
-                for i in range(delta_eggs):
-                    egg = dict(status=updated['laid_status'],
-                               sire=sire,
-                               dam=dam,
-                               location=location)
-                    changes[location].append(egg)
+                if delta_eggs < 0:
+                    for i in range(-delta_eggs):
+                        lost = dict(animal=eggs.pop(),
+                                    status=updated['lost_status'],
+                                    location=location)
+                        changes[location].append(lost)
+                else:
+                    for i in range(delta_eggs):
+                        egg = dict(status=updated['laid_status'],
+                                   sire=sire,
+                                   dam=dam,
+                                   location=location)
+                        changes[location].append(egg)
 
             # if the user form is valid, we are coming from the confirmation
             # page; if it's invalid, we're coming from the initial view
@@ -238,7 +245,7 @@ def nest_check(request):
                 user = user_form.cleaned_data["entered_by"]
                 for items in changes.values():
                     for item in items:
-                        if item["status"] == updated["hatch_status"]:
+                        if item["status"] in (updated["hatch_status"], updated["lost_status"]):
                             event = Event(date=datetime.now().date(), entered_by=user, **item)
                             event.save()
                         elif item["status"] == updated["laid_status"]:

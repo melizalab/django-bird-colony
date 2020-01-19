@@ -18,7 +18,7 @@
     {% if item.status is None %}
     no changes
     {% elif item.animal %}
-      {{ item.animal }} hatched
+      {{ item.animal }} {{ item.status }}
     {% else %}
       {{ item.sire }} and {{ item.dam }} laid an egg
     {% endif %}

@@ -17,6 +17,7 @@ BIRTH_EVENT_NAME = "hatched"
 UNBORN_ANIMAL_NAME = "egg"
 UNBORN_CREATION_EVENT_NAME = "laid"
 ADULT_ANIMAL_NAME = "adult"
+LOST_EVENT_NAME = "lost"
 
 def get_sentinel_user():
     return get_user_model().objects.get_or_create(username='deleted')[0]
