@@ -40,4 +40,4 @@ def url_list(values):
 @register.filter
 def count_summary(counter):
     """ Generate a summary of counts """
-    return format_html_join(", ", '{}s: {}', ((k, v) for k, v in counter.items()))
+    return format_html_join(", ", '{}s: {}', ((k, v) for k, v in sorted(counter.items())))

@@ -7,12 +7,12 @@
 <h2>Location Summary</h2>
 <hr/>
 
-{% for location, age_groups in location_list.items %}
+{% for location, age_groups in location_list %}
 
 <p><strong> {{ location }} </strong></p>
 
 <ul>
-  {% for group, animals in age_groups.items %}
+  {% for group, animals in age_groups %}
   <li> {{ group }}s: {{ animals|url_list }} </li>
   {% endfor %}
 </ul>

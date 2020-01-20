@@ -95,7 +95,7 @@ class LocationSummary(generic.ListView):
         from birds.tools import sort_and_group
         from birds.models import ADULT_ANIMAL_NAME
         sex_choices = dict(Animal.SEX_CHOICES)
-        loc_data = {}
+        loc_data = []
         for location, events in sort_and_group(qs, key=lambda evt: evt.location.name):
             d = defaultdict(list)
             for event in events:
@@ -106,7 +106,7 @@ class LocationSummary(generic.ListView):
                     d[group_name].append(animal)
                 else:
                     d[age_group].append(animal)
-            loc_data[location] = dict(d)
+            loc_data.append((location, sorted(d.items())))
         return loc_data
 
     def get_context_data(self, **kwargs):
@@ -191,10 +191,10 @@ def nest_check(request):
                 delta_eggs = updated['eggs'] - initial['eggs'] + delta_chicks
                 if delta_eggs > 0:
                     adults = nest['days'][-1]['animals']['adult']
-                    if len(adults) != 2:
+                    if len(adults) > 2:
                         nest_form.add_error(
                             None,
-                            ValidationError("unable to add egg - incorrect number of adults")
+                            ValidationError("unable to add egg - too many adults")
                         )
                     else:
                         try:

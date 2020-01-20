@@ -27,11 +27,11 @@ def tabulate_locations(since, until):
     the other option if it becomes too slow.
 
     """
-    from birds.models import Animal, Event, ADULT_ANIMAL_NAME
+    from birds.models import Animal, Event, Location, ADULT_ANIMAL_NAME
     from datetime import timedelta
     from collections import defaultdict, Counter
     repdate = since
-    nests = set()
+    nests = Location.objects.filter(nest=True).order_by('name')
     dates = []
     data = {}
     while repdate <= until:
@@ -39,12 +39,11 @@ def tabulate_locations(since, until):
         alive = Animal.living.exists(repdate)
         for event in Event.latest.filter(date__lte=repdate, animal__in=alive):
             if event.location.nest:
-                nests.add(event.location)
                 locations[event.location].append(event.animal)
         data[repdate] = locations
         dates.append(repdate)
         repdate += timedelta(days=1)
-    # pivot the structure while tabulating to help the template engine
+    # pivot the structure while tabulating by age group to help the template engine
     nest_data = []
     for nest in nests:
         days = []
