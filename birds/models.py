@@ -157,7 +157,10 @@ class LastEventManager(models.Manager):
     """ Filters queryset so that only the most recent event is returned """
     def get_queryset(self):
         qs = super(LastEventManager, self).get_queryset()
-        return qs.exclude(location__isnull=True).order_by("animal_id", "-date").distinct("animal_id")
+        return (qs
+                .exclude(location__isnull=True)
+                .order_by("animal_id", "-date", "-created")
+                .distinct("animal_id"))
 
 
 @python_2_unicode_compatible
