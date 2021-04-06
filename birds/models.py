@@ -7,7 +7,6 @@ import datetime
 
 from django.contrib.postgres.fields import JSONField
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
-from django.utils.encoding import python_2_unicode_compatible
 from django.urls import reverse
 from django.db import models
 from django.conf import settings
@@ -23,7 +22,6 @@ def get_sentinel_user():
     return get_user_model().objects.get_or_create(username='deleted')[0]
 
 
-@python_2_unicode_compatible
 class Species(models.Model):
     common_name = models.CharField(max_length=45)
     genus = models.CharField(max_length=45)
@@ -40,7 +38,6 @@ class Species(models.Model):
         unique_together = ("genus", "species")
 
 
-@python_2_unicode_compatible
 class Color(models.Model):
     name = models.CharField(max_length=12, unique=True)
     abbrv = models.CharField('Abbreviation', max_length=3, unique=True)
@@ -52,7 +49,6 @@ class Color(models.Model):
         ordering = ['name']
 
 
-@python_2_unicode_compatible
 class Plumage(models.Model):
     name = models.CharField(max_length=16, unique=True)
     description = models.TextField()
@@ -66,7 +62,6 @@ class Plumage(models.Model):
 
 
 
-@python_2_unicode_compatible
 class Status(models.Model):
     name = models.CharField(max_length=16, unique=True)
     adds = models.BooleanField(default=False, help_text="select for acquisition events")
@@ -81,7 +76,6 @@ class Status(models.Model):
         verbose_name_plural = 'status codes'
 
 
-@python_2_unicode_compatible
 class Location(models.Model):
     name = models.CharField(max_length=45, unique=True)
     nest = models.BooleanField(default=False, help_text="select for locations used for breeding")
@@ -93,7 +87,6 @@ class Location(models.Model):
         ordering = ['name']
 
 
-@python_2_unicode_compatible
 class Age(models.Model):
     DEFAULT = "unclassified"
 
@@ -163,7 +156,6 @@ class LastEventManager(models.Manager):
                 .distinct("animal_id"))
 
 
-@python_2_unicode_compatible
 class Parent(models.Model):
     child = models.ForeignKey('Animal', related_name="+", on_delete=models.CASCADE)
     parent = models.ForeignKey('Animal', related_name="+", on_delete=models.CASCADE)
@@ -172,7 +164,6 @@ class Parent(models.Model):
         return "%s -> %s" % (self.parent, self.child)
 
 
-@python_2_unicode_compatible
 class Animal(models.Model):
     MALE = 'M'
     FEMALE = 'F'
@@ -317,7 +308,6 @@ class Animal(models.Model):
         ordering = ['band_color', 'band_number']
 
 
-@python_2_unicode_compatible
 class Event(models.Model):
     animal = models.ForeignKey('Animal', on_delete=models.CASCADE)
     date = models.DateField(default=datetime.date.today)
@@ -343,7 +333,7 @@ class Event(models.Model):
         ordering = ['-date', '-created']
         get_latest_by = ['date', 'created']
 
-@python_2_unicode_compatible
+
 class NestCheck(models.Model):
     entered_by = models.ForeignKey(settings.AUTH_USER_MODEL,
                                    on_delete=models.SET(get_sentinel_user))
@@ -354,7 +344,6 @@ class NestCheck(models.Model):
         return "{} at {}".format(self.entered_by, self.datetime)
 
 
-@python_2_unicode_compatible
 class SampleType(models.Model):
     """ Defines a type of biological sample """
     name = models.CharField(max_length=16, unique=True)
@@ -367,7 +356,6 @@ class SampleType(models.Model):
         ordering = ['name']
 
 
-@python_2_unicode_compatible
 class SampleLocation(models.Model):
     """ Defines a location where a sample can be stored """
     name = models.CharField(max_length=64, unique=True)
@@ -379,7 +367,6 @@ class SampleLocation(models.Model):
         ordering = ['name']
 
 
-@python_2_unicode_compatible
 class Sample(models.Model):
     """ Defines a specific sample, which may be derived from another sample """
     uuid = models.UUIDField(primary_key=True, default=uuid.uuid4, unique=True)

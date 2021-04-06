@@ -1,5 +1,6 @@
 include README.md
 include COPYING
 include colony.R
+recursive-include birds/migrations *.py
 recursive-include birds/templates *
 recursive-include birds/fixtures *

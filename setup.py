@@ -3,8 +3,8 @@
 import os
 import sys
 from setuptools import setup, find_packages
-if sys.hexversion < 0x03050000:
-    raise RuntimeError("Python 3.5 or higher required")
+if sys.hexversion < 0x03060000:
+    raise RuntimeError("Python 3.6 or higher required")
 
 from birds import __version__
 cls_txt = """
