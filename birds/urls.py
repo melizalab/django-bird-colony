@@ -36,6 +36,7 @@ urlpatterns = [
     url(r'^api/info/$', views.api_info, name='api_info'),
     url(r'^api/animals/$', views.APIAnimalsList.as_view(), name="animals_api"),
     url(r'^api/animals/(?P<pk>[a-f0-9\-]{36})/$', views.APIAnimalDetail.as_view()),
+    url(r'^api/animals/(?P<pk>[a-f0-9\-]{36})/children/$', views.APIAnimalChildList.as_view()),
     url(r'^api/events/$', views.APIEventsList.as_view(), name="events_api"),
     url(r'^api/pedigree/$', views.APIAnimalPedigree.as_view(), name="pedigree_api"),
 ]

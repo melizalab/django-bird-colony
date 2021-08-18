@@ -538,6 +538,16 @@ class APIAnimalsList(generics.ListAPIView):
     filterset_class = AnimalFilter
 
 
+class APIAnimalChildList(APIAnimalsList):
+    """List all the children of an animal"""
+    def get_object(self):
+        return get_object_or_404(Animal, uuid=self.kwargs["pk"])
+
+    def get_queryset(self):
+        animal = self.get_object()
+        return animal.children.all()
+
+
 class APIAnimalDetail(generics.RetrieveAPIView):
     queryset = Animal.objects.all()
     serializer_class = AnimalDetailSerializer
