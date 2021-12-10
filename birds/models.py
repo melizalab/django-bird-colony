@@ -5,7 +5,6 @@ from __future__ import unicode_literals
 import uuid
 import datetime
 
-from django.contrib.postgres.fields import JSONField
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.urls import reverse
 from django.db import models
@@ -23,6 +22,7 @@ def get_sentinel_user():
 
 
 class Species(models.Model):
+    id = models.AutoField(primary_key=True)
     common_name = models.CharField(max_length=45)
     genus = models.CharField(max_length=45)
     species = models.CharField(max_length=45)
@@ -39,6 +39,7 @@ class Species(models.Model):
 
 
 class Color(models.Model):
+    id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=12, unique=True)
     abbrv = models.CharField('Abbreviation', max_length=3, unique=True)
 
@@ -50,6 +51,7 @@ class Color(models.Model):
 
 
 class Plumage(models.Model):
+    id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=16, unique=True)
     description = models.TextField()
 
@@ -63,6 +65,7 @@ class Plumage(models.Model):
 
 
 class Status(models.Model):
+    id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=16, unique=True)
     adds = models.BooleanField(default=False, help_text="select for acquisition events")
     removes = models.BooleanField(default=False, help_text="select for loss/death/removal events")
@@ -77,6 +80,7 @@ class Status(models.Model):
 
 
 class Location(models.Model):
+    id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=45, unique=True)
     nest = models.BooleanField(default=False, help_text="select for locations used for breeding")
 
@@ -90,6 +94,7 @@ class Location(models.Model):
 class Age(models.Model):
     DEFAULT = "unclassified"
 
+    id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=16,)
     min_days = models.PositiveIntegerField()
     species = models.ForeignKey('Species', on_delete=models.CASCADE)
@@ -157,6 +162,7 @@ class LastEventManager(models.Manager):
 
 
 class Parent(models.Model):
+    id = models.AutoField(primary_key=True)
     child = models.ForeignKey('Animal', related_name="+", on_delete=models.CASCADE)
     parent = models.ForeignKey('Animal', related_name="+", on_delete=models.CASCADE)
 
@@ -191,7 +197,7 @@ class Animal(models.Model):
                                     help_text="mark a bird as reserved for a specific user")
     created = models.DateTimeField(auto_now_add=True)
     plumage = models.ForeignKey('Plumage', on_delete=models.SET_NULL, blank=True, null=True)
-    attributes = JSONField(default=dict, blank=True, help_text="specify additional attributes for the animal")
+    attributes = models.JSONField(default=dict, blank=True, help_text="specify additional attributes for the animal")
 
     def short_uuid(self):
         return str(self.uuid).split('-')[0]
@@ -309,6 +315,7 @@ class Animal(models.Model):
 
 
 class Event(models.Model):
+    id = models.AutoField(primary_key=True)
     animal = models.ForeignKey('Animal', on_delete=models.CASCADE)
     date = models.DateField(default=datetime.date.today)
     status = models.ForeignKey('Status', on_delete=models.PROTECT)
@@ -335,6 +342,7 @@ class Event(models.Model):
 
 
 class NestCheck(models.Model):
+    id = models.AutoField(primary_key=True)
     entered_by = models.ForeignKey(settings.AUTH_USER_MODEL,
                                    on_delete=models.SET(get_sentinel_user))
     datetime = models.DateTimeField(default=datetime.datetime.now)
@@ -346,6 +354,7 @@ class NestCheck(models.Model):
 
 class SampleType(models.Model):
     """ Defines a type of biological sample """
+    id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=16, unique=True)
     description = models.CharField(max_length=64, unique=True)
 
@@ -358,6 +367,7 @@ class SampleType(models.Model):
 
 class SampleLocation(models.Model):
     """ Defines a location where a sample can be stored """
+    id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=64, unique=True)
 
     def __str__(self):
@@ -374,7 +384,7 @@ class Sample(models.Model):
     animal = models.ForeignKey("Animal", on_delete=models.CASCADE)
     source = models.ForeignKey("self", blank=True, null=True, on_delete=models.SET_NULL)
     location = models.ForeignKey(SampleLocation, blank=True, null=True, on_delete=models.SET_NULL)
-    attributes = JSONField(default=dict, blank=True,
+    attributes = models.JSONField(default=dict, blank=True,
                            help_text="specify additional sample-specific attributes")
     comments = models.TextField(blank=True)
 
