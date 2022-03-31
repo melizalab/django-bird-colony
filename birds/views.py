@@ -17,7 +17,7 @@ from django_filters.views import FilterView
 from drf_link_header_pagination import LinkHeaderPagination
 
 from birds import __version__, api_version
-from birds.models import Animal, Event, Sample, SampleType, NestCheck
+from birds.models import Animal, Event, Sample, SampleType, NestCheck, Pairing
 from birds.serializers import AnimalSerializer, AnimalPedigreeSerializer, AnimalDetailSerializer, EventSerializer
 from birds.forms import ClutchForm, NewAnimalForm, NewBandForm, EventForm, SampleForm
 
@@ -65,6 +65,20 @@ class EventFilter(filters.FilterSet):
         }
 
 
+class PairingFilter(filters.FilterSet):
+    active = filters.BooleanFilter(field_name="active", method="is_active")
+    sire = filters.CharFilter(field_name="sire__uuid", lookup_expr="istartswith")
+    sire_color = filters.CharFilter(field_name="sire__band_color__name", lookup_expr="iexact")
+    sire_band = filters.NumberFilter(field_name="sire__band_number", lookup_expr="exact")
+    dam = filters.CharFilter(field_name="dam__uuid", lookup_expr="istartswith")
+    dam_color = filters.CharFilter(field_name="dam__band_color__name", lookup_expr="iexact")
+    dam_band = filters.NumberFilter(field_name="dam__band_number", lookup_expr="exact")
+    description = filters.CharFilter(field_name="description", lookup_expr="icontains")
+
+    def is_active(self, queryset, name, value):
+        return queryset.filter(ended__isnull=value)
+
+
 class AnimalList(FilterView):
     model = Animal
     filterset_class = AnimalFilter
@@ -79,6 +93,31 @@ class AnimalList(FilterView):
             del context['query']['page']
         except KeyError:
             pass
+        return context
+
+
+class PairingList(FilterView):
+    model = Pairing
+    filterset_class = PairingFilter
+    template_name = "birds/pairing_list.html"
+    strict = False
+
+    def get_queryset(self):
+        qs = Pairing.objects.filter(**self.kwargs)
+        return qs.order_by("-began", "-ended")
+
+
+class PairingView(generic.DetailView):
+    model = Pairing
+    template_name = 'birds/pairing.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        print(context)
+        pairing = context['pairing']
+        context['animal_list'] = pairing.eggs().order_by("-alive", "-created")
+        context['pairing_list'] = self.model.objects.filter(sire=pairing.sire, dam=pairing.dam)#.exclude(id=pairing.id)
+        # context['event_list'] = Event.objects.filter(date__gte=pairing.began, date__lte=pairing.ended)
         return context
 
 
@@ -274,8 +313,6 @@ def nest_check(request):
                    'nest_checks': previous_checks,
                    'nest_data': zip(nest_data, nest_formset),
                    'nest_formset': nest_formset})
-
-
 
 
 class EventList(FilterView, generic.list.MultipleObjectMixin):

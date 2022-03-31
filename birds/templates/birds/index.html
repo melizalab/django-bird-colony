@@ -29,6 +29,8 @@ This web application allows you to access the animal database. Here are some thi
 <p><a href="{% url 'birds:animals' %}?living=True&available=True">all the available birds</a></p>
 <p><a href="{% url 'birds:animals' %}?living=True">all the living birds</a></p>
 <p><a href="{% url 'birds:animals' %}">all the birds</a></p>
+<p><a href="{% url 'birds:pairings' %}?active=True">all active pairs</a></p>
+<p><a href="{% url 'birds:pairings' %}">all pairs</a></p>
 <p><a href="{% url 'birds:events' %}">all events</a></p>
 <p><a href="{% url 'birds:sampletypes' %}">sample types</a></p>
 

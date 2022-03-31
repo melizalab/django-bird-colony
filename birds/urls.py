@@ -2,6 +2,7 @@
 # -*- mode: python -*-
 from django.contrib.auth.decorators import login_required
 from django.conf.urls import re_path
+from django.urls import path
 
 from birds import views
 
@@ -19,6 +20,8 @@ urlpatterns = [
     re_path(r'^animals/(?P<uuid>[a-f0-9\-]{36})/new-band/$', login_required(views.NewBandEntry.as_view()), name='new_band'),
     re_path(r'^animals/(?P<uuid>[a-f0-9\-]{36})/new-clutch/$', login_required(views.ClutchEntry.as_view()), name='clutch'),
     re_path(r'^events/$', views.EventList.as_view(), name='events'),
+    re_path(r'^pairings/$', views.PairingList.as_view(), name='pairings'),
+    path('pairings/<int:pk>/', views.PairingView.as_view(), name='pairing'),
     re_path(r'^sampletypes/$', views.SampleTypeList.as_view(), name='sampletypes'),
     re_path(r'^samples/$', views.SampleList.as_view(), name='samples'),
     re_path(r'^samples/(?P<uuid>[a-f0-9\-]{36})/$', views.SampleView.as_view(), name='sample'),

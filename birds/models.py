@@ -341,6 +341,50 @@ class Event(models.Model):
         get_latest_by = ['date', 'created']
 
 
+class Pairing(models.Model):
+    id = models.AutoField(primary_key=True)
+    sire = models.ForeignKey('Animal',
+                             on_delete=models.CASCADE,
+                             related_name="+",
+                             limit_choices_to={"sex": Animal.MALE})
+    dam = models.ForeignKey('Animal',
+                            on_delete=models.CASCADE,
+                            related_name="+",
+                            limit_choices_to={"sex": Animal.FEMALE})
+    began = models.DateField(help_text="date the animals were paired")
+    ended = models.DateField(null=True, blank=True, help_text="date the pairing ended")
+    created = models.DateTimeField(auto_now_add=True)
+    purpose = models.CharField(max_length=64,
+                               null=True,
+                               blank=True,
+                               help_text="purpose of the pairing (leave blank if unknown)")
+    comment = models.TextField(blank=True,
+                                   help_text="notes on the outcome of the pairing")
+
+    def __str__(self):
+        return "{} x {} ({}--{})".format(self.sire, self.dam, self.began, self.ended or "")
+
+    def active(self):
+        return self.ended is None
+
+    def progeny(self):
+        """ Queryset with all the chicks hatched during this pairing """
+        # TODO: restrict to children who match both parents
+        return self.sire.children.filter(event__status__name=BIRTH_EVENT_NAME,
+                                         event__date__gte=self.began,
+                                         event__date__lte=self.ended)
+
+    def eggs(self):
+        """ Queryset with all the chicks hatched during this pairing """
+        # TODO: restrict to children who match both parents
+        return self.sire.children.filter(event__status__name=UNBORN_CREATION_EVENT_NAME,
+                                         event__date__gte=self.began,
+                                         event__date__lte=self.ended)
+
+    class Meta:
+        ordering = ['-began','-ended']
+
+
 class NestCheck(models.Model):
     id = models.AutoField(primary_key=True)
     entered_by = models.ForeignKey(settings.AUTH_USER_MODEL,

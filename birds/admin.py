@@ -39,10 +39,19 @@ class SampleAdmin(admin.ModelAdmin):
     search_fields = ('description',)
 
 
+class PairingAdmin(admin.ModelAdmin):
+    date_hierarchy = "began"
+    fields = ("sire", "dam", "began", "purpose", "ended", "comment")
+    list_display = ("sire", "dam", "began", "purpose", "ended", "comment")
+    list_filter = ("sire", "dam", "began", "ended", "purpose")
+    search_fields = ("comment",)
+
 admin.site.register(models.Animal, AnimalAdmin)
 admin.site.register(models.Event, EventAdmin)
 admin.site.register(models.Status, StatusAdmin)
 admin.site.register(models.Sample, SampleAdmin)
+admin.site.register(models.Pairing, PairingAdmin)
+
 
 for model in (models.Species, models.Color, models.Plumage, models.Location, models.Age, models.SampleType, models.SampleLocation, models.NestCheck):
     admin.site.register(model)
