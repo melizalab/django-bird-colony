@@ -4,7 +4,7 @@ from django import forms
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
-from birds.models import Animal, Event, Status, Location, Color, Plumage, Species, Parent, Sample
+from birds.models import Animal, Event, Status, Location, Color, Plumage, Species, Parent, Sample, Pairing
 from django.utils.translation import gettext_lazy as _
 
 
@@ -22,6 +22,23 @@ class SampleForm(forms.ModelForm):
     class Meta:
         model = Sample
         fields = ["type", "source", "location", "comments", "date", "collected_by"]
+
+
+class NewPairingForm(forms.ModelForm):
+    entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
+    location = forms.ModelChoiceField(queryset=Location.objects.filter(nest=True), required=False)
+
+    class Meta:
+        model = Pairing
+        fields = ["sire", "dam", "began", "purpose"]
+
+
+class EndPairingForm(forms.ModelForm):
+    location = forms.ModelChoiceField(queryset=Location.objects.filter(nest=True), required=False)
+
+    class Meta:
+        model = Pairing
+        fields = ["ended", "comment"]
 
 
 class NestCheckForm(forms.Form):

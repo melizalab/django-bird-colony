@@ -19,7 +19,7 @@ from drf_link_header_pagination import LinkHeaderPagination
 from birds import __version__, api_version
 from birds.models import Animal, Event, Sample, SampleType, NestCheck, Pairing
 from birds.serializers import AnimalSerializer, AnimalPedigreeSerializer, AnimalDetailSerializer, EventSerializer
-from birds.forms import ClutchForm, NewAnimalForm, NewBandForm, EventForm, SampleForm
+from birds.forms import ClutchForm, NewAnimalForm, NewBandForm, EventForm, SampleForm, NewPairingForm, EndPairingForm
 
 
 class LargeResultsSetPagination(LinkHeaderPagination):
@@ -119,6 +119,52 @@ class PairingView(generic.DetailView):
         context['pairing_list'] = self.model.objects.filter(sire=pairing.sire, dam=pairing.dam)#.exclude(id=pairing.id)
         # context['event_list'] = Event.objects.filter(date__gte=pairing.began, date__lte=pairing.ended)
         return context
+
+
+class PairingEntry(generic.FormView):
+    template_name = "birds/pairing_entry.html"
+    form_class = NewPairingForm
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["pair"] = getattr(self, "pairing", None)
+        return context
+
+    def get_form(self):
+        form = super().get_form()
+        if "pk" in self.kwargs:
+            self.pairing = get_object_or_404(Pairing, pk=self.kwargs["pk"])
+        else:
+            form.fields["sire"].queryset = Animal.objects.filter(sex=Animal.MALE, alive=True)
+            form.fields["dam"].queryset = Animal.objects.filter(sex=Animal.FEMALE, alive=True)
+        return form
+
+    def get_initial(self):
+        initial = super().get_initial()
+        # initial["sire"] = self.pairing.sire
+        # initial["dam"] = self.pairing.dam
+        initial['entered_by'] = self.request.user
+        return initial
+
+    # def form_valid(self, form, **kwargs):
+    #     sample = form.save(commit=False)
+    #     sample.animal = self.animal
+    #     sample.save()
+    #     return HttpResponseRedirect(reverse('birds:pairing', args=(pairing.pk,)))
+
+class PairingClose(generic.FormView):
+    template_name = "birds/pairing_close.html"
+    form_class = EndPairingForm
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["pair"] = self.pairing
+        return context
+
+    def get_form(self):
+        form = super().get_form()
+        self.pairing = get_object_or_404(Pairing, pk=self.kwargs["pk"])
+        return form
 
 
 class LocationSummary(generic.ListView):
@@ -365,7 +411,6 @@ class ClutchEntry(generic.FormView):
                 form.initial['sire'] = animal
             elif animal.sex == Animal.FEMALE:
                 form.fields['dam'].queryset = Animal.objects.filter(uuid=uuid)
-                print(form.fields)
                 form.initial['dam'] = animal
         except (KeyError, ObjectDoesNotExist):
             pass

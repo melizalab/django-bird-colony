@@ -1,0 +1,75 @@
+{% extends "base_view.html" %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block title %} meliza-lab : bird colony : close a pairing {% endblock title%}
+
+{% block css %}
+    <link href="{% static 'local/css/bootstrap-datetimepicker.min.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'local/js/moment.min.js' %}"></script>
+<script src="{% static 'local/js/bootstrap-datetimepicker.min.js' %}"></script>
+<script type="text/javascript">
+  $(function () {
+  $('#datetimepicker1').datetimepicker({ pickTime: false});
+  });
+</script>
+{% endblock %}
+
+{% block content %}
+
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h3 class="panel-title">Close pairing: {{ pair.sire }} and {{ pair.dam }} </h3>
+  </div>
+  <div class="panel-body">
+    <form action="" class="form-horizontal" method="post" role="form">
+      {% csrf_token %}
+      <p><strong>Instructions</strong>: This form is for ending a pairing
+        (separating the birds or moving them to group housing). Fill it out when
+        you break up a clutch. If you set the Location field, the form will
+        automatically create events associated with moving the sire and dam to
+        the specified location.</p>
+
+      {% if form.non_field_errors %}
+      <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <div class="form-group {% if form.ended.errors %}has-error{% endif %}">
+        <label for="id_ended" class="col-sm-2 control-label">Ending date * </label>
+        <div class="col-sm-3">
+          <div class="input-group date" id="datetimepicker1">
+            {% render_field form.ended class+="form-control" data-format="MM/dd/YYYY" %}
+            <span class="input-group-addon"><span class="glyphicon glyphicon-calendar"></span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group {% if form.location.errors %}has-error{% endif %}">
+        <label for="id_location" class="col-sm-2 control-label">Location </label>
+        <div class="col-sm-5">
+          {% render_field form.location class+="form-control" %}
+        </div>
+      </div>
+
+      <div class="form-group {% if form.comment.errors %}has-error{% endif %}">
+        <label for="id_comment" class="col-sm-2 control-label">Comments</label>
+        <div class="col-sm-5">
+          {% render_field form.comment class+="form-control" rows="3"%}
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="col-sm-offset-2 col-sm-10">
+          <button type="submit" class="btn btn-default">End pairing</button>
+        </div>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+{% endblock %}

@@ -44,7 +44,7 @@
         </div>
       </div>
 
-      <div class="form-group {% if form.animal.errors %}has-error{% endif %}">
+      <div class="form-group {% if form.source.errors %}has-error{% endif %}">
         <label for="id_source" class="col-sm-2 control-label">Source sample </label>
         <div class="col-sm-5">
           {% render_field form.source class+="form-control" %}
@@ -76,8 +76,8 @@
         </div>
       </div>
 
-      <div class="form-group {% if form.description.errors %}has-error{% endif %}">
-        <label for="id_description" class="col-sm-2 control-label">Description</label>
+      <div class="form-group {% if form.comments.errors %}has-error{% endif %}">
+        <label for="id_comments" class="col-sm-2 control-label">Description</label>
         <div class="col-sm-5">
           {% render_field form.comments class+="form-control" rows="3"%}
         </div>

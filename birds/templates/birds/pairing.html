@@ -16,9 +16,9 @@
 </dl>
 
 {% if pairing.active %}
-<a href="">end this pairing</a><br/>
+<a href="{% url 'birds:end_pairing' pairing.id %}">end this pairing</a> (separate or return to group housing) <br/>
 {% else %}
-<a href="">start a new clutch with this pair</a><br/>
+<a href="{% url 'birds:new_pairing' pairing.id %}">start a new clutch with this pair</a><br/>
 {% endif %}
 
 <h3>Eggs and Progeny</h3>

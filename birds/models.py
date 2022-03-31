@@ -359,10 +359,13 @@ class Pairing(models.Model):
                                blank=True,
                                help_text="purpose of the pairing (leave blank if unknown)")
     comment = models.TextField(blank=True,
-                                   help_text="notes on the outcome of the pairing")
+                               help_text="notes on the outcome of the pairing")
 
     def __str__(self):
         return "{} x {} ({}--{})".format(self.sire, self.dam, self.began, self.ended or "")
+
+    def get_absolute_url(self):
+        return reverse("birds:pairing", kwargs={'pk': self.id})
 
     def active(self):
         return self.ended is None
@@ -370,16 +373,21 @@ class Pairing(models.Model):
     def progeny(self):
         """ Queryset with all the chicks hatched during this pairing """
         # TODO: restrict to children who match both parents
-        return self.sire.children.filter(event__status__name=BIRTH_EVENT_NAME,
-                                         event__date__gte=self.began,
-                                         event__date__lte=self.ended)
+        qs = self.sire.children.filter(event__status__name=BIRTH_EVENT_NAME,
+                                         event__date__gte=self.began)
+        if self.ended:
+            return qs.filter(event__date__lte=self.ended)
+        return qs
 
     def eggs(self):
         """ Queryset with all the chicks hatched during this pairing """
         # TODO: restrict to children who match both parents
-        return self.sire.children.filter(event__status__name=UNBORN_CREATION_EVENT_NAME,
-                                         event__date__gte=self.began,
-                                         event__date__lte=self.ended)
+        qs = self.sire.children.filter(event__status__name=UNBORN_CREATION_EVENT_NAME,
+                                       event__date__gte=self.began)
+        if self.ended:
+            return qs.filter(event__date__lte=self.ended)
+        return qs
+
 
     class Meta:
         ordering = ['-began','-ended']

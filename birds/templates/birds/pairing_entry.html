@@ -1,0 +1,108 @@
+{% extends "base_view.html" %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block title %} meliza-lab : bird colony : add a pairing {% endblock title%}
+
+{% block css %}
+    <link href="{% static 'local/css/bootstrap-datetimepicker.min.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'local/js/moment.min.js' %}"></script>
+<script src="{% static 'local/js/bootstrap-datetimepicker.min.js' %}"></script>
+<script type="text/javascript">
+  $(function () {
+  $('#datetimepicker1').datetimepicker({ pickTime: false});
+  });
+</script>
+{% endblock %}
+
+{% block content %}
+
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h3 class="panel-title">New pairing:</h3>
+  </div>
+  <div class="panel-body">
+    <form action="" class="form-horizontal" method="post" role="form">
+      {% csrf_token %}
+      <p><strong>Instructions</strong>: This form is for setting up a pair for
+        breeding. Fill it out when you place a male and female together in a
+        cage. If you set the Location field, the form will automatically create
+        events associated with moving the sire and dam to the specified
+        location.</p>
+
+      <p>Use the <a href="{% url 'admin:birds_pairing_add' %}">admin
+      interface</a> to do backentry of historical pairings.</p>
+
+      {% if form.non_field_errors %}
+      <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <div class="form-group {% if form.sire.errors %}has-error{% endif %}">
+        <label for="id_sire" class="col-sm-2 control-label">Sire * </label>
+        <div class="col-sm-5">
+          {% if pair %}
+          {{ pair.sire }}
+          {% else %}
+          {% render_field form.sire class+="form-control" %}
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="form-group {% if form.dam.errors %}has-error{% endif %}">
+        <label for="id_dam" class="col-sm-2 control-label">Dam * </label>
+        <div class="col-sm-5">
+          {% if pair %}
+          {{ pair.dam }}
+          {% else %}
+          {% render_field form.dam class+="form-control" %}
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="form-group {% if form.purpose.errors %}has-error{% endif %}">
+        <label for="id_purpose" class="col-sm-2 control-label">Purpose</label>
+        <div class="col-sm-5">
+          {% render_field form.purpose class+="form-control" %}
+        </div>
+      </div>
+
+      <div class="form-group {% if form.began.errors %}has-error{% endif %}">
+        <label for="id_began" class="col-sm-2 control-label">Pairing date * </label>
+        <div class="col-sm-3">
+          <div class="input-group date" id="datetimepicker1">
+            {% render_field form.began class+="form-control" data-format="MM/dd/YYYY" %}
+            <span class="input-group-addon"><span class="glyphicon glyphicon-calendar"></span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group {% if form.entered_by.errors %}has-error{% endif %}">
+        <label for="id_entered_by" class="col-sm-2 control-label">Entered by * </label>
+        <div class="col-sm-3">
+          {% render_field form.entered_by class+="form-control" %}
+        </div>
+      </div>
+
+
+      <div class="form-group {% if form.location.errors %}has-error{% endif %}">
+        <label for="id_location" class="col-sm-2 control-label">Location </label>
+        <div class="col-sm-5">
+          {% render_field form.location class+="form-control" %}
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="col-sm-offset-2 col-sm-10">
+          <button type="submit" class="btn btn-default">Create pairing</button>
+        </div>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+{% endblock %}
