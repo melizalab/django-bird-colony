@@ -10,6 +10,7 @@ from django.urls import reverse
 from django.db import models
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.utils.translation import gettext_lazy as _
 
 BIRTH_EVENT_NAME = "hatched"
 UNBORN_ANIMAL_NAME = "egg"
@@ -345,11 +346,11 @@ class Pairing(models.Model):
     id = models.AutoField(primary_key=True)
     sire = models.ForeignKey('Animal',
                              on_delete=models.CASCADE,
-                             related_name="+",
+                             related_name="sire_pairings",
                              limit_choices_to={"sex": Animal.MALE})
     dam = models.ForeignKey('Animal',
                             on_delete=models.CASCADE,
-                            related_name="+",
+                            related_name="dam_pairings",
                             limit_choices_to={"sex": Animal.FEMALE})
     began = models.DateField(help_text="date the animals were paired")
     ended = models.DateField(null=True, blank=True, help_text="date the pairing ended")
@@ -362,7 +363,7 @@ class Pairing(models.Model):
                                help_text="notes on the outcome of the pairing")
 
     def __str__(self):
-        return "{} x {} ({}--{})".format(self.sire, self.dam, self.began, self.ended or "")
+        return "♂{} × ♀{} ({} — {})".format(self.sire, self.dam, self.began, self.ended or "")
 
     def get_absolute_url(self):
         return reverse("birds:pairing", kwargs={'pk': self.id})
@@ -388,6 +389,11 @@ class Pairing(models.Model):
             return qs.filter(event__date__lte=self.ended)
         return qs
 
+    def clean(self):
+        # ended must be after began
+        print(self.ended, self.began)
+        if self.ended is not None and self.ended <= self.began:
+            raise ValidationError(_("End date must be after the pairing began"))
 
     class Meta:
         ordering = ['-began','-ended']

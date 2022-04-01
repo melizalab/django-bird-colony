@@ -4,6 +4,7 @@ from django import forms
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
+from birds import models
 from birds.models import Animal, Event, Status, Location, Color, Plumage, Species, Parent, Sample, Pairing
 from django.utils.translation import gettext_lazy as _
 
@@ -25,8 +26,55 @@ class SampleForm(forms.ModelForm):
 
 
 class NewPairingForm(forms.ModelForm):
+    sire = forms.ModelChoiceField(queryset=Animal.living.filter(sex=Animal.MALE))
+    dam = forms.ModelChoiceField(queryset=Animal.living.filter(sex=Animal.FEMALE))
     entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
     location = forms.ModelChoiceField(queryset=Location.objects.filter(nest=True), required=False)
+
+    def clean(self):
+        data = super().clean()
+        sire = data["sire"]
+        if sire.sex != Animal.MALE:
+            raise forms.ValidationError("Sire is not male")
+        if sire.age_group() != models.ADULT_ANIMAL_NAME:
+            raise forms.ValidationError("Sire is not an adult")
+        if not sire.alive:
+            raise forms.ValidationError("Sire is not alive")
+        if sire.sire_pairings.filter(ended__isnull=True).count():
+            raise forms.ValidationError("Sire is already in an active pairing")
+        sire_overlaps = sire.sire_pairings.filter(began__lte=data["began"],
+                                                  ended__gte=data["began"])
+        if sire_overlaps.count() > 0:
+                  raise forms.ValidationError(
+                    _("Start date %(began)s overlaps with an existing pairing for sire: %(prev)s",
+                      code="invalid",
+                      params=data | {"prev": sire_overlaps.first()})
+            )
+        dam = data["dam"]
+        if dam.sex != Animal.FEMALE:
+            raise forms.ValidationError("Dam is not female")
+        if dam.age_group() != models.ADULT_ANIMAL_NAME:
+            raise forms.ValidationError("Dam is not an adult")
+        if not dam.alive:
+            raise forms.ValidationError("Dam is not alive")
+        if dam.dam_pairings.filter(ended__isnull=True).count():
+            raise forms.ValidationError("Dam is in an active pairing")
+        dam_overlaps = dam.dam_pairings.filter(began__lte=data["began"],
+                                                  ended__gte=data["began"])
+        if dam_overlaps.count() > 0:
+                  raise forms.ValidationError(
+                    _("Start date %(began)s overlaps with an existing pairing for dam: %(prev)s",
+                      code="invalid",
+                      params=data | {"prev": dam_overlaps.first()})
+            )
+        return data
+
+    def create_pairing(self):
+        data = self.cleaned_data
+        pairing = Pairing(sire=data["sire"], dam=data["dam"], began=data["began"], ended=None)
+        pairing.save()
+        # TODO: save events
+        return pairing
 
     class Meta:
         model = Pairing
@@ -34,11 +82,12 @@ class NewPairingForm(forms.ModelForm):
 
 
 class EndPairingForm(forms.ModelForm):
-    location = forms.ModelChoiceField(queryset=Location.objects.filter(nest=True), required=False)
+    ended = forms.DateField(required=True)
+    location = forms.ModelChoiceField(queryset=Location.objects.all(), required=False)
 
     class Meta:
         model = Pairing
-        fields = ["ended", "comment"]
+        fields = ["began", "ended", "comment"]
 
 
 class NestCheckForm(forms.Form):

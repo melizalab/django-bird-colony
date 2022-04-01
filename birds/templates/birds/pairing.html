@@ -11,8 +11,8 @@
   <dt>dam</dt><dd><a href="{{ pairing.dam.get_absolute_url }}">{{ pairing.dam.name }}</a></dd>
   <dt>began</dt><dd>{{ pairing.began }}</dd>
   <dt>ended</dt><dd>{{ pairing.ended }}</dd>
-  <dt>purpose</dt><dd>{{ pairing.purpose }}</dd>
-  <dt>comments</dt><dd>{{ pairing.comments }}</dd>
+  <dt>purpose</dt><dd>{{ pairing.purpose|default_if_none:"" }}</dd>
+  <dt>comment</dt><dd>{{ pairing.comment }}</dd>
 </dl>
 
 {% if pairing.active %}
@@ -20,6 +20,7 @@
 {% else %}
 <a href="{% url 'birds:new_pairing' pairing.id %}">start a new clutch with this pair</a><br/>
 {% endif %}
+<a href="{% url 'admin:birds_pairing_change' pairing.id %}">edit this pairing</a> (admin)<br/>
 
 <h3>Eggs and Progeny</h3>
 

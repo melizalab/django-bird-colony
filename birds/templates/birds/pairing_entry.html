@@ -29,7 +29,7 @@
       {% csrf_token %}
       <p><strong>Instructions</strong>: This form is for setting up a pair for
         breeding. Fill it out when you place a male and female together in a
-        cage. If you set the Location field, the form will automatically create
+        cage. If you set the New Location field, the form will automatically create
         events associated with moving the sire and dam to the specified
         location.</p>
 
@@ -43,22 +43,14 @@
       <div class="form-group {% if form.sire.errors %}has-error{% endif %}">
         <label for="id_sire" class="col-sm-2 control-label">Sire * </label>
         <div class="col-sm-5">
-          {% if pair %}
-          {{ pair.sire }}
-          {% else %}
           {% render_field form.sire class+="form-control" %}
-          {% endif %}
         </div>
       </div>
 
       <div class="form-group {% if form.dam.errors %}has-error{% endif %}">
         <label for="id_dam" class="col-sm-2 control-label">Dam * </label>
         <div class="col-sm-5">
-          {% if pair %}
-          {{ pair.dam }}
-          {% else %}
           {% render_field form.dam class+="form-control" %}
-          {% endif %}
         </div>
       </div>
 
@@ -89,7 +81,7 @@
 
 
       <div class="form-group {% if form.location.errors %}has-error{% endif %}">
-        <label for="id_location" class="col-sm-2 control-label">Location </label>
+        <label for="id_location" class="col-sm-2 control-label">New location </label>
         <div class="col-sm-5">
           {% render_field form.location class+="form-control" %}
         </div>

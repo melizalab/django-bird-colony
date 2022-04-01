@@ -113,7 +113,6 @@ class PairingView(generic.DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        print(context)
         pairing = context['pairing']
         context['animal_list'] = pairing.eggs().order_by("-alive", "-created")
         context['pairing_list'] = self.model.objects.filter(sire=pairing.sire, dam=pairing.dam)#.exclude(id=pairing.id)
@@ -134,23 +133,17 @@ class PairingEntry(generic.FormView):
         form = super().get_form()
         if "pk" in self.kwargs:
             self.pairing = get_object_or_404(Pairing, pk=self.kwargs["pk"])
-        else:
-            form.fields["sire"].queryset = Animal.objects.filter(sex=Animal.MALE, alive=True)
-            form.fields["dam"].queryset = Animal.objects.filter(sex=Animal.FEMALE, alive=True)
+            form.fields['sire'].queryset = Animal.objects.filter(uuid=self.pairing.sire.uuid)
+            form.initial['sire'] = self.pairing.sire
+            form.fields['dam'].queryset = Animal.objects.filter(uuid=self.pairing.dam.uuid)
+            form.initial['dam'] = self.pairing.dam
+        form.initial['entered_by'] = self.request.user
         return form
 
-    def get_initial(self):
-        initial = super().get_initial()
-        # initial["sire"] = self.pairing.sire
-        # initial["dam"] = self.pairing.dam
-        initial['entered_by'] = self.request.user
-        return initial
+    def form_valid(self, form, **kwargs):
+        pairing = form.create_pairing()
+        return HttpResponseRedirect(reverse('birds:pairing', args=(pairing.pk,)))
 
-    # def form_valid(self, form, **kwargs):
-    #     sample = form.save(commit=False)
-    #     sample.animal = self.animal
-    #     sample.save()
-    #     return HttpResponseRedirect(reverse('birds:pairing', args=(pairing.pk,)))
 
 class PairingClose(generic.FormView):
     template_name = "birds/pairing_close.html"
@@ -164,7 +157,19 @@ class PairingClose(generic.FormView):
     def get_form(self):
         form = super().get_form()
         self.pairing = get_object_or_404(Pairing, pk=self.kwargs["pk"])
+        form.initial["began"] = self.pairing.began
+        # users should not be accessing this form for inactive pairings, but
+        # make sure the fields are populated if it is
+        form.initial["ended"] = self.pairing.ended
+        form.initial["comment"] = self.pairing.comment
         return form
+
+    def form_valid(self, form, **kwargs):
+        data = form.clean()
+        self.pairing.ended = data["ended"]
+        self.pairing.comment = data["comment"]
+        self.pairing.save()
+        return HttpResponseRedirect(reverse('birds:pairing', args=(self.pairing.pk,)))
 
 
 class LocationSummary(generic.ListView):

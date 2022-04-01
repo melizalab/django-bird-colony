@@ -22,20 +22,21 @@
 
 <div class="panel panel-default">
   <div class="panel-heading">
-    <h3 class="panel-title">Close pairing: {{ pair.sire }} and {{ pair.dam }} </h3>
+    <h3 class="panel-title">Close pairing: {{ pair }} </h3>
   </div>
   <div class="panel-body">
     <form action="" class="form-horizontal" method="post" role="form">
       {% csrf_token %}
       <p><strong>Instructions</strong>: This form is for ending a pairing
         (separating the birds or moving them to group housing). Fill it out when
-        you break up a clutch. If you set the Location field, the form will
+        you break up a clutch. If you set the New Location field, the form will
         automatically create events associated with moving the sire and dam to
         the specified location.</p>
 
       {% if form.non_field_errors %}
       <div class="alert alert-danger">{{ form.non_field_errors }}</div>
       {% endif %}
+      {{ form.began.as_hidden }}
 
       <div class="form-group {% if form.ended.errors %}has-error{% endif %}">
         <label for="id_ended" class="col-sm-2 control-label">Ending date * </label>
@@ -49,7 +50,7 @@
       </div>
 
       <div class="form-group {% if form.location.errors %}has-error{% endif %}">
-        <label for="id_location" class="col-sm-2 control-label">Location </label>
+        <label for="id_location" class="col-sm-2 control-label">New Location </label>
         <div class="col-sm-5">
           {% render_field form.location class+="form-control" %}
         </div>
