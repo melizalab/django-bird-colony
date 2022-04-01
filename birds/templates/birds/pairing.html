@@ -5,6 +5,11 @@
 
 {% block content %}
 
+<h2>Pairing</h2>
+
+<a href="{% url 'birds:pairings' %}">all pairings</a><br/>
+<a href="{% url 'birds:pairings' %}?active=True">active pairings</a><br/>
+
 <hr>
 <dl class="dl-horizontal">
   <dt>sire</dt><dd><a href="{{ pairing.sire.get_absolute_url }}">{{ pairing.sire.name }}</a></dd>
@@ -27,6 +32,8 @@
 {% include "birds/animal_table.html" %}
 
 <h3>Relevent Events</h3>
+
+<p>This table shows all of the events involving the sire, dam, and progeny (including eggs) during the pairing interval.</p>
 
 <table class="table table-striped table-condensed">
   <thead>

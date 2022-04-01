@@ -386,6 +386,11 @@ class Pairing(models.Model):
             return qs.filter(event__date__lte=self.ended)
         return qs
 
+    def oldest_living_progeny_age(self):
+        # probably quite slow
+        ages = [a.age_days() for a in self.progeny() if a.alive]
+        return max(ages, default=None)
+
     def eggs(self):
         """ Queryset with all the eggs laid during this pairing """
         # TODO: restrict to children who match both parents
@@ -396,7 +401,7 @@ class Pairing(models.Model):
             event__status__name__in=(UNBORN_CREATION_EVENT_NAME,BIRTH_EVENT_NAME),
             event__date__gte=self.began)
         if self.ended:
-            return qs.filter(event__date__lte=self.ended)
+            qs = qs.filter(event__date__lte=self.ended)
         return qs
 
     def related_events(self):
@@ -405,8 +410,9 @@ class Pairing(models.Model):
         qs = Event.objects.filter(
             Q(animal__in=self.eggs())|Q(animal__in=(self.sire, self.dam)),
             date__gte=self.began,
-            date__lte=self.ended
         )
+        if self.ended:
+            qs = qs.filter(date__lte=self.ended)
         return qs.order_by("date")
 
     def clean(self):

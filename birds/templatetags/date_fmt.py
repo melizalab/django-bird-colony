@@ -5,6 +5,13 @@ from django.utils.html import format_html_join
 
 register = template.Library()
 
+@register.filter
+def ageorblank(value):
+    try:
+        return "{}y {:3}d".format(value // 365, value % 365)
+    except TypeError:
+        return ""
+
 
 @register.filter
 def agestr(value):
