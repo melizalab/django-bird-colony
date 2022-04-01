@@ -225,11 +225,16 @@ class Animal(models.Model):
     def dam(self):
         return self.parents.filter(sex__exact='F').first()
 
-    def nchildren(self):
-        """ Returns (living, total) children """
-        chicks = self.children
-        return (chicks.exclude(event__status__removes=True).count(),
-                chicks.count())
+    def living_children(self):
+        return self.children.exclude(event__status__removes=True)
+
+    def all_children(self):
+        """ Returns all of the children that hatched """
+        return self.children.filter(event__status__adds=True)
+
+    def unhatched(self):
+        """ Returns all the unhatched eggs """
+        return self.children.exclude(event__status__adds=True)
 
     objects = AnimalManager()
     living = LivingAnimalManager()
