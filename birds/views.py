@@ -115,8 +115,8 @@ class PairingView(generic.DetailView):
         context = super().get_context_data(**kwargs)
         pairing = context['pairing']
         context['animal_list'] = pairing.eggs().order_by("-alive", "-created")
-        context['pairing_list'] = self.model.objects.filter(sire=pairing.sire, dam=pairing.dam)#.exclude(id=pairing.id)
-        # context['event_list'] = Event.objects.filter(date__gte=pairing.began, date__lte=pairing.ended)
+        context['pairing_list'] = self.model.objects.filter(sire=pairing.sire, dam=pairing.dam).exclude(id=pairing.id)
+        context['event_list'] = pairing.related_events()
         return context
 
 
@@ -444,6 +444,7 @@ class AnimalView(generic.DetailView):
         context['animal_list'] = animal.children.order_by("-alive", "-created")
         context['event_list'] = animal.event_set.order_by("-date", "-created")
         context['sample_list'] = animal.sample_set.order_by("-date")
+        context['pairing_list'] = animal.pairings().order_by("-began")
         return context
 
 

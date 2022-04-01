@@ -26,7 +26,28 @@
 
 {% include "birds/animal_table.html" %}
 
-<h3>Relevent Events (to do)</h3>
+<h3>Relevent Events</h3>
+
+<table class="table table-striped table-condensed">
+  <thead>
+    <th>Animal</th>
+    <th>Status</th>
+    <th>Date</th>
+    <th>Location</th>
+    <th>Comments</th>
+  </thead>
+  <tbody>
+    {% for event in event_list %}
+        <tr>
+          <td><a href="{{ event.animal.get_absolute_url }}">{{ event.animal.name }}</a></td>
+          <td>{{ event.status }}</td>
+          <td>{{ event.date }}</td>
+          <td>{{ event.location }}</td>
+          <td>{{ event.description }}</td>
+        </tr>
+    {% endfor %}
+  </tbody>
+</table>
 
 
 <h3>Other Pairings</h3>

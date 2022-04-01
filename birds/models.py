@@ -309,6 +309,11 @@ class Animal(models.Model):
         except AttributeError:
             return None
 
+    def pairings(self):
+        """ Returns all pairings involving this animal """
+        from django.db.models import Q
+        return Pairing.objects.filter(Q(sire=self)|Q(dam=self))
+
     def get_absolute_url(self):
         return reverse("birds:animal", kwargs={'uuid': self.uuid})
 
@@ -347,11 +352,11 @@ class Pairing(models.Model):
     id = models.AutoField(primary_key=True)
     sire = models.ForeignKey('Animal',
                              on_delete=models.CASCADE,
-                             related_name="sire_pairings",
+                             related_name="+",
                              limit_choices_to={"sex": Animal.MALE})
     dam = models.ForeignKey('Animal',
                             on_delete=models.CASCADE,
-                            related_name="dam_pairings",
+                            related_name="+",
                             limit_choices_to={"sex": Animal.FEMALE})
     began = models.DateField(help_text="date the animals were paired")
     ended = models.DateField(null=True, blank=True, help_text="date the pairing ended")
@@ -382,13 +387,27 @@ class Pairing(models.Model):
         return qs
 
     def eggs(self):
-        """ Queryset with all the chicks hatched during this pairing """
+        """ Queryset with all the eggs laid during this pairing """
         # TODO: restrict to children who match both parents
-        qs = self.sire.children.filter(event__status__name=UNBORN_CREATION_EVENT_NAME,
-                                       event__date__gte=self.began)
+        # We have to include hatch events here too for older pairings because
+        # eggs were not entered prior to ~2021
+        from django.db.models import Q
+        qs = self.sire.children.filter(
+            event__status__name__in=(UNBORN_CREATION_EVENT_NAME,BIRTH_EVENT_NAME),
+            event__date__gte=self.began)
         if self.ended:
             return qs.filter(event__date__lte=self.ended)
         return qs
+
+    def related_events(self):
+        """Queryset with all events for the pair and their progeny during the pairing"""
+        from django.db.models import Q
+        qs = Event.objects.filter(
+            Q(animal__in=self.eggs())|Q(animal__in=(self.sire, self.dam)),
+            date__gte=self.began,
+            date__lte=self.ended
+        )
+        return qs.order_by("date")
 
     def clean(self):
         # ended must be after began
