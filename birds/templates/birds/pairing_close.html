@@ -56,6 +56,13 @@
         </div>
       </div>
 
+      <div class="form-group {% if form.entered_by.errors %}has-error{% endif %}">
+        <label for="id_entered_by" class="col-sm-2 control-label">Entered by * </label>
+        <div class="col-sm-3">
+          {% render_field form.entered_by class+="form-control" %}
+        </div>
+      </div>
+
       <div class="form-group {% if form.comment.errors %}has-error{% endif %}">
         <label for="id_comment" class="col-sm-2 control-label">Comments</label>
         <div class="col-sm-5">

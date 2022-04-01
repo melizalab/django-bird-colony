@@ -141,7 +141,30 @@ class PairingEntry(generic.FormView):
         return form
 
     def form_valid(self, form, **kwargs):
-        pairing = form.create_pairing()
+        from birds.models import Status, MOVED_EVENT_NAME
+        data = form.clean()
+        if data["location"] is not None and data["entered_by"] is not None:
+            try:
+                move_status = Status.objects.get(name=MOVED_EVENT_NAME)
+            except ObjectDoesNotExist:
+                print(f"Unable to create move events - no {MOVED_EVENT_NAME} status type")
+            else:
+                sire_event = Event(animal=data["sire"],
+                                   date=data["began"],
+                                   status=move_status,
+                                   location=data["location"],
+                                   entered_by=data["entered_by"],
+                                   description=f"Paired with {data['dam']}")
+                dam_event = Event(animal=data["dam"],
+                                   date=data["began"],
+                                   status=move_status,
+                                   location=data["location"],
+                                   entered_by=data["entered_by"],
+                                   description=f"Paired with {data['sire']}")
+                sire_event.save()
+                dam_event.save()
+        pairing = Pairing(sire=data["sire"], dam=data["dam"], began=data["began"], ended=None)
+        pairing.save()
         return HttpResponseRedirect(reverse('birds:pairing', args=(pairing.pk,)))
 
 
@@ -158,6 +181,7 @@ class PairingClose(generic.FormView):
         form = super().get_form()
         self.pairing = get_object_or_404(Pairing, pk=self.kwargs["pk"])
         form.initial["began"] = self.pairing.began
+        form.initial['entered_by'] = self.request.user
         # users should not be accessing this form for inactive pairings, but
         # make sure the fields are populated if it is
         form.initial["ended"] = self.pairing.ended
@@ -165,7 +189,28 @@ class PairingClose(generic.FormView):
         return form
 
     def form_valid(self, form, **kwargs):
+        from birds.models import Status, MOVED_EVENT_NAME
         data = form.clean()
+        if self.pairing.ended is None and data["location"] is not None and data["entered_by"] is not None:
+            try:
+                move_status = Status.objects.get(name=MOVED_EVENT_NAME)
+            except ObjectDoesNotExist:
+                print(f"Unable to create move events - no {MOVED_EVENT_NAME} status type")
+            else:
+                sire_event = Event(animal=self.pairing.sire,
+                                   date=data["ended"],
+                                   status=move_status,
+                                   location=data["location"],
+                                   entered_by=data["entered_by"],
+                                   description=f"Ended pairing with {self.pairing.dam}")
+                dam_event = Event(animal=self.pairing.dam,
+                                   date=data["ended"],
+                                   status=move_status,
+                                   location=data["location"],
+                                   entered_by=data["entered_by"],
+                                   description=f"Ended pairing with {self.pairing.sire}")
+                sire_event.save()
+                dam_event.save()
         self.pairing.ended = data["ended"]
         self.pairing.comment = data["comment"]
         self.pairing.save()

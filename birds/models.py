@@ -17,6 +17,7 @@ UNBORN_ANIMAL_NAME = "egg"
 UNBORN_CREATION_EVENT_NAME = "laid"
 ADULT_ANIMAL_NAME = "adult"
 LOST_EVENT_NAME = "lost"
+MOVED_EVENT_NAME = "moved"
 
 def get_sentinel_user():
     return get_user_model().objects.get_or_create(username='deleted')[0]
@@ -391,7 +392,6 @@ class Pairing(models.Model):
 
     def clean(self):
         # ended must be after began
-        print(self.ended, self.began)
         if self.ended is not None and self.ended <= self.began:
             raise ValidationError(_("End date must be after the pairing began"))
 

@@ -69,13 +69,6 @@ class NewPairingForm(forms.ModelForm):
             )
         return data
 
-    def create_pairing(self):
-        data = self.cleaned_data
-        pairing = Pairing(sire=data["sire"], dam=data["dam"], began=data["began"], ended=None)
-        pairing.save()
-        # TODO: save events
-        return pairing
-
     class Meta:
         model = Pairing
         fields = ["sire", "dam", "began", "purpose"]
@@ -84,6 +77,7 @@ class NewPairingForm(forms.ModelForm):
 class EndPairingForm(forms.ModelForm):
     ended = forms.DateField(required=True)
     location = forms.ModelChoiceField(queryset=Location.objects.all(), required=False)
+    entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
 
     class Meta:
         model = Pairing
