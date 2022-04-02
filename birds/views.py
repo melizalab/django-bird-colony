@@ -163,7 +163,7 @@ class PairingEntry(generic.FormView):
                                    description=f"Paired with {data['sire']}")
                 sire_event.save()
                 dam_event.save()
-        pairing = Pairing(sire=data["sire"], dam=data["dam"], began=data["began"], ended=None)
+        pairing = Pairing(sire=data["sire"], dam=data["dam"], began=data["began"], purpose=data["purpose"], ended=None)
         pairing.save()
         return HttpResponseRedirect(reverse('birds:pairing', args=(pairing.pk,)))
 
