@@ -21,6 +21,7 @@ urlpatterns = [
     re_path(r'^animals/(?P<uuid>[a-f0-9\-]{36})/new-clutch/$', login_required(views.ClutchEntry.as_view()), name='clutch'),
     re_path(r'^events/$', views.EventList.as_view(), name='events'),
     re_path(r'^pairings/$', views.PairingList.as_view(), name='pairings'),
+    re_path(r'^pairings/active/$', views.PairingListActive.as_view(), name='pairings_active'),
     path('pairings/<int:pk>/', views.PairingView.as_view(), name='pairing'),
     path('pairings/<int:pk>/new/', views.PairingEntry.as_view(), name='new_pairing'),
     path('pairings/<int:pk>/end/', views.PairingClose.as_view(), name='end_pairing'),

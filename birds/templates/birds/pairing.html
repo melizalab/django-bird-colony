@@ -7,8 +7,6 @@
 
 <h2>Pairing</h2>
 
-<a href="{% url 'birds:pairings' %}">all pairings</a><br/>
-<a href="{% url 'birds:pairings' %}?active=True">active pairings</a><br/>
 
 <hr>
 <dl class="dl-horizontal">
@@ -17,15 +15,25 @@
   <dt>began</dt><dd>{{ pairing.began }}</dd>
   <dt>ended</dt><dd>{{ pairing.ended }}</dd>
   <dt>purpose</dt><dd>{{ pairing.purpose|default_if_none:"" }}</dd>
+  <dt>last location</dt><dd> {{ pairing.last_location|default_if_none:"" }}</dd>
+  <dt>eggs laid</dt><dd>{{ pairing.eggs.count }}</dd>
+  <dt>progeny</dt><dd>{{ pairing.progeny.count }}</dd>
+  <dt>oldest living progeny</dt><dd>{{ pairing.oldest_living_progeny_age|ageorblank }}</dd>
   <dt>comment</dt><dd>{{ pairing.comment }}</dd>
 </dl>
 
+<p>
 {% if pairing.active %}
 <a href="{% url 'birds:end_pairing' pairing.id %}">end this pairing</a> (separate or return to group housing) <br/>
 {% else %}
 <a href="{% url 'birds:new_pairing' pairing.id %}">start a new clutch with this pair</a><br/>
 {% endif %}
 <a href="{% url 'admin:birds_pairing_change' pairing.id %}">edit this pairing</a> (admin)<br/>
+<a href="{% url 'birds:new_pairing' %}">create a new pairing from scratch</a><br/>
+<a href="{% url 'birds:pairings' %}">show all pairings</a><br/>
+<a href="{% url 'birds:pairings_active' %}">show active pairings only</a>
+</p>
+
 
 <h3>Eggs and Progeny</h3>
 
@@ -79,5 +87,6 @@
     {% endfor %}
   </tbody>
 </table>
+
 
 {% endblock %}

@@ -5,24 +5,21 @@
 {% block title %} meliza-lab : pairings {% endblock %}
 
 {% block content %}
-<h2>Pairings</h2>
+<h2>Active Pairings</h2>
 
-<p>This report shows pairings, which begin when a male (sire) and female (dam) are placed in a cage to breed, and end when the pair is separated or moved to group housing. An active pair is one that has not yet been separated or moved. The progeny comprises the animals that were born during the pairing.</p>
-
-<p>Click on the dates of any pairing to see details. This view allows you to create a new pairing (start a new clutch) with an inactive pair, or to break up an active pair.</p>
-
-<p>You can filter this view by adding query parameters to the URL. Useful filter terms include sire (uuid), sire_color, sire_band, dam (uuid), dam_color, dam_band.</p>
+<p>This report shows active pairings. Click on the dates of any pairing to see details or to break up the pair.</a>
 
 <p>
   <a href="{% url 'birds:new_pairing' %}">create a new pairing from scratch</a><br/>
-  <a href="{% url 'birds:pairings_active' %}">show active pairings only</a>
+  <a href="{% url 'birds:pairings' %}">show all pairings</a>
 </p>
 
 <table class="table table-striped table-condensed">
   <thead>
+    <th>Dates</th>
     <th>Sire</th>
     <th>Dam</th>
-    <th>Dates</th>
+    <th>Location</th>
     <th>Purpose</th>
     <th>Eggs Laid</th>
     <th>Progeny</th>
@@ -32,9 +29,10 @@
   <tbody>
     {% for pairing in pairing_list %}
     <tr>
+          <td><a href="{% url 'birds:pairing' pairing.id %}">{{ pairing.began }} — {{ pairing.ended|default_if_none:"" }}</a></td>
           <td><a href="{{ pairing.sire.get_absolute_url }}">{{ pairing.sire.name }}</a></td>
           <td><a href="{{ pairing.dam.get_absolute_url }}">{{ pairing.dam.name }}</a></td>
-          <td><a href="{% url 'birds:pairing' pairing.id %}">{{ pairing.began }} — {{ pairing.ended|default_if_none:"" }}</a></td>
+          <td>{{ pairing.last_location|default_if_none:"" }}</td>
           <td>{{ pairing.purpose|default_if_none:"" }}</td>
           <td>{{ pairing.eggs.count }}</td>
           <td>{{ pairing.progeny.count }}</td>

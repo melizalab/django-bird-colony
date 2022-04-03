@@ -420,6 +420,18 @@ class Pairing(models.Model):
             qs = qs.filter(date__lte=self.ended)
         return qs.order_by("date")
 
+    def last_location(self):
+        """Returns the most recent location in the pairing """
+        qs = Event.objects.filter(animal__in=(self.sire, self.dam),
+                                  date__gte=self.began,
+                                  )
+        if self.ended:
+            qs = qs.filter(date__lte=self.ended)
+        try:
+            return qs.exclude(location__isnull=True).latest().location
+        except AttributeError:
+            return None
+
     def clean(self):
         # ended must be after began
         if self.ended is not None and self.ended <= self.began:

@@ -102,9 +102,16 @@ class PairingList(FilterView):
     template_name = "birds/pairing_list.html"
     strict = False
 
+
+class PairingListActive(FilterView):
+    model = Pairing
+    filterset_class = PairingFilter
+    template_name = "birds/pairing_list_active.html"
+    strict = False
+
     def get_queryset(self):
-        qs = Pairing.objects.filter(**self.kwargs)
-        return qs.order_by("-began", "-ended")
+        qs = super().get_queryset()
+        return qs.filter(ended__isnull=True)
 
 
 class PairingView(generic.DetailView):
