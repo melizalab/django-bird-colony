@@ -18,13 +18,26 @@ from drf_link_header_pagination import LinkHeaderPagination
 
 from birds import __version__, api_version
 from birds.models import Animal, Event, Sample, SampleType, NestCheck, Pairing
-from birds.serializers import AnimalSerializer, AnimalPedigreeSerializer, AnimalDetailSerializer, EventSerializer
-from birds.forms import ClutchForm, NewAnimalForm, NewBandForm, EventForm, SampleForm, NewPairingForm, EndPairingForm
+from birds.serializers import (
+    AnimalSerializer,
+    AnimalPedigreeSerializer,
+    AnimalDetailSerializer,
+    EventSerializer,
+)
+from birds.forms import (
+    ClutchForm,
+    NewAnimalForm,
+    NewBandForm,
+    EventForm,
+    SampleForm,
+    NewPairingForm,
+    EndPairingForm,
+)
 
 
 class LargeResultsSetPagination(LinkHeaderPagination):
     page_size = 1000
-    page_size_query_param = 'page_size'
+    page_size_query_param = "page_size"
     max_page_size = 10000
 
 
@@ -36,7 +49,9 @@ class AnimalFilter(filters.FilterSet):
     plumage = filters.CharFilter(field_name="plumage__name", lookup_expr="icontains")
     living = filters.BooleanFilter(field_name="alive", method="is_alive")
     available = filters.BooleanFilter(field_name="reserved_by", lookup_expr="isnull")
-    reserved_by = filters.CharFilter(field_name="reserved_by__username", lookup_expr="iexact")
+    reserved_by = filters.CharFilter(
+        field_name="reserved_by__username", lookup_expr="iexact"
+    )
     parent = filters.CharFilter(field_name="parents__uuid", lookup_expr="istartswith")
     child = filters.CharFilter(field_name="children__uuid", lookup_expr="istartswith")
 
@@ -45,33 +60,45 @@ class AnimalFilter(filters.FilterSet):
 
     class Meta:
         model = Animal
-        fields = ['sex']
+        fields = ["sex"]
 
 
 class EventFilter(filters.FilterSet):
     animal = filters.CharFilter(field_name="animal__uuid", lookup_expr="istartswith")
-    color = filters.CharFilter(field_name="animal__band_color__name", lookup_expr="iexact")
+    color = filters.CharFilter(
+        field_name="animal__band_color__name", lookup_expr="iexact"
+    )
     band = filters.NumberFilter(field_name="animal__band_number", lookup_expr="exact")
-    species = filters.CharFilter(field_name="animal__species__code", lookup_expr="iexact")
+    species = filters.CharFilter(
+        field_name="animal__species__code", lookup_expr="iexact"
+    )
     status = filters.CharFilter(field_name="status__name", lookup_expr="istartswith")
     location = filters.CharFilter(field_name="location__name", lookup_expr="icontains")
-    entered_by = filters.CharFilter(field_name="entered_by__username", lookup_expr="icontains")
+    entered_by = filters.CharFilter(
+        field_name="entered_by__username", lookup_expr="icontains"
+    )
     description = filters.CharFilter(field_name="description", lookup_expr="icontains")
 
     class Meta:
         model = Event
         fields = {
-            'date': ['exact', 'year', 'range'],
+            "date": ["exact", "year", "range"],
         }
 
 
 class PairingFilter(filters.FilterSet):
     active = filters.BooleanFilter(field_name="active", method="is_active")
     sire = filters.CharFilter(field_name="sire__uuid", lookup_expr="istartswith")
-    sire_color = filters.CharFilter(field_name="sire__band_color__name", lookup_expr="iexact")
-    sire_band = filters.NumberFilter(field_name="sire__band_number", lookup_expr="exact")
+    sire_color = filters.CharFilter(
+        field_name="sire__band_color__name", lookup_expr="iexact"
+    )
+    sire_band = filters.NumberFilter(
+        field_name="sire__band_number", lookup_expr="exact"
+    )
     dam = filters.CharFilter(field_name="dam__uuid", lookup_expr="istartswith")
-    dam_color = filters.CharFilter(field_name="dam__band_color__name", lookup_expr="iexact")
+    dam_color = filters.CharFilter(
+        field_name="dam__band_color__name", lookup_expr="iexact"
+    )
     dam_band = filters.NumberFilter(field_name="dam__band_number", lookup_expr="exact")
     description = filters.CharFilter(field_name="description", lookup_expr="icontains")
 
@@ -88,9 +115,9 @@ class AnimalList(FilterView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['query'] = self.request.GET.copy()
+        context["query"] = self.request.GET.copy()
         try:
-            del context['query']['page']
+            del context["query"]["page"]
         except KeyError:
             pass
         return context
@@ -116,14 +143,16 @@ class PairingListActive(FilterView):
 
 class PairingView(generic.DetailView):
     model = Pairing
-    template_name = 'birds/pairing.html'
+    template_name = "birds/pairing.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        pairing = context['pairing']
-        context['animal_list'] = pairing.eggs().order_by("-alive", "-created")
-        context['pairing_list'] = self.model.objects.filter(sire=pairing.sire, dam=pairing.dam).exclude(id=pairing.id)
-        context['event_list'] = pairing.related_events()
+        pairing = context["pairing"]
+        context["animal_list"] = pairing.eggs().order_by("-alive", "-created")
+        context["pairing_list"] = self.model.objects.filter(
+            sire=pairing.sire, dam=pairing.dam
+        ).exclude(id=pairing.id)
+        context["event_list"] = pairing.related_events()
         return context
 
 
@@ -140,39 +169,56 @@ class PairingEntry(generic.FormView):
         form = super().get_form()
         if "pk" in self.kwargs:
             self.pairing = get_object_or_404(Pairing, pk=self.kwargs["pk"])
-            form.fields['sire'].queryset = Animal.objects.filter(uuid=self.pairing.sire.uuid)
-            form.initial['sire'] = self.pairing.sire
-            form.fields['dam'].queryset = Animal.objects.filter(uuid=self.pairing.dam.uuid)
-            form.initial['dam'] = self.pairing.dam
-        form.initial['entered_by'] = self.request.user
+            form.fields["sire"].queryset = Animal.objects.filter(
+                uuid=self.pairing.sire.uuid
+            )
+            form.initial["sire"] = self.pairing.sire
+            form.fields["dam"].queryset = Animal.objects.filter(
+                uuid=self.pairing.dam.uuid
+            )
+            form.initial["dam"] = self.pairing.dam
+        form.initial["entered_by"] = self.request.user
         return form
 
     def form_valid(self, form, **kwargs):
         from birds.models import Status, MOVED_EVENT_NAME
+
         data = form.clean()
         if data["location"] is not None and data["entered_by"] is not None:
             try:
                 move_status = Status.objects.get(name=MOVED_EVENT_NAME)
             except ObjectDoesNotExist:
-                print(f"Unable to create move events - no {MOVED_EVENT_NAME} status type")
+                print(
+                    f"Unable to create move events - no {MOVED_EVENT_NAME} status type"
+                )
             else:
-                sire_event = Event(animal=data["sire"],
-                                   date=data["began"],
-                                   status=move_status,
-                                   location=data["location"],
-                                   entered_by=data["entered_by"],
-                                   description=f"Paired with {data['dam']}")
-                dam_event = Event(animal=data["dam"],
-                                   date=data["began"],
-                                   status=move_status,
-                                   location=data["location"],
-                                   entered_by=data["entered_by"],
-                                   description=f"Paired with {data['sire']}")
+                sire_event = Event(
+                    animal=data["sire"],
+                    date=data["began"],
+                    status=move_status,
+                    location=data["location"],
+                    entered_by=data["entered_by"],
+                    description=f"Paired with {data['dam']}",
+                )
+                dam_event = Event(
+                    animal=data["dam"],
+                    date=data["began"],
+                    status=move_status,
+                    location=data["location"],
+                    entered_by=data["entered_by"],
+                    description=f"Paired with {data['sire']}",
+                )
                 sire_event.save()
                 dam_event.save()
-        pairing = Pairing(sire=data["sire"], dam=data["dam"], began=data["began"], purpose=data["purpose"], ended=None)
+        pairing = Pairing(
+            sire=data["sire"],
+            dam=data["dam"],
+            began=data["began"],
+            purpose=data["purpose"],
+            ended=None,
+        )
         pairing.save()
-        return HttpResponseRedirect(reverse('birds:pairing', args=(pairing.pk,)))
+        return HttpResponseRedirect(reverse("birds:pairing", args=(pairing.pk,)))
 
 
 class PairingClose(generic.FormView):
@@ -188,7 +234,7 @@ class PairingClose(generic.FormView):
         form = super().get_form()
         self.pairing = get_object_or_404(Pairing, pk=self.kwargs["pk"])
         form.initial["began"] = self.pairing.began
-        form.initial['entered_by'] = self.request.user
+        form.initial["entered_by"] = self.request.user
         # users should not be accessing this form for inactive pairings, but
         # make sure the fields are populated if it is
         form.initial["ended"] = self.pairing.ended
@@ -197,31 +243,42 @@ class PairingClose(generic.FormView):
 
     def form_valid(self, form, **kwargs):
         from birds.models import Status, MOVED_EVENT_NAME
+
         data = form.clean()
-        if self.pairing.ended is None and data["location"] is not None and data["entered_by"] is not None:
+        if (
+            self.pairing.ended is None
+            and data["location"] is not None
+            and data["entered_by"] is not None
+        ):
             try:
                 move_status = Status.objects.get(name=MOVED_EVENT_NAME)
             except ObjectDoesNotExist:
-                print(f"Unable to create move events - no {MOVED_EVENT_NAME} status type")
+                print(
+                    f"Unable to create move events - no {MOVED_EVENT_NAME} status type"
+                )
             else:
-                sire_event = Event(animal=self.pairing.sire,
-                                   date=data["ended"],
-                                   status=move_status,
-                                   location=data["location"],
-                                   entered_by=data["entered_by"],
-                                   description=f"Ended pairing with {self.pairing.dam}")
-                dam_event = Event(animal=self.pairing.dam,
-                                   date=data["ended"],
-                                   status=move_status,
-                                   location=data["location"],
-                                   entered_by=data["entered_by"],
-                                   description=f"Ended pairing with {self.pairing.sire}")
+                sire_event = Event(
+                    animal=self.pairing.sire,
+                    date=data["ended"],
+                    status=move_status,
+                    location=data["location"],
+                    entered_by=data["entered_by"],
+                    description=f"Ended pairing with {self.pairing.dam}",
+                )
+                dam_event = Event(
+                    animal=self.pairing.dam,
+                    date=data["ended"],
+                    status=move_status,
+                    location=data["location"],
+                    entered_by=data["entered_by"],
+                    description=f"Ended pairing with {self.pairing.sire}",
+                )
                 sire_event.save()
                 dam_event.save()
         self.pairing.ended = data["ended"]
         self.pairing.comment = data["comment"]
         self.pairing.save()
-        return HttpResponseRedirect(reverse('birds:pairing', args=(self.pairing.pk,)))
+        return HttpResponseRedirect(reverse("birds:pairing", args=(self.pairing.pk,)))
 
 
 class LocationSummary(generic.ListView):
@@ -236,6 +293,7 @@ class LocationSummary(generic.ListView):
         from collections import defaultdict
         from birds.tools import sort_and_group
         from birds.models import ADULT_ANIMAL_NAME
+
         sex_choices = dict(Animal.SEX_CHOICES)
         loc_data = []
         for location, events in sort_and_group(qs, key=lambda evt: evt.location.name):
@@ -253,8 +311,8 @@ class LocationSummary(generic.ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        latest = context['object_list']
-        context['location_list'] = self.sort_and_group(latest)
+        latest = context["object_list"]
+        context["location_list"] = self.sort_and_group(latest)
         return context
 
 
@@ -266,6 +324,7 @@ class NestReport(generic.TemplateView):
         from django.utils import dateparse
         from datetime import datetime, timedelta
         from birds.tools import tabulate_locations
+
         context = super().get_context_data(**kwargs)
         try:
             until = dateparse.parse_date(self.request.GET["until"])
@@ -278,12 +337,20 @@ class NestReport(generic.TemplateView):
         until = until or datetime.now().date()
         since = since or (until - timedelta(days=self.default_days))
         dates, nest_data = tabulate_locations(since, until)
-        checks = NestCheck.objects.filter(datetime__date__gte=since, datetime__date__lte=until).order_by("datetime")
-        context.update(since=since, until=until, dates=dates, nest_data=nest_data, nest_checks=checks)
+        checks = NestCheck.objects.filter(
+            datetime__date__gte=since, datetime__date__lte=until
+        ).order_by("datetime")
+        context.update(
+            since=since,
+            until=until,
+            dates=dates,
+            nest_data=nest_data,
+            nest_checks=checks,
+        )
         return context
 
 
-@require_http_methods(["GET","POST"])
+@require_http_methods(["GET", "POST"])
 def nest_check(request):
     """Nest check view.
 
@@ -306,79 +373,102 @@ def nest_check(request):
     since = until - timedelta(days=2)
     dates, nest_data = tabulate_locations(since, until)
     initial = []
-    previous_checks = NestCheck.objects.filter(datetime__date__gte=(until - timedelta(days=7))).order_by("datetime")
+    previous_checks = NestCheck.objects.filter(
+        datetime__date__gte=(until - timedelta(days=7))
+    ).order_by("datetime")
     for nest in nest_data:
         today_counts = nest["days"][-1]["counts"]
         total_count = sum(today_counts.values())
-        eggs = today_counts['egg']
-        initial.append({'location': nest["location"], 'eggs': eggs, 'chicks': total_count - eggs})
+        eggs = today_counts["egg"]
+        initial.append(
+            {"location": nest["location"], "eggs": eggs, "chicks": total_count - eggs}
+        )
 
     if request.method == "POST":
-        nest_formset = NestCheckFormSet(request.POST, initial=initial, prefix='nests')
-        user_form = NestCheckUser(request.POST, prefix='user')
+        nest_formset = NestCheckFormSet(request.POST, initial=initial, prefix="nests")
+        user_form = NestCheckUser(request.POST, prefix="user")
         if nest_formset.is_valid():
             # determine what changes need to be made:
             changes = defaultdict(list)
             for nest_form, nest in zip(nest_formset, nest_data):
                 initial = nest_form.initial
                 updated = nest_form.cleaned_data
-                location = updated['location']
+                location = updated["location"]
                 if not nest_form.has_changed():
                     changes[location].append({"status": None})
                     continue
                 # most of the validation logic to keep users from removing any
                 # animals is in the form; but we do checks against current
                 # occupants here
-                delta_chicks = updated['chicks'] - initial['chicks']
-                delta_eggs = updated['eggs'] - initial['eggs'] + delta_chicks
+                delta_chicks = updated["chicks"] - initial["chicks"]
+                delta_eggs = updated["eggs"] - initial["eggs"] + delta_chicks
                 if delta_eggs > 0:
-                    adults = nest['days'][-1]['animals']['adult']
+                    adults = nest["days"][-1]["animals"]["adult"]
                     if len(adults) > 2:
                         nest_form.add_error(
-                            None,
-                            ValidationError("unable to add egg - too many adults")
+                            None, ValidationError("unable to add egg - too many adults")
                         )
                     else:
                         try:
-                            sire = next((animal for animal in adults if animal.sex == Animal.MALE))
+                            sire = next(
+                                (
+                                    animal
+                                    for animal in adults
+                                    if animal.sex == Animal.MALE
+                                )
+                            )
                         except StopIteration:
                             nest_form.add_error(
-                                None,
-                                ValidationError("unable to add egg - no sire")
+                                None, ValidationError("unable to add egg - no sire")
                             )
                         try:
-                            dam = next((animal for animal in adults if animal.sex == Animal.FEMALE))
+                            dam = next(
+                                (
+                                    animal
+                                    for animal in adults
+                                    if animal.sex == Animal.FEMALE
+                                )
+                            )
                         except StopIteration:
                             nest_form.add_error(
-                                None,
-                                ValidationError("unable to add egg - no dam")
+                                None, ValidationError("unable to add egg - no dam")
                             )
                 # return user to initial view if there are errors
                 if not nest_form.is_valid():
-                    return render(request,
-                                  "birds/nest_check.html",
-                                  {'dates': dates,
-                                   'nest_checks': previous_checks,
-                                   'nest_data': zip(nest_data, nest_formset),
-                                   'nest_formset': nest_formset})
-                eggs = nest['days'][-1]['animals']['egg']
+                    return render(
+                        request,
+                        "birds/nest_check.html",
+                        {
+                            "dates": dates,
+                            "nest_checks": previous_checks,
+                            "nest_data": zip(nest_data, nest_formset),
+                            "nest_formset": nest_formset,
+                        },
+                    )
+                eggs = nest["days"][-1]["animals"]["egg"]
                 for i in range(delta_chicks):
-                    hatch = dict(animal=eggs.pop(),
-                                 status=updated['hatch_status'],
-                                 location=location)
+                    hatch = dict(
+                        animal=eggs.pop(),
+                        status=updated["hatch_status"],
+                        location=location,
+                    )
                     changes[location].append(hatch)
                 if delta_eggs < 0:
                     for i in range(-delta_eggs):
-                        lost = dict(animal=eggs.pop(),
-                                    status=updated['lost_status'],
-                                    location=location)
+                        lost = dict(
+                            animal=eggs.pop(),
+                            status=updated["lost_status"],
+                            location=location,
+                        )
                         changes[location].append(lost)
                 else:
                     for i in range(delta_eggs):
-                        egg = dict(status=updated['laid_status'],
-                                   sire=sire,
-                                   dam=dam,
-                                   location=location)
+                        egg = dict(
+                            status=updated["laid_status"],
+                            sire=sire,
+                            dam=dam,
+                            location=location,
+                        )
                         changes[location].append(egg)
 
             # if the user form is valid, we are coming from the confirmation
@@ -387,35 +477,60 @@ def nest_check(request):
                 user = user_form.cleaned_data["entered_by"]
                 for items in changes.values():
                     for item in items:
-                        if item["status"] in (updated["hatch_status"], updated["lost_status"]):
-                            event = Event(date=datetime.now().date(), entered_by=user, **item)
+                        if item["status"] in (
+                            updated["hatch_status"],
+                            updated["lost_status"],
+                        ):
+                            event = Event(
+                                date=datetime.now().date(), entered_by=user, **item
+                            )
                             event.save()
                         elif item["status"] == updated["laid_status"]:
-                            animal = Animal(species=item["sire"].species, sex=Animal.UNKNOWN_SEX)
+                            animal = Animal(
+                                species=item["sire"].species, sex=Animal.UNKNOWN_SEX
+                            )
                             animal.save()
                             animal.parents.set([item["sire"], item["dam"]])
                             animal.save()
-                            event = Event(animal=animal,
-                                          date=datetime.now().date(), entered_by=user,
-                                          status=item["status"], location=item["location"])
+                            event = Event(
+                                animal=animal,
+                                date=datetime.now().date(),
+                                entered_by=user,
+                                status=item["status"],
+                                location=item["location"],
+                            )
                             event.save()
-                check = NestCheck(entered_by=user, comments=user_form.cleaned_data["comments"])
+                check = NestCheck(
+                    entered_by=user, comments=user_form.cleaned_data["comments"]
+                )
                 check.save()
-                return HttpResponseRedirect(reverse('birds:nest-summary'))
+                return HttpResponseRedirect(reverse("birds:nest-summary"))
             else:
-                return render(request, "birds/nest_check_confirm.html",
-                              {'changes': dict(changes), 'nest_formset': nest_formset, 'user_form': user_form})
+                return render(
+                    request,
+                    "birds/nest_check_confirm.html",
+                    {
+                        "changes": dict(changes),
+                        "nest_formset": nest_formset,
+                        "user_form": user_form,
+                    },
+                )
         else:
             pass
     else:
-        nest_formset = NestCheckFormSet(initial=initial, prefix='nests')
+        nest_formset = NestCheckFormSet(initial=initial, prefix="nests")
 
     # the initial view is returned by default
-    return render(request, "birds/nest_check.html",
-                  {'dates': dates,
-                   'nest_checks': previous_checks,
-                   'nest_data': zip(nest_data, nest_formset),
-                   'nest_formset': nest_formset})
+    return render(
+        request,
+        "birds/nest_check.html",
+        {
+            "dates": dates,
+            "nest_checks": previous_checks,
+            "nest_data": zip(nest_data, nest_formset),
+            "nest_formset": nest_formset,
+        },
+    )
 
 
 class EventList(FilterView, generic.list.MultipleObjectMixin):
@@ -427,9 +542,9 @@ class EventList(FilterView, generic.list.MultipleObjectMixin):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['query'] = self.request.GET.copy()
+        context["query"] = self.request.GET.copy()
         try:
-            del context['query']['page']
+            del context["query"]["page"]
         except KeyError:
             pass
         return context
@@ -441,17 +556,17 @@ class EventList(FilterView, generic.list.MultipleObjectMixin):
 
 class AnimalView(generic.DetailView):
     model = Animal
-    template_name = 'birds/animal.html'
-    slug_field = 'uuid'
-    slug_url_kwarg = 'uuid'
+    template_name = "birds/animal.html"
+    slug_field = "uuid"
+    slug_url_kwarg = "uuid"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        animal = context['animal']
-        context['animal_list'] = animal.children.order_by("-alive", "-created")
-        context['event_list'] = animal.event_set.order_by("-date", "-created")
-        context['sample_list'] = animal.sample_set.order_by("-date")
-        context['pairing_list'] = animal.pairings().order_by("-began")
+        animal = context["animal"]
+        context["animal_list"] = animal.children.order_by("-alive", "-created")
+        context["event_list"] = animal.event_set.order_by("-date", "-created")
+        context["sample_list"] = animal.sample_set.order_by("-date")
+        context["pairing_list"] = animal.pairings().order_by("-began")
         return context
 
 
@@ -465,11 +580,11 @@ class ClutchEntry(generic.FormView):
             uuid = self.kwargs["uuid"]
             animal = Animal.objects.get(uuid=uuid)
             if animal.sex == Animal.MALE:
-                form.fields['sire'].queryset = Animal.objects.filter(uuid=uuid)
-                form.initial['sire'] = animal
+                form.fields["sire"].queryset = Animal.objects.filter(uuid=uuid)
+                form.initial["sire"] = animal
             elif animal.sex == Animal.FEMALE:
-                form.fields['dam'].queryset = Animal.objects.filter(uuid=uuid)
-                form.initial['dam'] = animal
+                form.fields["dam"].queryset = Animal.objects.filter(uuid=uuid)
+                form.initial["dam"] = animal
         except (KeyError, ObjectDoesNotExist):
             pass
         return form
@@ -480,11 +595,16 @@ class ClutchEntry(generic.FormView):
         return initial
 
     def form_valid(self, form, **kwargs):
-        """ For valid entries, render a page with a list of the created events """
+        """For valid entries, render a page with a list of the created events"""
         objs = form.create_clutch()
-        return render(self.request, 'birds/event_list.html',
-                      {'event_list': objs['events'],
-                       'header_text': 'Hatch events for new clutch'})
+        return render(
+            self.request,
+            "birds/event_list.html",
+            {
+                "event_list": objs["events"],
+                "header_text": "Hatch events for new clutch",
+            },
+        )
 
 
 class NewAnimalEntry(generic.FormView):
@@ -498,7 +618,7 @@ class NewAnimalEntry(generic.FormView):
 
     def form_valid(self, form, **kwargs):
         chick = form.create_chick()
-        return HttpResponseRedirect(reverse('birds:animal', args=(chick.pk,)))
+        return HttpResponseRedirect(reverse("birds:animal", args=(chick.pk,)))
 
 
 class NewBandEntry(generic.FormView):
@@ -509,10 +629,10 @@ class NewBandEntry(generic.FormView):
         form = super().get_form()
         try:
             uuid = self.kwargs["uuid"]
-            form.fields['animal'].queryset = Animal.objects.filter(uuid=uuid)
+            form.fields["animal"].queryset = Animal.objects.filter(uuid=uuid)
             animal = Animal.objects.get(uuid=uuid)
-            form.initial['animal'] = animal
-            form.initial['sex'] = animal.sex
+            form.initial["animal"] = animal
+            form.initial["sex"] = animal.sex
         except (KeyError, ObjectDoesNotExist):
             pass
         return form
@@ -524,7 +644,7 @@ class NewBandEntry(generic.FormView):
 
     def form_valid(self, form, **kwargs):
         animal = form.add_band()
-        return HttpResponseRedirect(reverse('birds:animal', args=(animal.pk,)))
+        return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
 
 
 class EventEntry(generic.FormView):
@@ -539,14 +659,14 @@ class EventEntry(generic.FormView):
 
     def get_initial(self):
         initial = super().get_initial()
-        initial['entered_by'] = self.request.user
+        initial["entered_by"] = self.request.user
         return initial
 
     def form_valid(self, form, **kwargs):
         event = form.save(commit=False)
         event.animal = get_object_or_404(Animal, uuid=self.kwargs["uuid"])
         event = form.save()
-        return HttpResponseRedirect(reverse('birds:animal', args=(event.animal.pk,)))
+        return HttpResponseRedirect(reverse("birds:animal", args=(event.animal.pk,)))
 
 
 class IndexView(generic.base.TemplateView):
@@ -556,7 +676,7 @@ class IndexView(generic.base.TemplateView):
         today = datetime.date.today()
         return {
             "today": today,
-            "lastmonth": today.replace(day=1) - datetime.timedelta(days=1)
+            "lastmonth": today.replace(day=1) - datetime.timedelta(days=1),
         }
 
 
@@ -565,6 +685,7 @@ class EventSummary(generic.base.TemplateView):
 
     def get_context_data(self, **kwargs):
         from collections import Counter
+
         tots = Counter()
         year, month = map(int, self.args[:2])
         # aggregation by month does not appear to work properly with postgres
@@ -577,19 +698,27 @@ class EventSummary(generic.base.TemplateView):
             "month": month,
             "next": datetime.date(year, month, 1) + datetime.timedelta(days=32),
             "prev": datetime.date(year, month, 1) - datetime.timedelta(days=1),
-            "event_totals": dict(tots)
+            "event_totals": dict(tots),
         }
 
 
 class SampleFilter(filters.FilterSet):
     uuid = filters.CharFilter(field_name="uuid", lookup_expr="istartswith")
     type = filters.CharFilter(field_name="type__name", lookup_expr="istartswith")
-    location = filters.CharFilter(field_name="location__name", lookup_expr="istartswith")
+    location = filters.CharFilter(
+        field_name="location__name", lookup_expr="istartswith"
+    )
     available = filters.BooleanFilter(field_name="location", method="is_available")
-    color = filters.CharFilter(field_name="animal__band_color__name", lookup_expr="iexact")
+    color = filters.CharFilter(
+        field_name="animal__band_color__name", lookup_expr="iexact"
+    )
     band = filters.NumberFilter(field_name="animal__band_number", lookup_expr="exact")
-    species = filters.CharFilter(field_name="animal__species__code", lookup_expr="iexact")
-    collected_by = filters.CharFilter(field_name="collected_by__username", lookup_expr="iexact")
+    species = filters.CharFilter(
+        field_name="animal__species__code", lookup_expr="iexact"
+    )
+    collected_by = filters.CharFilter(
+        field_name="collected_by__username", lookup_expr="iexact"
+    )
 
     def is_available(self, queryset, name, value):
         return queryset.exclude(location__isnull=True)
@@ -597,7 +726,7 @@ class SampleFilter(filters.FilterSet):
     class Meta:
         model = Sample
         fields = {
-            'date': ['exact', 'year', 'range'],
+            "date": ["exact", "year", "range"],
         }
 
 
@@ -615,9 +744,9 @@ class SampleList(FilterView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['query'] = self.request.GET.copy()
+        context["query"] = self.request.GET.copy()
         try:
-            del context['query']['page']
+            del context["query"]["page"]
         except KeyError:
             pass
         return context
@@ -651,24 +780,26 @@ class SampleEntry(generic.FormView):
 
     def get_initial(self):
         initial = super().get_initial()
-        initial['collected_by'] = self.request.user
+        initial["collected_by"] = self.request.user
         return initial
 
     def form_valid(self, form, **kwargs):
         sample = form.save(commit=False)
         sample.animal = self.animal
         sample.save()
-        return HttpResponseRedirect(reverse('birds:animal', args=(sample.animal.pk,)))
+        return HttpResponseRedirect(reverse("birds:animal", args=(sample.animal.pk,)))
 
 
 ### API
-@api_view(['GET'])
+@api_view(["GET"])
 def api_info(request, format=None):
-    return Response({
-        'name': 'django-bird-colony',
-        'version': __version__,
-        'api_version': api_version
-    })
+    return Response(
+        {
+            "name": "django-bird-colony",
+            "version": __version__,
+            "api_version": api_version,
+        }
+    )
 
 
 class APIAnimalsList(generics.ListAPIView):
@@ -680,6 +811,7 @@ class APIAnimalsList(generics.ListAPIView):
 
 class APIAnimalChildList(APIAnimalsList):
     """List all the children of an animal"""
+
     def get_object(self):
         return get_object_or_404(Animal, uuid=self.kwargs["pk"])
 
@@ -704,6 +836,7 @@ class APIAnimalPedigree(generics.ListAPIView):
     """A list of animals and their parents.
 
     If query param restrict is False, includes all animals, not just those useful in constructing a pedigree."""
+
     serializer_class = AnimalPedigreeSerializer
     filter_backends = (filters.DjangoFilterBackend,)
     filterset_class = AnimalFilter
@@ -711,9 +844,11 @@ class APIAnimalPedigree(generics.ListAPIView):
 
     def get_queryset(self):
         from django.db.models import Count, Q
+
         if self.request.GET.get("restrict", True):
-            qs = Animal.objects.annotate(
-                nchildren=Count('children')).filter(Q(alive__gt=0) | Q(nchildren__gt=0))
+            qs = Animal.objects.annotate(nchildren=Count("children")).filter(
+                Q(alive__gt=0) | Q(nchildren__gt=0)
+            )
         else:
             qs = Animal.objects.all()
         return qs

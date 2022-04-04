@@ -17,8 +17,19 @@ class AnimalSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Animal
-        fields = ('name', 'uuid', 'species', 'sex', 'plumage', 'band_color', 'band_number',
-                  'sire', 'dam', 'alive', 'reserved_by',)
+        fields = (
+            "name",
+            "uuid",
+            "species",
+            "sex",
+            "plumage",
+            "band_color",
+            "band_number",
+            "sire",
+            "dam",
+            "alive",
+            "reserved_by",
+        )
 
 
 class AnimalPedigreeSerializer(serializers.ModelSerializer):
@@ -29,7 +40,7 @@ class AnimalPedigreeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Animal
-        fields = ('uuid', 'sire', 'dam', 'sex', 'alive', 'plumage')
+        fields = ("uuid", "sire", "dam", "sex", "alive", "plumage")
 
 
 class AnimalDetailSerializer(AnimalSerializer):
@@ -44,23 +55,38 @@ class AnimalDetailSerializer(AnimalSerializer):
 
     class Meta:
         model = Animal
-        fields = ('name', 'uuid', 'species', 'sex', 'plumage', 'band_color', 'band_number',
-                  'sire', 'dam', 'reserved_by', "age_days", "alive", "last_location", 'attributes')
+        fields = (
+            "name",
+            "uuid",
+            "species",
+            "sex",
+            "plumage",
+            "band_color",
+            "band_number",
+            "sire",
+            "dam",
+            "reserved_by",
+            "age_days",
+            "alive",
+            "last_location",
+            "attributes",
+        )
 
 
 class StatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = Status
-        fields = ('name', 'count')
+        fields = ("name", "count")
 
 
 class EventSerializer(serializers.ModelSerializer):
-    animal = serializers.PrimaryKeyRelatedField(read_only=False,
-                                                queryset=Animal.objects.all())
+    animal = serializers.PrimaryKeyRelatedField(
+        read_only=False, queryset=Animal.objects.all()
+    )
     entered_by = serializers.StringRelatedField()
     location = serializers.StringRelatedField()
     status = serializers.StringRelatedField()
 
     class Meta:
         model = Event
-        fields = ('animal', 'date', 'status', 'location', 'description', 'entered_by')
+        fields = ("animal", "date", "status", "location", "description", "entered_by")

@@ -4,13 +4,14 @@
 
 
 def sort_and_group(qs, key):
-    """ Sort and group a queryset by a key function """
+    """Sort and group a queryset by a key function"""
     from itertools import groupby
+
     return groupby(sorted(qs, key=key), key)
 
 
 def find_first(iterable, predicate):
-    """ Return the first item in iterable that matches predicate, or None if no match """
+    """Return the first item in iterable that matches predicate, or None if no match"""
     for item in iterable:
         if predicate(item):
             return item
@@ -30,8 +31,9 @@ def tabulate_locations(since, until):
     from birds.models import Animal, Event, Location, ADULT_ANIMAL_NAME
     from datetime import timedelta
     from collections import defaultdict, Counter
+
     repdate = since
-    nests = Location.objects.filter(nest=True).order_by('name')
+    nests = Location.objects.filter(nest=True).order_by("name")
     dates = []
     data = {}
     while repdate <= until:
