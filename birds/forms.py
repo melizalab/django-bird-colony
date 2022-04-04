@@ -29,6 +29,21 @@ class EventForm(forms.ModelForm):
         fields = ["date", "status", "location", "description", "entered_by"]
 
 
+class SexForm(forms.Form):
+    date = forms.DateField()
+    sex = forms.ChoiceField(choices=Animal.SEX_CHOICES, required=True)
+    description = forms.CharField(widget=forms.Textarea, required=False)
+    entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
+
+    def clean(self):
+        data = super().clean()
+        try:
+            data["status"] = Status.objects.get(name=models.NOTE_EVENT_NAME)
+        except ObjectDoesNotExist:
+            raise forms.ValidationError("No 'note' status type - add one in admin")
+        return data
+
+
 class SampleForm(forms.ModelForm):
     class Meta:
         model = Sample

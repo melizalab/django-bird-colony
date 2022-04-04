@@ -47,6 +47,11 @@ urlpatterns = [
         name="new_band",
     ),
     re_path(
+        r"^animals/(?P<uuid>[a-f0-9\-]{36})/set-sex/$",
+        login_required(views.SexEntry.as_view()),
+        name="set_sex",
+    ),
+    re_path(
         r"^animals/(?P<uuid>[a-f0-9\-]{36})/new-clutch/$",
         login_required(views.ClutchEntry.as_view()),
         name="clutch",
