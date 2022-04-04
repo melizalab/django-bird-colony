@@ -571,6 +571,24 @@ class AnimalView(generic.DetailView):
         return context
 
 
+class DescendentsView(generic.DetailView):
+    model = Animal
+    template_name = "birds/descendents.html"
+    slug_field = "uuid"
+    slug_url_kwarg = "uuid"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        animal = context["animal"]
+        context["generations"] = [
+            animal.children.filter(event__status__adds=True).order_by("-alive"),
+            Animal.objects.filter(parents__parents=animal, event__status__adds=True).order_by("-alive"),
+            Animal.objects.filter(parents__parents__parents=animal, event__status__adds=True).order_by("-alive"),
+            Animal.objects.filter(parents__parents__parents__parents=animal, event__status__adds=True).order_by("-alive"),
+        ]
+        context["living"] = [qs.filter(alive=True) for qs in context["generations"]]
+        return context
+
 class ClutchEntry(generic.FormView):
     template_name = "birds/clutch_entry.html"
     form_class = ClutchForm

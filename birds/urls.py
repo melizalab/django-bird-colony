@@ -22,6 +22,11 @@ urlpatterns = [
         name="animal",
     ),
     re_path(
+        r"^animals/(?P<uuid>[a-f0-9\-]{36})/descendents/$",
+        views.DescendentsView.as_view(),
+        name="descendents",
+    ),
+    re_path(
         r"^animals/(?P<animal>[a-f0-9\-]{36})/events/$",
         views.EventList.as_view(),
         name="animal_events",
