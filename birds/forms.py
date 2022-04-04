@@ -29,21 +29,6 @@ class EventForm(forms.ModelForm):
         fields = ["date", "status", "location", "description", "entered_by"]
 
 
-class SexForm(forms.Form):
-    date = forms.DateField()
-    sex = forms.ChoiceField(choices=Animal.SEX_CHOICES, required=True)
-    description = forms.CharField(widget=forms.Textarea, required=False)
-    entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
-
-    def clean(self):
-        data = super().clean()
-        try:
-            data["status"] = Status.objects.get(name=models.NOTE_EVENT_NAME)
-        except ObjectDoesNotExist:
-            raise forms.ValidationError("No 'note' status type - add one in admin")
-        return data
-
-
 class SampleForm(forms.ModelForm):
     class Meta:
         model = Sample
@@ -189,8 +174,7 @@ class NewBandForm(forms.Form):
     user = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
 
     def clean(self):
-        super(NewBandForm, self).clean()
-        data = self.cleaned_data
+        data = super().clean()
         try:
             data["band_status"] = Status.objects.get(name__startswith="band")
         except ObjectDoesNotExist:
@@ -205,6 +189,7 @@ class NewBandForm(forms.Form):
                 code="invalid",
                 params=data,
             )
+        return data
 
     def add_band(self):
         data = self.cleaned_data
@@ -222,6 +207,40 @@ class NewBandForm(forms.Form):
             description=animal.band(),
             entered_by=data["user"],
         )
+        evt.save()
+        return animal
+
+
+class SexForm(forms.Form):
+    animal = forms.ModelChoiceField(
+        queryset=Animal.objects.filter(sex=Animal.UNKNOWN_SEX)
+    )
+    date = forms.DateField()
+    sex = forms.ChoiceField(choices=Animal.SEX_CHOICES, required=True)
+    description = forms.CharField(widget=forms.Textarea, required=False)
+    entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
+
+    def clean(self):
+        data = super().clean()
+        try:
+            data["status"] = Status.objects.get(name=models.NOTE_EVENT_NAME)
+        except ObjectDoesNotExist:
+            raise forms.ValidationError("No 'note' status type - add one in admin")
+        return data
+
+    def update_sex(self):
+        data = self.cleaned_data
+        animal = data["animal"]
+        animal.sex = data["sex"]
+        descr = data["description"] or f"sexed as {animal.sex}"
+        evt = Event(
+            animal=animal,
+            date=data["date"],
+            status=data["status"],
+            entered_by=data["entered_by"],
+            description=descr,
+        )
+        animal.save()
         evt.save()
         return animal
 

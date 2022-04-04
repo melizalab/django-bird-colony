@@ -628,6 +628,7 @@ class NewBandEntry(generic.FormView):
 
     def get_form(self):
         form = super().get_form()
+        form.initial["user"] = self.request.user
         try:
             uuid = self.kwargs["uuid"]
             form.fields["animal"].queryset = Animal.objects.filter(uuid=uuid)
@@ -637,11 +638,6 @@ class NewBandEntry(generic.FormView):
         except (KeyError, ObjectDoesNotExist):
             pass
         return form
-
-    def get_initial(self):
-        initial = super().get_initial()
-        initial["user"] = self.request.user
-        return initial
 
     def form_valid(self, form, **kwargs):
         animal = form.add_band()
@@ -674,33 +670,22 @@ class SexEntry(generic.FormView):
     template_name = "birds/sex_entry.html"
     form_class = SexForm
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["animal"] = self.animal
-        return context
-
     def get_form(self):
         form = super().get_form()
-        self.animal = get_object_or_404(Animal, uuid=self.kwargs["uuid"])
+        print("sex-entry")
+        try:
+            uuid = self.kwargs["uuid"]
+            form.fields["animal"].queryset = Animal.objects.filter(uuid=uuid)
+            animal = Animal.objects.get(uuid=uuid)
+            form.initial["animal"] = animal
+            form.initial["sex"] = animal.sex
+        except (KeyError, ObjectDoesNotExist):
+            pass
         form.initial["entered_by"] = self.request.user
-        form.initial["sex"] = self.animal.sex
         return form
 
     def form_valid(self, form, **kwargs):
-        from birds.models import Event, NOTE_EVENT_NAME
-
-        data = form.clean()
-        self.animal.sex = data["sex"]
-        descr = data["description"] or f"sexed as {self.animal.sex}"
-        evt = Event(
-            animal=self.animal,
-            date=data["date"],
-            status=data["status"],
-            entered_by=data["entered_by"],
-            description=descr,
-        )
-        self.animal.save()
-        evt.save()
+        animal = form.update_sex()
         return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
 
 

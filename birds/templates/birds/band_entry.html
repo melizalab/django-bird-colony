@@ -29,10 +29,9 @@
   <div class="panel-body">
     <form action="{% url 'birds:new_band' %}" class="form-horizontal" method="post" role="form">
       {% csrf_token %}
-      <p><strong>Instructions</strong>: This form is for banding a single bird.
-      Use this only if the bird has already been entered into the database (for
-      example, through the <a href="{% url 'birds:clutch' %}">new clutch</a>
-        form). If you are adding a new bird, use the
+      <p><strong>Instructions</strong>: This form is for banding a single bird,
+      optionally setting the sex. Use this only if the bird has already been
+      entered into the database. If you are adding a new bird, use the
         <a href="{% url 'birds:new_animal' %}">new animal</a> form. </p>
 
       {% if form.non_field_errors %}

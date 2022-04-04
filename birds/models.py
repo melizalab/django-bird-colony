@@ -264,6 +264,9 @@ class Animal(models.Model):
     def dam(self):
         return self.parents.filter(sex__exact="F").first()
 
+    def sexed(self):
+        return self.sex != Animal.UNKNOWN_SEX
+
     def living_children(self):
         return self.children.exclude(event__status__removes=True)
 
