@@ -71,5 +71,5 @@
 <h3>Children</h3>
 {% include "birds/animal_table.html" %}
 
-<p><a href="{% url 'birds:descendents' animal.uuid %}">view descendents</a> (may take a while)</p>
+<p><a href="{% url 'birds:genealogy' animal.uuid %}">view genealogy</a> (may take a while)</p>
 {% endblock %}
