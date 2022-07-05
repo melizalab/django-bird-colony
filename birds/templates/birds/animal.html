@@ -38,17 +38,21 @@
   <thead>
     <th>Status</th>
     <th>Date</th>
+    <th>Age</th>
     <th>Location</th>
     <th>Comments</th>
-    <th></th>
+    <th>Entered by</th>
+    <th>Edit</th>
   </thead>
   <tbody>
     {% for event in event_list|slice:":10" %}
         <tr>
           <td>{{ event.status }}</td>
           <td>{{ event.date }}</td>
+	  <td>{% age_at animal event %}</td>
           <td>{{ event.location }}</td>
           <td>{{ event.description }}</td>
+	  <td>{{ event.entered_by}}</td>
           <td><a href="{% url 'admin:birds_event_change' event.id %}"
                  class="glyphicon glyphicon-edit" alt="[edit]" aria-label="[Edit]"></a></td>
         </tr>
