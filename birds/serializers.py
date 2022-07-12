@@ -33,14 +33,15 @@ class AnimalSerializer(serializers.ModelSerializer):
 
 
 class AnimalPedigreeSerializer(serializers.ModelSerializer):
-    sire = serializers.PrimaryKeyRelatedField(read_only=True)
-    dam = serializers.PrimaryKeyRelatedField(read_only=True)
+    sire = serializers.StringRelatedField()
+    dam = serializers.StringRelatedField()
     plumage = serializers.StringRelatedField()
     alive = serializers.BooleanField(required=False)
+    acquisition_event = serializers.SlugRelatedField(read_only=True, slug_field='date')
 
     class Meta:
         model = Animal
-        fields = ("uuid", "sire", "dam", "sex", "alive", "plumage")
+        fields = ("uuid", "name", "sire", "dam", "sex", "alive", "plumage", "acquisition_event")
 
 
 class AnimalDetailSerializer(AnimalSerializer):
