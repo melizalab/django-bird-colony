@@ -22,10 +22,16 @@
   <dt>unhatched eggs</dt><dd> {{ animal.unhatched.count }}</dd>
   <dt>sire</dt><dd>{% if animal.sire %}<a href="{{ animal.sire.get_absolute_url }}">{{ animal.sire }}</a>{% endif %}</dd>
   <dt>dam</dt><dd>{% if animal.dam %}<a href="{{ animal.dam.get_absolute_url }}">{{ animal.dam }}</a>{% endif %}</dd>
-  <dt>reserved by</dt><dd><span class="text-warning">{{ animal.reserved_by }}</span></dd>
+  <dt>reserved by</dt>
+  <dd>
+    <span class="text-warning">{{ animal.reserved_by }}</span>
+  </dd>
 </dl>
 {% if not animal.sexed %}
 <a href="{% url 'birds:set_sex' animal.uuid %}">update sex</a><br/>
+{% endif %}
+{% if not animal.reserved_by %}
+<a href="{% url 'birds:create_reservation' animal.uuid %}">reserve this bird</a><br/>
 {% endif %}
 {% if not animal.band_number %}
 <a href="{% url 'birds:new_band' animal.uuid %}">band bird</a><br/>

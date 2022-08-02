@@ -2,7 +2,7 @@
 {% load static %}
 {% load widget_tweaks %}
 
-{% block title %} meliza-lab : bird colony : update sex {% endblock title%}
+{% block title %} meliza-lab : bird colony : create reservation {% endblock title%}
 
 {% block css %}
     <link href="{% static 'local/css/bootstrap-datetimepicker.min.css' %}" rel="stylesheet">
@@ -23,12 +23,12 @@
 
 <div class="panel panel-default">
   <div class="panel-heading">
-    <h3 class="panel-title">Sexing entry</h3>
+    <h3 class="panel-title">Reserve an animal</h3>
   </div>
   <div class="panel-body">
-    <form action="{% url 'birds:set_sex' %}" class="form-horizontal" method="post" role="form">
+    <form action="{% url 'birds:create_reservation' %}" class="form-horizontal" method="post" role="form">
       {% csrf_token %}
-      <p><strong>Instructions</strong>: This form will update the sex of an
+      <p><strong>Instructions</strong>: This form will update the reservation status of an
       animal and generate a corresponding event in the database.</p>
 
       {% if form.non_field_errors %}
@@ -39,13 +39,6 @@
         <label for="id_sire" class="col-sm-2 control-label">Animal</label>
         <div class="col-sm-5">
           {% render_field form.animal class+="form-control" %}
-        </div>
-      </div>
-
-      <div class="form-group {% if form.sex.errors %}has-error{% endif %}">
-        <label for="id_sex" class="col-sm-2 control-label">Sex</label>
-        <div class="col-sm-5">
-          {% render_field form.sex class+="form-control" %}
         </div>
       </div>
 
@@ -68,7 +61,7 @@
       </div>
 
       <div class="form-group {% if form.entered_by.errors %}has-error{% endif %}">
-        <label for="id_entered_by" class="col-sm-2 control-label">Entered by * </label>
+        <label for="id_entered_by" class="col-sm-2 control-label">Reserved by * </label>
         <div class="col-sm-3">
           {% render_field form.entered_by class+="form-control" %}
         </div>
@@ -76,7 +69,7 @@
 
       <div class="form-group">
         <div class="col-sm-offset-2 col-sm-10">
-          <button type="submit" class="btn btn-default">Update sex</button>
+          <button type="submit" class="btn btn-default">Create reservation</button>
         </div>
       </div>
 

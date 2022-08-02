@@ -57,6 +57,11 @@ urlpatterns = [
         name="set_sex",
     ),
     re_path(
+        r"^animals/(?P<uuid>[a-f0-9\-]{36})/reserve/$",
+        login_required(views.ReservationEntry.as_view()),
+        name="create_reservation",
+    ),
+    re_path(
         r"^animals/(?P<uuid>[a-f0-9\-]{36})/new-clutch/$",
         login_required(views.ClutchEntry.as_view()),
         name="clutch",
@@ -100,6 +105,11 @@ urlpatterns = [
     ),
     re_path(
         r"^set-sex/$", login_required(views.SexEntry.as_view()), name="set_sex"
+    ),
+    re_path(
+        r"^reserve/$",
+        login_required(views.ReservationEntry.as_view()),
+        name="create_reservation",
     ),
     # api
     re_path(r"^api/info/$", views.api_info, name="api_info"),

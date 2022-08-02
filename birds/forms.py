@@ -211,6 +211,39 @@ class NewBandForm(forms.Form):
         return animal
 
 
+
+class ReservationForm(forms.Form):
+    animal = forms.ModelChoiceField(queryset=Animal.objects.filter(reserved_by__isnull=True))
+    date = forms.DateField()
+    description = forms.CharField(widget=forms.Textarea, required=False)
+    entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
+
+    def clean(self):
+        super().clean()
+        try:
+            self.cleaned_data["status"] = Status.objects.get(name=models.RESERVATION_EVENT_NAME)
+        except ObjectDoesNotExist:
+            raise forms.ValidationError(f"No '{models.RESERVATION_EVENT_NAME}' status type - add one in admin")
+        return self.cleaned_data
+
+    def new_reservation(self):
+        data = self.cleaned_data
+        animal = data["animal"]
+        user = data["entered_by"]
+        animal.reserved_by = user
+        descr = f"reserved by {user}: {data['description']}"
+        evt = Event(
+            animal=animal,
+            date=data["date"],
+            status=data["status"],
+            entered_by=user,
+            description=descr,
+        )
+        animal.save()
+        evt.save()
+        return animal
+
+
 class SexForm(forms.Form):
     animal = forms.ModelChoiceField(
         queryset=Animal.objects.filter(sex=Animal.UNKNOWN_SEX)
@@ -225,7 +258,7 @@ class SexForm(forms.Form):
         try:
             data["status"] = Status.objects.get(name=models.NOTE_EVENT_NAME)
         except ObjectDoesNotExist:
-            raise forms.ValidationError("No 'note' status type - add one in admin")
+            raise forms.ValidationError(f"No '{models.NOTE_EVENT_NAME}' status type - add one in admin")
         return data
 
     def update_sex(self):

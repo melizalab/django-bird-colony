@@ -17,7 +17,9 @@ from django_filters.views import FilterView
 from drf_link_header_pagination import LinkHeaderPagination
 
 from birds import __version__, api_version
-from birds.models import Animal, Event, Sample, SampleType, NestCheck, Pairing
+from birds.models import (
+    Animal, Event, Sample, SampleType, NestCheck, Pairing, Status
+)
 from birds.serializers import (
     AnimalSerializer,
     AnimalPedigreeSerializer,
@@ -29,6 +31,7 @@ from birds.forms import (
     NewAnimalForm,
     NewBandForm,
     EventForm,
+    ReservationForm,
     SampleForm,
     NewPairingForm,
     EndPairingForm,
@@ -692,13 +695,40 @@ class EventEntry(generic.FormView):
         return HttpResponseRedirect(reverse("birds:animal", args=(event.animal.pk,)))
 
 
+class ReservationEntry(generic.FormView):
+    template_name = "birds/reservation_entry.html"
+    form_class = ReservationForm
+
+    def get_form(self):
+        form = super().get_form()
+        form.initial["entered_by"] = self.request.user
+        try:
+            uuid = self.kwargs["uuid"]
+            form.fields["animal"].queryset = Animal.objects.filter(uuid=uuid)
+            animal = Animal.objects.get(uuid=uuid)
+            form.initial["animal"] = animal
+            if animal.reserved_by is not None:
+                form.initial["entered_by"] = animal.reserved_by
+        except (KeyError, ObjectDoesNotExist):
+            pass
+        return form
+
+    def form_valid(self, form, **kwargs):
+        animal = form.new_reservation()
+        return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
+
+
+@require_http_methods(["GET"])
+def clear_reservation(request):
+    pass
+
+
 class SexEntry(generic.FormView):
     template_name = "birds/sex_entry.html"
     form_class = SexForm
 
     def get_form(self):
         form = super().get_form()
-        print("sex-entry")
         try:
             uuid = self.kwargs["uuid"]
             form.fields["animal"].queryset = Animal.objects.filter(uuid=uuid)

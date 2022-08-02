@@ -19,6 +19,7 @@ ADULT_ANIMAL_NAME = "adult"
 LOST_EVENT_NAME = "lost"
 MOVED_EVENT_NAME = "moved"
 NOTE_EVENT_NAME = "note"
+RESERVATION_EVENT_NAME = "reservation"
 
 
 def get_sentinel_user():
