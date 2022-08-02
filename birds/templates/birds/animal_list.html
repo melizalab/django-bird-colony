@@ -8,11 +8,14 @@
 
 <form class="form-horizontal" method="get" role="form">
   <div class="form-group">
-    <div class="col-sm-3">
+    <div class="col-sm-2">
       {% render_field filter.form.color placeholder="Band color" class+="form-control" %}
     </div>
-    <div class="col-sm-3">
+    <div class="col-sm-2">
       {% render_field filter.form.band placeholder="Band number" class+="form-control" %}
+    </div>
+    <div class="col-sm-2">
+      {% render_field filter.form.uuid placeholder="UUID (beginning)" class+="form-control" %}
     </div>
     <button type="submit" class="btn btn-primary">
       <span class="glyphicon glyphicon-search"></span> Search
