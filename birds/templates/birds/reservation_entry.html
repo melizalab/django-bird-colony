@@ -23,13 +23,14 @@
 
 <div class="panel panel-default">
   <div class="panel-heading">
-    <h3 class="panel-title">Reserve an animal</h3>
+    <h3 class="panel-title">Create or clear a reservation</h3>
   </div>
   <div class="panel-body">
-    <form action="{% url 'birds:create_reservation' %}" class="form-horizontal" method="post" role="form">
+    <form action="{% url 'birds:update_reservation' %}" class="form-horizontal" method="post" role="form">
       {% csrf_token %}
-      <p><strong>Instructions</strong>: This form will update the reservation status of an
-      animal and generate a corresponding event in the database.</p>
+      <p><strong>Instructions</strong>: This form will update the reservation
+      status of an animal and generate a corresponding event in the database.
+      Set <em>Reserved by</em> to blank to release a reservation. </p>
 
       {% if form.non_field_errors %}
       <div class="alert alert-danger">{{ form.non_field_errors }}</div>
@@ -61,7 +62,7 @@
       </div>
 
       <div class="form-group {% if form.entered_by.errors %}has-error{% endif %}">
-        <label for="id_entered_by" class="col-sm-2 control-label">Reserved by * </label>
+        <label for="id_entered_by" class="col-sm-2 control-label">Reserved by </label>
         <div class="col-sm-3">
           {% render_field form.entered_by class+="form-control" %}
         </div>
@@ -69,7 +70,7 @@
 
       <div class="form-group">
         <div class="col-sm-offset-2 col-sm-10">
-          <button type="submit" class="btn btn-default">Create reservation</button>
+          <button type="submit" class="btn btn-default">Update reservation</button>
         </div>
       </div>
 

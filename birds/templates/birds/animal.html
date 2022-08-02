@@ -30,13 +30,17 @@
 {% if not animal.sexed %}
 <a href="{% url 'birds:set_sex' animal.uuid %}">update sex</a><br/>
 {% endif %}
-{% if not animal.reserved_by %}
-<a href="{% url 'birds:create_reservation' animal.uuid %}">reserve this bird</a><br/>
-{% endif %}
+<a href="{% url 'birds:update_reservation' animal.uuid %}">
+  {% if animal.reserved_by %}
+  release reservation
+  {% else %}
+  reserve this bird
+  {% endif %}
+</a><br/>
 {% if not animal.band_number %}
 <a href="{% url 'birds:new_band' animal.uuid %}">band bird</a><br/>
 {% endif %}
-<a href="{% url 'admin:birds_animal_change' animal.uuid %}">edit bird</a><br/>
+<a href="{% url 'admin:birds_animal_change' animal.uuid %}">edit bird (advanced users only)</a><br/>
 
 <h3>Recent Events</h3>
 

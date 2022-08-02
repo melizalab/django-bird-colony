@@ -213,10 +213,10 @@ class NewBandForm(forms.Form):
 
 
 class ReservationForm(forms.Form):
-    animal = forms.ModelChoiceField(queryset=Animal.objects.filter(reserved_by__isnull=True))
+    animal = forms.ModelChoiceField(queryset=Animal.objects.all())
     date = forms.DateField()
     description = forms.CharField(widget=forms.Textarea, required=False)
-    entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
+    entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True), required=False)
 
     def clean(self):
         super().clean()
@@ -225,23 +225,6 @@ class ReservationForm(forms.Form):
         except ObjectDoesNotExist:
             raise forms.ValidationError(f"No '{models.RESERVATION_EVENT_NAME}' status type - add one in admin")
         return self.cleaned_data
-
-    def new_reservation(self):
-        data = self.cleaned_data
-        animal = data["animal"]
-        user = data["entered_by"]
-        animal.reserved_by = user
-        descr = f"reserved by {user}: {data['description']}"
-        evt = Event(
-            animal=animal,
-            date=data["date"],
-            status=data["status"],
-            entered_by=user,
-            description=descr,
-        )
-        animal.save()
-        evt.save()
-        return animal
 
 
 class SexForm(forms.Form):

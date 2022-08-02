@@ -59,7 +59,7 @@ urlpatterns = [
     re_path(
         r"^animals/(?P<uuid>[a-f0-9\-]{36})/reserve/$",
         login_required(views.ReservationEntry.as_view()),
-        name="create_reservation",
+        name="update_reservation",
     ),
     re_path(
         r"^animals/(?P<uuid>[a-f0-9\-]{36})/new-clutch/$",
@@ -109,7 +109,7 @@ urlpatterns = [
     re_path(
         r"^reserve/$",
         login_required(views.ReservationEntry.as_view()),
-        name="create_reservation",
+        name="update_reservation",
     ),
     # api
     re_path(r"^api/info/$", views.api_info, name="api_info"),

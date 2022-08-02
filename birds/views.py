@@ -701,26 +701,37 @@ class ReservationEntry(generic.FormView):
 
     def get_form(self):
         form = super().get_form()
-        form.initial["entered_by"] = self.request.user
         try:
             uuid = self.kwargs["uuid"]
             form.fields["animal"].queryset = Animal.objects.filter(uuid=uuid)
             animal = Animal.objects.get(uuid=uuid)
             form.initial["animal"] = animal
-            if animal.reserved_by is not None:
-                form.initial["entered_by"] = animal.reserved_by
+            if animal.reserved_by is None:
+                form.initial["entered_by"] = self.request.user
         except (KeyError, ObjectDoesNotExist):
             pass
         return form
 
     def form_valid(self, form, **kwargs):
-        animal = form.new_reservation()
+        data = form.cleaned_data
+        animal = data["animal"]
+        animal.reserved_by = data["entered_by"]
+        if animal.reserved_by is None:
+            user = self.request.user
+            descr = f"reservation released: {data['description']}"
+        else:
+            user = animal.reserved_by
+            descr = f"reservation created: {data['description']}"
+        evt = Event(
+            animal=animal,
+            date=data["date"],
+            status=data["status"],
+            entered_by=user,
+            description=descr,
+        )
+        animal.save()
+        evt.save()
         return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
-
-
-@require_http_methods(["GET"])
-def clear_reservation(request):
-    pass
 
 
 class SexEntry(generic.FormView):
