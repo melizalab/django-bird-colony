@@ -1,4 +1,4 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
-__version__ = "0.10.9"
+__version__ = "0.10.10"
 api_version = "1.0"
