@@ -4,15 +4,15 @@
 bird-colony is a Django application used to manage bird colonies (including breeding colonies).
 You may find that it can also be used for non-avian species. There's also support for storing information about samples associated with animals in the colony, like genomic DNA or song recordings.
 
-The admin interface is the primary tool used to create and update bird records, but there is a growing collection of views that can be used to browse the database and perform common updates (like adding clutches). There is also a JSON API that supports a variety of search queries.
+There is a growing collection of views that can be used to browse the database and perform common updates (like adding clutches). There is also a JSON API that supports a variety of search queries.
 
-bird-colony is licensed for you to use under the Gnu Public License, version 3. See COPYING for details
+bird-colony is licensed for you to use under the BSD License. See COPYING for details
 
 ### Quick start
 
-You'll need to have a basic understanding of how to use [Django](https://www.djangoproject.com/).
+You'll need to have a basic understanding of how to use [Django](https://www.djangoproject.com/). Requires Python 3.8+ and Django 4.0+.
 
-1. Install the package using pip: `pip install django-bird-colony`. Worth putting in a virtualenv.
+1. Install the package using pip: `pip install django-bird-colony`.
 
 1. Add `birds` and some dependencies to your INSTALLED_APPS setting like this:
 
