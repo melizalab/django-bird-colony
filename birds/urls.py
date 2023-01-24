@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
 from django.contrib.auth.decorators import login_required
-from django.conf.urls import re_path
-from django.urls import path
+from django.urls import path, re_path
 
 from birds import views
 
