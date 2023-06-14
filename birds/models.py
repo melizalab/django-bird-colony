@@ -359,7 +359,7 @@ class Animal(models.Model):
         """Returns the location recorded in the most recent event"""
         try:
             return self.event_set.exclude(location__isnull=True).latest().location
-        except AttributeError:
+        except (AttributeError, Event.DoesNotExist):
             return None
 
     def pairings(self):
@@ -495,7 +495,7 @@ class Pairing(models.Model):
             qs = qs.filter(date__lte=self.ended)
         try:
             return qs.exclude(location__isnull=True).latest().location
-        except AttributeError:
+        except (AttributeError, Event.DoesNotExist):
             return None
 
     def clean(self):
