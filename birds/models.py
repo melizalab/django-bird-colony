@@ -8,6 +8,8 @@ import datetime
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.urls import reverse
 from django.db import models
+from django.db.models import Value, Case, When, CharField
+from django.db.models.functions import Concat, Substr, Cast
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
@@ -116,6 +118,26 @@ class Age(models.Model):
         unique_together = ("name", "species")
 
 
+# Expressions for annotating animal records with names. This avoids a bunch of
+# related table lookups
+_short_uuid_expr = Substr(Cast("uuid", output_field=CharField()), 1, 8)
+_band_expr = Concat(
+    "band_color__name", Value("_"), "band_number", output_field=CharField()
+)
+_animal_name_expr = Concat(
+    "species__code",
+    Value("_"),
+    Case(
+        When(band_number__isnull=True, then=_short_uuid_expr),
+        When(
+            band_color__isnull=True, then=Cast("band_number", output_field=CharField())
+        ),
+        default=_band_expr,
+    ),
+    output_field=CharField(),
+)
+
+
 class AnimalManager(models.Manager):
     """Annotates animal list with 'alive' field by counting add/remove events"""
 
@@ -129,8 +151,12 @@ class AnimalManager(models.Manager):
                 0,
                 Count("event", filter=Q(event__status__adds=True))
                 - Count("event", filter=Q(event__status__removes=True)),
-            )
+            ),
+            # name=_animal_name_expr,
         ).order_by("band_color", "band_number")
+
+    def with_names(self):
+        return self.select_related("species", "band_color", "reserved_by")
 
 
 class LivingAnimalManager(AnimalManager):
@@ -247,6 +273,9 @@ class Animal(models.Model):
     def __str__(self):
         return self.name()
 
+    # def __str__(self):
+    #     return self.name
+
     def sire(self):
         return self.parents.filter(sex__exact="M").first()
 
@@ -354,7 +383,7 @@ class Animal(models.Model):
         """Returns all pairings involving this animal"""
         from django.db.models import Q
 
-        return Pairing.objects.filter(Q(sire=self) | Q(dam=self))
+        return Pairing.objects.with_names().filter(Q(sire=self) | Q(dam=self))
 
     def get_absolute_url(self):
         return reverse("birds:animal", kwargs={"uuid": self.uuid})
@@ -410,6 +439,18 @@ class Event(models.Model):
         get_latest_by = ["date", "created"]
 
 
+class PairingManager(models.Manager):
+    def with_names(self):
+        return self.select_related(
+            "sire",
+            "dam",
+            "sire__species",
+            "sire__band_color",
+            "dam__species",
+            "dam__band_color",
+        )
+
+
 class Pairing(models.Model):
     id = models.AutoField(primary_key=True)
     sire = models.ForeignKey(
@@ -436,6 +477,8 @@ class Pairing(models.Model):
     comment = models.TextField(
         blank=True, help_text="notes on the outcome of the pairing"
     )
+
+    objects = PairingManager()
 
     def __str__(self):
         return "♂{} × ♀{} ({} — {})".format(

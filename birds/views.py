@@ -124,12 +124,19 @@ class AnimalList(FilterView):
             pass
         return context
 
+    def get_queryset(self):
+        return Animal.objects.with_names().filter(**self.kwargs)
+
 
 class PairingList(FilterView):
     model = Pairing
     filterset_class = PairingFilter
     template_name = "birds/pairing_list.html"
+    paginate_by = 25
     strict = False
+
+    def get_queryset(self):
+        return Pairing.objects.with_names().filter(**self.kwargs)
 
 
 class PairingListActive(FilterView):
@@ -139,7 +146,7 @@ class PairingListActive(FilterView):
     strict = False
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = Pairing.objects.with_names().filter(**self.kwargs)
         return qs.filter(ended__isnull=True)
 
 
@@ -565,8 +572,12 @@ class AnimalView(generic.DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         animal = context["animal"]
-        context["animal_list"] = animal.children.order_by("-alive", "-created")
-        context["event_list"] = animal.event_set.order_by("-date", "-created")
+        context["animal_list"] = animal.children.with_names().order_by(
+            "-alive", "-created"
+        )
+        context["event_list"] = animal.event_set.with_names().order_by(
+            "-date", "-created"
+        )
         context["sample_list"] = animal.sample_set.order_by("-date")
         context["pairing_list"] = animal.pairings().order_by("-began")
         return context
