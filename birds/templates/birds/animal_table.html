@@ -3,7 +3,6 @@
   <thead>
     <th>Name</th>
     <th>Species</th>
-    <th>Band</th>
     <th>Sex</th>
     <th>Age</th>
     <th>Alive</th>
@@ -17,7 +16,6 @@
         <tr>
           <td><a href="{{ animal.get_absolute_url }}">{{ animal.name }}</a></td>
           <td>{{ animal.species }}</td>
-          <td>{{ animal.band }}</td>
           <td>{{ animal.sex }}</td>
           <td>{{ animal.age_days|agestr }} ({{ animal.age_group }})</td>
           <td>{{ animal.alive|yesno }}</td>
