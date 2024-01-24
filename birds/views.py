@@ -17,9 +17,7 @@ from django_filters.views import FilterView
 from drf_link_header_pagination import LinkHeaderPagination
 
 from birds import __version__, api_version
-from birds.models import (
-    Animal, Event, Sample, SampleType, NestCheck, Pairing, Status
-)
+from birds.models import Animal, Event, Sample, SampleType, NestCheck, Pairing, Status
 from birds.serializers import (
     AnimalSerializer,
     AnimalPedigreeSerializer,
@@ -554,7 +552,7 @@ class EventList(FilterView, generic.list.MultipleObjectMixin):
         return context
 
     def get_queryset(self):
-        qs = Event.objects.filter(**self.kwargs)
+        qs = Event.objects.with_names().filter(**self.kwargs)
         return qs.order_by("-date", "-created")
 
 
@@ -592,9 +590,15 @@ class GenealogyView(generic.DetailView):
         ]
         context["descendents"] = [
             animal.children.filter(event__status__adds=True).order_by("-alive"),
-            Animal.objects.filter(parents__parents=animal, event__status__adds=True).order_by("-alive"),
-            Animal.objects.filter(parents__parents__parents=animal, event__status__adds=True).order_by("-alive"),
-            Animal.objects.filter(parents__parents__parents__parents=animal, event__status__adds=True).order_by("-alive"),
+            Animal.objects.filter(
+                parents__parents=animal, event__status__adds=True
+            ).order_by("-alive"),
+            Animal.objects.filter(
+                parents__parents__parents=animal, event__status__adds=True
+            ).order_by("-alive"),
+            Animal.objects.filter(
+                parents__parents__parents__parents=animal, event__status__adds=True
+            ).order_by("-alive"),
         ]
         context["living"] = [qs.filter(alive=True) for qs in context["descendents"]]
         return context
@@ -922,7 +926,8 @@ class APIEventsList(generics.ListAPIView):
 class APIAnimalPedigree(generics.ListAPIView):
     """A list of animals and their parents.
 
-    If query param restrict is False, includes all animals, not just those useful in constructing a pedigree."""
+    If query param restrict is False, includes all animals, not just those useful in constructing a pedigree.
+    """
 
     serializer_class = AnimalPedigreeSerializer
     filter_backends = (filters.DjangoFilterBackend,)

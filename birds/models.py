@@ -183,18 +183,6 @@ class LivingAnimalManager(AnimalManager):
         )
 
 
-class LastEventManager(models.Manager):
-    """Filters queryset so that only the most recent event is returned"""
-
-    def get_queryset(self):
-        qs = super(LastEventManager, self).get_queryset()
-        return (
-            qs.exclude(location__isnull=True)
-            .order_by("animal_id", "-date", "-created")
-            .distinct("animal_id")
-        )
-
-
 class Parent(models.Model):
     id = models.AutoField(primary_key=True)
     child = models.ForeignKey("Animal", related_name="+", on_delete=models.CASCADE)
@@ -375,6 +363,23 @@ class Animal(models.Model):
         ordering = ["band_color", "band_number"]
 
 
+class EventManager(models.Manager):
+    def with_names(self):
+        return self.select_related("animal", "status", "location", "entered_by")
+
+
+class LastEventManager(EventManager):
+    """Filters queryset so that only the most recent event for each animal is returned"""
+
+    def get_queryset(self):
+        qs = super(LastEventManager, self).get_queryset()
+        return (
+            qs.exclude(location__isnull=True)
+            .order_by("animal_id", "-date", "-created")
+            .distinct("animal_id")
+        )
+
+
 class Event(models.Model):
     id = models.AutoField(primary_key=True)
     animal = models.ForeignKey("Animal", on_delete=models.CASCADE)
@@ -390,7 +395,7 @@ class Event(models.Model):
     )
     created = models.DateTimeField(auto_now_add=True)
 
-    objects = models.Manager()
+    objects = EventManager()
     latest = LastEventManager()
 
     def __str__(self):
