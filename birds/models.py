@@ -152,6 +152,9 @@ class AnimalQuerySet(models.QuerySet):
             # TODO add age
         )
 
+    def with_related(self):
+        return self.select_related("reserved_by", "species", "band_color")
+
     def alive(self):
         """Only include birds that are alive now"""
         return self.with_status().filter(alive__gt=0)
@@ -342,7 +345,12 @@ class Animal(models.Model):
     def last_location(self):
         """Returns the location recorded in the most recent event"""
         try:
-            return self.event_set.exclude(location__isnull=True).latest().location
+            return (
+                self.event_set.select_related("location")
+                .exclude(location__isnull=True)
+                .latest()
+                .location
+            )
         except (AttributeError, Event.DoesNotExist):
             return None
 

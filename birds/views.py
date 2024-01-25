@@ -127,6 +127,7 @@ class AnimalList(FilterView):
     def get_queryset(self):
         return (
             Animal.objects.with_status()
+            .with_related()
             .filter(**self.kwargs)
             .order_by("band_color", "band_number")
         )
