@@ -36,8 +36,9 @@ class SampleForm(forms.ModelForm):
 
 
 class NewPairingForm(forms.ModelForm):
-    sire = forms.ModelChoiceField(queryset=Animal.living.filter(sex=Animal.MALE))
-    dam = forms.ModelChoiceField(queryset=Animal.living.filter(sex=Animal.FEMALE))
+    qs = Animal.objects.alive()
+    sire = forms.ModelChoiceField(queryset=qs.filter(sex=Animal.MALE))
+    dam = forms.ModelChoiceField(queryset=qs.filter(sex=Animal.FEMALE))
     entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
     location = forms.ModelChoiceField(
         queryset=Location.objects.filter(nest=True), required=False
@@ -163,7 +164,7 @@ class NestCheckUser(forms.Form):
 
 class NewBandForm(forms.Form):
     animal = forms.ModelChoiceField(
-        queryset=Animal.living.filter(band_number__isnull=True)
+        queryset=Animal.objects.alive().filter(band_number__isnull=True)
     )
     banding_date = forms.DateField()
     band_color = forms.ModelChoiceField(queryset=Color.objects.all(), required=False)
@@ -211,19 +212,24 @@ class NewBandForm(forms.Form):
         return animal
 
 
-
 class ReservationForm(forms.Form):
     animal = forms.ModelChoiceField(queryset=Animal.objects.all())
     date = forms.DateField()
     description = forms.CharField(widget=forms.Textarea, required=False)
-    entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True), required=False)
+    entered_by = forms.ModelChoiceField(
+        queryset=User.objects.filter(is_active=True), required=False
+    )
 
     def clean(self):
         super().clean()
         try:
-            self.cleaned_data["status"] = Status.objects.get(name=models.RESERVATION_EVENT_NAME)
+            self.cleaned_data["status"] = Status.objects.get(
+                name=models.RESERVATION_EVENT_NAME
+            )
         except ObjectDoesNotExist:
-            raise forms.ValidationError(f"No '{models.RESERVATION_EVENT_NAME}' status type - add one in admin")
+            raise forms.ValidationError(
+                f"No '{models.RESERVATION_EVENT_NAME}' status type - add one in admin"
+            )
         return self.cleaned_data
 
 
@@ -241,7 +247,9 @@ class SexForm(forms.Form):
         try:
             data["status"] = Status.objects.get(name=models.NOTE_EVENT_NAME)
         except ObjectDoesNotExist:
-            raise forms.ValidationError(f"No '{models.NOTE_EVENT_NAME}' status type - add one in admin")
+            raise forms.ValidationError(
+                f"No '{models.NOTE_EVENT_NAME}' status type - add one in admin"
+            )
         return data
 
     def update_sex(self):
@@ -268,12 +276,9 @@ class NewAnimalForm(forms.Form):
         choices=Animal.SEX_CHOICES, initial=Animal.UNKNOWN_SEX, required=True
     )
     plumage = forms.ModelChoiceField(queryset=Plumage.objects.all(), required=False)
-    sire = forms.ModelChoiceField(
-        queryset=Animal.living.filter(sex__exact="M"), required=False
-    )
-    dam = forms.ModelChoiceField(
-        queryset=Animal.living.filter(sex__exact="F"), required=False
-    )
+    qs = Animal.objects.alive()
+    sire = forms.ModelChoiceField(queryset=qs.filter(sex__exact="M"), required=False)
+    dam = forms.ModelChoiceField(queryset=qs.filter(sex__exact="F"), required=False)
     species = forms.ModelChoiceField(queryset=Species.objects.all(), required=False)
     banding_date = forms.DateField()
     band_color = forms.ModelChoiceField(queryset=Color.objects.all(), required=False)
@@ -350,8 +355,9 @@ class NewAnimalForm(forms.Form):
 
 
 class ClutchForm(forms.Form):
-    sire = forms.ModelChoiceField(queryset=Animal.living.filter(sex__exact="M"))
-    dam = forms.ModelChoiceField(queryset=Animal.living.filter(sex__exact="F"))
+    qs = Animal.objects.alive()
+    sire = forms.ModelChoiceField(queryset=qs.filter(sex__exact="M"))
+    dam = forms.ModelChoiceField(queryset=qs.filter(sex__exact="F"))
     chicks = forms.IntegerField(min_value=1)
     hatch_date = forms.DateField()
     location = forms.ModelChoiceField(queryset=Location.objects.all())

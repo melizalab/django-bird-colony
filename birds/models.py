@@ -8,8 +8,8 @@ import datetime
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.urls import reverse
 from django.db import models
-from django.db.models import Value, Case, When, CharField
-from django.db.models.functions import Concat, Substr, Cast
+from django.db.models import Value, Case, When, CharField, Count, Q
+from django.db.models.functions import Concat, Substr, Cast, Greatest
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
@@ -138,75 +138,58 @@ _animal_name_expr = Concat(
 )
 
 
-class AnimalManager(models.Manager):
-    """Annotates animal list with 'alive' field by counting add/remove events"""
+class AnimalQuerySet(models.QuerySet):
+    """Supports queries based on status that require joining on the event table"""
 
-    def get_queryset(self):
-        from django.db.models import Count, Q, Value
-        from django.db.models.functions import Greatest
-
-        qs = super(AnimalManager, self).get_queryset()
-        return qs.annotate(
+    def with_status(self):
+        return self.annotate(
+            # Need to compare added to removed because eggs are not "alive"
             alive=Greatest(
                 0,
                 Count("event", filter=Q(event__status__adds=True))
                 - Count("event", filter=Q(event__status__removes=True)),
             ),
-            # name=_animal_name_expr,
-        ).order_by("band_color", "band_number")
-
-    def with_names(self):
-        return self.select_related("species", "band_color", "reserved_by")
-
-
-class LivingAnimalManager(AnimalManager):
-    def get_queryset(self):
-        qs = super(LivingAnimalManager, self).get_queryset()
-        return qs.filter(alive__gt=0)
-
-    def on(self, date):
-        """Only include birds that were alive on date (added and not removed)"""
-        from django.db.models import Count, Q
-        from django.db.models.functions import Greatest
-
-        qs = super(AnimalManager, self).get_queryset()
-        return (
-            qs.annotate(
-                alive=Greatest(
-                    0,
-                    Count(
-                        "event",
-                        filter=Q(event__date__lte=date, event__status__adds=True),
-                    )
-                    - Count(
-                        "event",
-                        filter=Q(event__date__lte=date, event__status__removes=True),
-                    ),
-                )
-            )
-            .filter(alive__gt=0)
-            .order_by("band_color", "band_number")
+            # TODO add age
         )
 
-    def exists(self, date):
-        """Only include birds that existed on date (created but not removed)"""
-        from django.db.models import Count, Q
+    def alive(self):
+        """Only include birds that are alive now"""
+        return self.with_status().filter(alive__gt=0)
 
-        qs = super(AnimalManager, self).get_queryset()
-        return (
-            qs.annotate(
-                noted=Count(
+    def hatched(self):
+        return self.filter(event__status__name=BIRTH_EVENT_NAME)
+
+    def unhatched(self):
+        return self.exclude(event__status__name=BIRTH_EVENT_NAME)
+
+    def alive_on(self, date):
+        """Only include birds that were alive on date (added and not removed)"""
+        return self.annotate(
+            alive=Greatest(
+                0,
+                Count(
                     "event",
-                    filter=Q(event__date__lte=date, event__status__removes=False),
-                ),
-                removed=Count(
+                    filter=Q(event__date__lte=date, event__status__adds=True),
+                )
+                - Count(
                     "event",
                     filter=Q(event__date__lte=date, event__status__removes=True),
                 ),
             )
-            .filter(noted__gt=0, removed__lte=0)
-            .order_by("band_color", "band_number")
-        )
+        ).filter(alive__gt=0)
+
+    def existed_on(self, date):
+        """Only include birds that existed on date (created but not removed)"""
+        return self.annotate(
+            noted=Count(
+                "event",
+                filter=Q(event__date__lte=date, event__status__removes=False),
+            ),
+            removed=Count(
+                "event",
+                filter=Q(event__date__lte=date, event__status__removes=True),
+            ),
+        ).filter(noted__gt=0, removed__lte=0)
 
 
 class Parent(models.Model):
@@ -254,6 +237,7 @@ class Animal(models.Model):
         blank=True,
         help_text="specify additional attributes for the animal",
     )
+    objects = AnimalQuerySet.as_manager()
 
     def short_uuid(self):
         return str(self.uuid).split("-")[0]
@@ -273,9 +257,6 @@ class Animal(models.Model):
     def __str__(self):
         return self.name()
 
-    # def __str__(self):
-    #     return self.name
-
     def sire(self):
         return self.parents.filter(sex__exact="M").first()
 
@@ -284,20 +265,6 @@ class Animal(models.Model):
 
     def sexed(self):
         return self.sex != Animal.UNKNOWN_SEX
-
-    def living_children(self):
-        return self.children.exclude(event__status__removes=True)
-
-    def all_children(self):
-        """Returns all of the children that hatched"""
-        return self.children.filter(event__status__adds=True)
-
-    def unhatched(self):
-        """Returns all the unhatched eggs"""
-        return self.children.exclude(event__status__adds=True)
-
-    objects = AnimalManager()
-    living = LivingAnimalManager()
 
     def acquisition_event(self):
         """Returns event when bird was acquired.
@@ -381,9 +348,7 @@ class Animal(models.Model):
 
     def pairings(self):
         """Returns all pairings involving this animal"""
-        from django.db.models import Q
-
-        return Pairing.objects.with_names().filter(Q(sire=self) | Q(dam=self))
+        return Pairing.objects.filter(Q(sire=self) | Q(dam=self))
 
     def get_absolute_url(self):
         return reverse("birds:animal", kwargs={"uuid": self.uuid})
@@ -436,6 +401,10 @@ class Event(models.Model):
 
     class Meta:
         ordering = ["-date", "-created"]
+        indexes = [
+            models.Index(fields=["animal", "status"], name="animal_status_idx"),
+            models.Index(fields=["animal", "date"], name="animal_date_idx"),
+        ]
         get_latest_by = ["date", "created"]
 
 
@@ -494,37 +463,38 @@ class Pairing(models.Model):
     def progeny(self):
         """Queryset with all the chicks hatched during this pairing"""
         # TODO: restrict to children who match both parents
-        qs = self.sire.children.filter(
-            event__status__name=BIRTH_EVENT_NAME, event__date__gte=self.began
-        )
+        # for some reason it's not possible to chain the filter calls
+        params = {
+            "event__status__name": BIRTH_EVENT_NAME,
+            "event__date__gte": self.began,
+        }
         if self.ended:
-            return qs.filter(event__date__lte=self.ended)
-        return qs
+            params["event__date__lte"] = self.ended
+        # need to get the status before filtering, otherwise we can't see when
+        # the animal died if it was after the pairing ended
+        return self.sire.children.with_status().filter(**params)
 
     def oldest_living_progeny_age(self):
         # probably quite slow
-        ages = [a.age_days() for a in self.progeny() if a.alive]
+        qs = self.progeny()
+        ages = [a.age_days() for a in qs if a.alive]
         return max(ages, default=None)
 
     def eggs(self):
-        """Queryset with all the eggs laid during this pairing"""
+        """Queryset with all the eggs laid during this pairing (including the ones that hatched)"""
         # TODO: restrict to children who match both parents
         # We have to include hatch events here too for older pairings because
         # eggs were not entered prior to ~2021
-        from django.db.models import Q
-
-        qs = self.sire.children.filter(
-            event__status__name__in=(UNBORN_CREATION_EVENT_NAME, BIRTH_EVENT_NAME),
-            event__date__gte=self.began,
-        )
+        params = {
+            "event__status__name__in": (UNBORN_CREATION_EVENT_NAME, BIRTH_EVENT_NAME),
+            "event__date__gte": self.began,
+        }
         if self.ended:
-            qs = qs.filter(event__date__lte=self.ended)
-        return qs
+            params["event__date__lte"] = self.ended
+        return self.sire.children.with_status().filter(**params)
 
     def related_events(self):
         """Queryset with all events for the pair and their progeny during the pairing"""
-        from django.db.models import Q
-
         qs = Event.objects.filter(
             Q(animal__in=self.eggs()) | Q(animal__in=(self.sire, self.dam)),
             date__gte=self.began,

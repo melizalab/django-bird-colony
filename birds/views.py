@@ -125,7 +125,11 @@ class AnimalList(FilterView):
         return context
 
     def get_queryset(self):
-        return Animal.objects.with_names().filter(**self.kwargs)
+        return (
+            Animal.objects.with_status()
+            .filter(**self.kwargs)
+            .order_by("band_color", "band_number")
+        )
 
 
 class PairingList(FilterView):
@@ -295,8 +299,8 @@ class LocationSummary(generic.ListView):
     template_name = "birds/animal_location_summary.html"
 
     def get_queryset(self):
-        alive = Animal.living.all()
-        return Event.latest.filter(animal__in=alive)
+        alive = Animal.objects.alive()
+        return Event.latest.with_names().filter(animal__in=alive)
 
     def sort_and_group(self, qs):
         from collections import defaultdict
@@ -572,7 +576,7 @@ class AnimalView(generic.DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         animal = context["animal"]
-        context["animal_list"] = animal.children.with_names().order_by(
+        context["animal_list"] = animal.children.with_status().order_by(
             "-alive", "-created"
         )
         context["event_list"] = animal.event_set.with_names().order_by(
@@ -855,7 +859,7 @@ class SampleList(FilterView):
 
     def get_queryset(self):
         qs = Sample.objects.filter(**self.kwargs)
-        return qs.order_by("-date")
+        return qs.select_related("type", "location", "collected_by").order_by("-date")
 
 
 class SampleView(generic.DetailView):

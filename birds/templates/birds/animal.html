@@ -16,9 +16,9 @@
   <dt>acquired</dt><dd>{{ animal.acquisition_event.event_date }}</dd>
   <dt>age</dt><dd>{{ animal.age_days|agestr }} ({{ animal.age_group }})</dd>
   {% if animal.expected_hatch %}<dt>expected hatch</dt><dd>{{ animal.expected_hatch}}</dd>{% endif %}
-  <dt>living children</dt><dd>{{ animal.living_children.count }}</dd>
-  <dt>total children</dt><dd>{{ animal.all_children.count }}</dd>
-  <dt>unhatched eggs</dt><dd> {{ animal.unhatched.count }}</dd>
+  <dt>living children</dt><dd>{{ animal.children.alive.count }}</dd>
+  <dt>total children</dt><dd>{{ animal.children.hatched.count }}</dd>
+  <dt>unhatched eggs</dt><dd> {{ animal.children.unhatched.count }}</dd>
   <dt>sire</dt><dd>{% if animal.sire %}<a href="{{ animal.sire.get_absolute_url }}">{{ animal.sire }}</a>{% endif %}</dd>
   <dt>dam</dt><dd>{% if animal.dam %}<a href="{{ animal.dam.get_absolute_url }}">{{ animal.dam }}</a>{% endif %}</dd>
   <dt>reserved by</dt>

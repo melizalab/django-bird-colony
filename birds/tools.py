@@ -38,8 +38,10 @@ def tabulate_locations(since, until):
     data = {}
     while repdate <= until:
         locations = defaultdict(list)
-        alive = Animal.living.exists(repdate)
-        for event in Event.latest.filter(date__lte=repdate, animal__in=alive):
+        alive = Animal.objects.existed_on(repdate)
+        for event in Event.latest.select_related("location").filter(
+            date__lte=repdate, animal__in=alive
+        ):
             if event.location.nest:
                 locations[event.location].append(event.animal)
         data[repdate] = locations
