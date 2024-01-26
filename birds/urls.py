@@ -84,10 +84,10 @@ urlpatterns = [
     # summary views
     re_path(
         r"^summary/locations/$",
-        views.LocationSummary.as_view(),
+        views.location_summary,  # LocationSummary.as_view(),
         name="location-summary",
     ),
-    re_path(r"^summary/nests/$", views.NestReport.as_view(), name="nest-summary"),
+    re_path(r"^summary/nests/$", views.nest_report, name="nest-summary"),
     re_path(
         r"^summary/events/([0-9]{4})/([0-9]{1,2})/$",
         views.EventSummary.as_view(),
@@ -102,9 +102,7 @@ urlpatterns = [
     re_path(
         r"^new-band/$", login_required(views.NewBandEntry.as_view()), name="new_band"
     ),
-    re_path(
-        r"^set-sex/$", login_required(views.SexEntry.as_view()), name="set_sex"
-    ),
+    re_path(r"^set-sex/$", login_required(views.SexEntry.as_view()), name="set_sex"),
     re_path(
         r"^reserve/$",
         login_required(views.ReservationEntry.as_view()),

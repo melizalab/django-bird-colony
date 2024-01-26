@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
 import datetime
+from itertools import groupby
 
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, render
 from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import render
 from django.http import HttpResponseRedirect
@@ -295,73 +296,68 @@ class PairingClose(generic.FormView):
         return HttpResponseRedirect(reverse("birds:pairing", args=(self.pairing.pk,)))
 
 
-class LocationSummary(generic.ListView):
-    model = Event
-    template_name = "birds/animal_location_summary.html"
+@require_http_methods(["GET"])
+def location_summary(request):
+    from collections import defaultdict
+    from birds.tools import sort_and_group
+    from birds.models import ADULT_ANIMAL_NAME
 
-    def get_queryset(self):
-        alive = Animal.objects.alive()
-        return Event.latest.with_names().filter(animal__in=alive)
-
-    def sort_and_group(self, qs):
-        from collections import defaultdict
-        from birds.tools import sort_and_group
-        from birds.models import ADULT_ANIMAL_NAME
-
-        sex_choices = dict(Animal.SEX_CHOICES)
-        loc_data = []
-        for location, events in sort_and_group(qs, key=lambda evt: evt.location.name):
-            d = defaultdict(list)
-            for event in events:
-                animal = event.animal
-                age_group = animal.age_group()
-                if age_group == ADULT_ANIMAL_NAME:
-                    group_name = "{} {}".format(age_group, sex_choices[animal.sex])
-                    d[group_name].append(animal)
-                else:
-                    d[age_group].append(animal)
-            loc_data.append((location, sorted(d.items())))
-        return loc_data
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        latest = context["object_list"]
-        context["location_list"] = self.sort_and_group(latest)
-        return context
+    qs = (
+        Animal.objects.alive()
+        .with_dates()
+        .with_location()
+        .select_related("species", "band_color")
+        .order_by("last_location")
+    )
+    sex_choices = dict(Animal.SEX_CHOICES)
+    loc_data = []
+    for location, animals in groupby(qs, key=lambda animal: animal.last_location):
+        d = defaultdict(list)
+        for animal in animals:
+            age_group = animal.age_group()
+            if age_group == ADULT_ANIMAL_NAME:
+                group_name = "{} {}".format(age_group, sex_choices[animal.sex])
+                d[group_name].append(animal)
+            else:
+                d[age_group].append(animal)
+        loc_data.append((location, sorted(d.items())))
+    return render(
+        request, "birds/animal_location_summary.html", {"location_list": loc_data}
+    )
 
 
-class NestReport(generic.TemplateView):
+@require_http_methods(["GET"])
+def nest_report(request):
     default_days = 4
-    template_name = "birds/nest_report.html"
+    from django.utils import dateparse
+    from datetime import datetime, timedelta
+    from birds.tools import tabulate_locations
 
-    def get_context_data(self, **kwargs):
-        from django.utils import dateparse
-        from datetime import datetime, timedelta
-        from birds.tools import tabulate_locations
-
-        context = super().get_context_data(**kwargs)
-        try:
-            until = dateparse.parse_date(self.request.GET["until"])
-        except (ValueError, KeyError):
-            until = None
-        try:
-            since = dateparse.parse_date(self.request.GET["since"])
-        except (ValueError, KeyError):
-            since = None
-        until = until or datetime.now().date()
-        since = since or (until - timedelta(days=self.default_days))
-        dates, nest_data = tabulate_locations(since, until)
-        checks = NestCheck.objects.filter(
-            datetime__date__gte=since, datetime__date__lte=until
-        ).order_by("datetime")
-        context.update(
-            since=since,
-            until=until,
-            dates=dates,
-            nest_data=nest_data,
-            nest_checks=checks,
-        )
-        return context
+    try:
+        until = dateparse.parse_date(request.GET["until"])
+    except (ValueError, KeyError):
+        until = None
+    try:
+        since = dateparse.parse_date(request.GET["since"])
+    except (ValueError, KeyError):
+        since = None
+    until = until or datetime.now().date()
+    since = since or (until - timedelta(days=default_days))
+    dates, nest_data = tabulate_locations(since, until)
+    checks = NestCheck.objects.filter(
+        datetime__date__gte=since, datetime__date__lte=until
+    ).order_by("datetime")
+    return render(
+        request,
+        "birds/nest_report.html",
+        {
+            "since": since,
+            "until": until,
+            "dates": dates,
+            "nest_data": nest_data,
+            "nest_checks": checks,
+        },
+    )
 
 
 @require_http_methods(["GET", "POST"])
@@ -570,6 +566,7 @@ class EventList(FilterView, generic.list.MultipleObjectMixin):
 
 class AnimalView(generic.DetailView):
     model = Animal
+    queryset = Animal.objects.with_status()
     template_name = "birds/animal.html"
     slug_field = "uuid"
     slug_url_kwarg = "uuid"

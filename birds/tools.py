@@ -39,9 +39,13 @@ def tabulate_locations(since, until):
     while repdate <= until:
         locations = defaultdict(list)
         alive = Animal.objects.existed_on(repdate)
-        for event in Event.latest.select_related("location").filter(
-            date__lte=repdate, animal__in=alive
-        ):
+        qs = (
+            Event.objects.has_location()
+            .latest_by_animal()
+            .select_related("location", "animal")
+            .filter(date__lte=repdate, animal__in=alive)
+        )
+        for event in qs:
             if event.location.nest:
                 locations[event.location].append(event.animal)
         data[repdate] = locations
@@ -62,3 +66,25 @@ def tabulate_locations(since, until):
             days.append(locdata)
         nest_data.append({"location": nest, "days": days})
     return dates, nest_data
+
+
+# Expressions for annotating animal records with names. This avoids a bunch of
+# related table lookups
+# _short_uuid_expr = Substr(Cast("uuid", output_field=CharField()), 1, 8)
+# _band_expr = Concat(
+#     "band_color__name", Value("_"), "band_number", output_field=CharField()
+# )
+# _animal_name_expr = Concat(
+#     "species__code",
+#     Value("_"),
+#     Case(
+#         When(band_number__isnull=True, then=_short_uuid_expr),
+#         When(
+#             band_color__isnull=True, then=Cast("band_number", output_field=CharField())
+#         ),
+#         default=_band_expr,
+#     ),
+#     output_field=CharField(),
+# )
+
+# Expressions for calculating age in the database

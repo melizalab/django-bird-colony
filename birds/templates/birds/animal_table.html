@@ -20,7 +20,7 @@
           <td>{{ animal.age_days|agestr }} ({{ animal.age_group }})</td>
           <td>{{ animal.alive|yesno }}</td>
           <td>{{ animal.last_location}}</td>
-          <td>{{ animal.hatched_children.count}}</td>
+          <td>{{ animal.children.hatched.count}}</td>
           <td>{{ animal.uuid }}</td>
           <td>{% if animal.reserved_by %}{{ animal.reserved_by }}{% endif %}</td>
           <td></td>

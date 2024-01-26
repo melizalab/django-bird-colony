@@ -8,7 +8,18 @@ import datetime
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.urls import reverse
 from django.db import models
-from django.db.models import Value, Case, When, CharField, Count, Q
+from django.db.models import (
+    Value,
+    Case,
+    When,
+    CharField,
+    Count,
+    Q,
+    Min,
+    Max,
+    Subquery,
+    OuterRef,
+)
 from django.db.models.functions import Concat, Substr, Cast, Greatest
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -118,26 +129,6 @@ class Age(models.Model):
         unique_together = ("name", "species")
 
 
-# Expressions for annotating animal records with names. This avoids a bunch of
-# related table lookups
-_short_uuid_expr = Substr(Cast("uuid", output_field=CharField()), 1, 8)
-_band_expr = Concat(
-    "band_color__name", Value("_"), "band_number", output_field=CharField()
-)
-_animal_name_expr = Concat(
-    "species__code",
-    Value("_"),
-    Case(
-        When(band_number__isnull=True, then=_short_uuid_expr),
-        When(
-            band_color__isnull=True, then=Cast("band_number", output_field=CharField())
-        ),
-        default=_band_expr,
-    ),
-    output_field=CharField(),
-)
-
-
 class AnimalQuerySet(models.QuerySet):
     """Supports queries based on status that require joining on the event table"""
 
@@ -148,25 +139,49 @@ class AnimalQuerySet(models.QuerySet):
                 0,
                 Count("event", filter=Q(event__status__adds=True))
                 - Count("event", filter=Q(event__status__removes=True)),
+            )
+        )
+
+    def with_dates(self):
+        return self.annotate(
+            born_on=Min("event__date", filter=Q(event__status__name="hatched")),
+            died_on=Max("event__date", filter=Q(event__status__removes=True)),
+            acquired_on=Min("event__date", filter=Q(event__status__adds=True)),
+            # age=Case(
+            #     When(born_on__isnull, then=None),
+            #     When(died_on__isnull, then=Now() - F("born_on")),
+            #     default=F("died_on") - F("born_on"),
+            # ),
+        )
+
+    def with_location(self):
+        return self.annotate(
+            last_location=Subquery(
+                Event.objects.filter(location__isnull=False, animal=OuterRef("pk"))
+                .order_by("-date", "-created")
+                .values("location__name")[:1]
             ),
-            # TODO add age
         )
 
     def with_related(self):
         return self.select_related("reserved_by", "species", "band_color")
 
     def alive(self):
-        """Only include birds that are alive now"""
+        """Only birds that are alive now"""
         return self.with_status().filter(alive__gt=0)
 
     def hatched(self):
+        """Only birds that were born in the colony (excludes eggs)"""
+        # might be possible to speed this up if we cache the id for this event type
         return self.filter(event__status__name=BIRTH_EVENT_NAME)
 
     def unhatched(self):
+        """Only birds that were not born in the colony (includes eggs)"""
+        # might be possible to speed this up if we cache the id for this event type
         return self.exclude(event__status__name=BIRTH_EVENT_NAME)
 
     def alive_on(self, date):
-        """Only include birds that were alive on date (added and not removed)"""
+        """Only birds that were alive on date (added and not removed)"""
         return self.annotate(
             alive=Greatest(
                 0,
@@ -182,7 +197,7 @@ class AnimalQuerySet(models.QuerySet):
         ).filter(alive__gt=0)
 
     def existed_on(self, date):
-        """Only include birds that existed on date (created but not removed)"""
+        """Only birds that existed on date (created but not removed)"""
         return self.annotate(
             noted=Count(
                 "event",
@@ -279,17 +294,27 @@ class Animal(models.Model):
         return self.event_set.filter(status__adds=True).last()
 
     def age_days(self, date=None):
-        """Returns days since birthdate (as of date) if alive, age at death if dead, or None if unknown"""
-        refdate = date or datetime.date.today()
-        event_set = self.event_set.filter(date__lte=refdate)
-        evt_birth = event_set.filter(status__name=BIRTH_EVENT_NAME).first()
-        if evt_birth is None:
+        """Returns age in days (as of date).
+
+        Age is days since birthdate if alive, age at death if dead, or None if unknown
+
+        """
+        if self.born_on is None:
             return None
-        evt_death = event_set.filter(status__removes=True).last()
-        if evt_death is None:
-            return (refdate - evt_birth.date).days
+        elif self.died_on is None:
+            refdate = date or datetime.date.today()
+            return (refdate - self.born_on).days
         else:
-            return (evt_death.date - evt_birth.date).days
+            return (self.died_on - self.born_on).days
+            # event_set = self.event_set.filter(date__lte=refdate)
+            # evt_birth = event_set.filter(status__name=BIRTH_EVENT_NAME).first()
+            # if evt_birth is None:
+            #     return None
+            # evt_death = event_set.filter(status__removes=True).last()
+            # if evt_death is None:
+            #     return (refdate - evt_birth.date).days
+            # else:
+            # return (evt_death.date - evt_birth.date).days
 
     def age_group(self, date=None):
         """Returns the age group of the animal (as of date) by joining on the Age model.
@@ -300,23 +325,19 @@ class Animal(models.Model):
         table (this can only happen if there is not an object with min_age = 0).
 
         """
-        refdate = date or datetime.date.today()
-        event_set = self.event_set.filter(date__lte=refdate)
-        event_set_adds = event_set.filter(status__adds=True)
-        event_birth = event_set_adds.filter(status__name=BIRTH_EVENT_NAME).first()
-        if event_birth is None:
-            if event_set_adds.count() > 0:
+        # event_set = self.event_set.filter(date__lte=refdate)
+        # event_set_adds = event_set.filter(status__adds=True)
+        # event_birth = event_set_adds.filter(status__name=BIRTH_EVENT_NAME).first()
+        if self.born_on is None:
+            if self.acquired_on is not None:
                 return ADULT_ANIMAL_NAME
-            elif event_set.count() == 0:
-                return None
-            else:
+            refdate = date or datetime.date.today()
+            if self.event_set.filter(date__lte=refdate).count() > 0:
                 return UNBORN_ANIMAL_NAME
-        else:
-            event_death = event_set.filter(status__removes=True).last()
-            if event_death is None:
-                age_days = (refdate - event_birth.date).days
             else:
-                age_days = (event_death.date - event_birth.date).days
+                return None
+        else:
+            age_days = self.age_days(date)
             grp = (
                 self.species.age_set.filter(min_days__lte=age_days)
                 .order_by("-min_days")
@@ -365,21 +386,15 @@ class Animal(models.Model):
         ordering = ["band_color", "band_number"]
 
 
-class EventManager(models.Manager):
+class EventQuerySet(models.QuerySet):
     def with_names(self):
         return self.select_related("animal", "status", "location", "entered_by")
 
+    def has_location(self):
+        return self.exclude(location__isnull=True)
 
-class LastEventManager(EventManager):
-    """Filters queryset so that only the most recent event for each animal is returned"""
-
-    def get_queryset(self):
-        qs = super(LastEventManager, self).get_queryset()
-        return (
-            qs.exclude(location__isnull=True)
-            .order_by("animal_id", "-date", "-created")
-            .distinct("animal_id")
-        )
+    def latest_by_animal(self):
+        return self.order_by("animal_id", "-date", "-created").distinct("animal_id")
 
 
 class Event(models.Model):
@@ -397,8 +412,7 @@ class Event(models.Model):
     )
     created = models.DateTimeField(auto_now_add=True)
 
-    objects = EventManager()
-    latest = LastEventManager()
+    objects = EventQuerySet.as_manager()
 
     def __str__(self):
         return "%s: %s on %s" % (self.animal, self.status, self.date)
