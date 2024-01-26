@@ -127,7 +127,7 @@ class AnimalList(FilterView):
 
     def get_queryset(self):
         return (
-            Animal.objects.with_status()
+            Animal.objects.with_annotations()
             .with_related()
             .filter(**self.kwargs)
             .order_by("band_color", "band_number")
@@ -142,33 +142,33 @@ class PairingList(FilterView):
     strict = False
 
     def get_queryset(self):
-        return Pairing.objects.with_names().filter(**self.kwargs)
+        return Pairing.objects.with_related().with_progeny_stats().filter(**self.kwargs)
 
 
-class PairingListActive(FilterView):
-    model = Pairing
-    filterset_class = PairingFilter
+class PairingListActive(PairingList):
     template_name = "birds/pairing_list_active.html"
-    strict = False
 
     def get_queryset(self):
-        qs = Pairing.objects.with_names().filter(**self.kwargs)
-        return qs.filter(ended__isnull=True)
+        # with_location implies only active pairs
+        return super().get_queryset().with_location()
 
 
-class PairingView(generic.DetailView):
-    model = Pairing
-    template_name = "birds/pairing.html"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        pairing = context["pairing"]
-        context["animal_list"] = pairing.eggs().order_by("-alive", "-created")
-        context["pairing_list"] = self.model.objects.filter(
-            sire=pairing.sire, dam=pairing.dam
-        ).exclude(id=pairing.id)
-        context["event_list"] = pairing.related_events()
-        return context
+def pairing_view(request, pk):
+    qs = Pairing.objects.with_related().with_progeny_stats()
+    pair = get_object_or_404(qs, pk=pk)
+    eggs = pair.eggs().with_annotations().order_by("-alive", "-created")
+    pairings = pair.other_pairings()
+    events = pair.related_events()
+    return render(
+        request,
+        "birds/pairing.html",
+        {
+            "pairing": pair,
+            "animal_list": eggs,
+            "pairing_list": pairings,
+            "event_list": events,
+        },
+    )
 
 
 class PairingEntry(generic.FormView):
@@ -564,25 +564,24 @@ class EventList(FilterView, generic.list.MultipleObjectMixin):
         return qs.order_by("-date", "-created")
 
 
-class AnimalView(generic.DetailView):
-    model = Animal
-    queryset = Animal.objects.with_status()
-    template_name = "birds/animal.html"
-    slug_field = "uuid"
-    slug_url_kwarg = "uuid"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        animal = context["animal"]
-        context["animal_list"] = animal.children.with_status().order_by(
-            "-alive", "-created"
-        )
-        context["event_list"] = animal.event_set.with_names().order_by(
-            "-date", "-created"
-        )
-        context["sample_list"] = animal.sample_set.order_by("-date")
-        context["pairing_list"] = animal.pairings().order_by("-began")
-        return context
+def animal_view(request, uuid):
+    qs = Animal.objects.with_annotations()
+    animal = get_object_or_404(qs, uuid=uuid)
+    kids = animal.children.with_annotations().order_by("-alive", "-created")
+    events = animal.event_set.with_names().order_by("-date", "-created")
+    samples = animal.sample_set.order_by("-date")
+    pairings = animal.pairings().with_progeny_stats().order_by("-began")
+    return render(
+        request,
+        "birds/animal.html",
+        {
+            "animal": animal,
+            "animal_list": kids,
+            "event_list": events,
+            "sample_list": samples,
+            "pairing_list": pairings,
+        },
+    )
 
 
 class GenealogyView(generic.DetailView):

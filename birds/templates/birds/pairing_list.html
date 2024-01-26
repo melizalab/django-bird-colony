@@ -36,8 +36,8 @@
           <td><a href="{{ pairing.dam.get_absolute_url }}">{{ pairing.dam.name }}</a></td>
           <td><a href="{% url 'birds:pairing' pairing.id %}">{{ pairing.began }} — {{ pairing.ended|default_if_none:"" }}</a></td>
           <td>{{ pairing.purpose|default_if_none:"" }}</td>
-          <td>{{ pairing.eggs.count }}</td>
-          <td>{{ pairing.progeny.count }}</td>
+          <td>{{ pairing.n_eggs }}</td>
+          <td>{{ pairing.n_progeny }}</td>
           <td>{{ pairing.oldest_living_progeny_age|ageorblank }}</td>
       <td>{{ pairing.comment }}</td>
         </tr>

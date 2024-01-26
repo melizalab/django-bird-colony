@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 
 import uuid
 import datetime
+from functools import lru_cache
 
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.urls import reverse
@@ -15,12 +16,13 @@ from django.db.models import (
     CharField,
     Count,
     Q,
+    F,
     Min,
     Max,
     Subquery,
     OuterRef,
 )
-from django.db.models.functions import Concat, Substr, Cast, Greatest
+from django.db.models.functions import Concat, Substr, Cast, Greatest, Now
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
@@ -33,6 +35,16 @@ LOST_EVENT_NAME = "lost"
 MOVED_EVENT_NAME = "moved"
 NOTE_EVENT_NAME = "note"
 RESERVATION_EVENT_NAME = "reservation"
+
+
+@lru_cache
+def get_birth_event_type():
+    return Status.objects.get(name=BIRTH_EVENT_NAME)
+
+
+@lru_cache
+def get_unborn_creation_event_type():
+    return Status.objects.get(name=UNBORN_CREATION_EVENT_NAME)
 
 
 def get_sentinel_user():
@@ -163,6 +175,9 @@ class AnimalQuerySet(models.QuerySet):
             ),
         )
 
+    def with_annotations(self):
+        return self.with_status().with_dates().with_location()
+
     def with_related(self):
         return self.select_related("reserved_by", "species", "band_color")
 
@@ -172,13 +187,11 @@ class AnimalQuerySet(models.QuerySet):
 
     def hatched(self):
         """Only birds that were born in the colony (excludes eggs)"""
-        # might be possible to speed this up if we cache the id for this event type
-        return self.filter(event__status__name=BIRTH_EVENT_NAME)
+        return self.filter(event__status=get_birth_event_type())
 
     def unhatched(self):
         """Only birds that were not born in the colony (includes eggs)"""
-        # might be possible to speed this up if we cache the id for this event type
-        return self.exclude(event__status__name=BIRTH_EVENT_NAME)
+        return self.exclude(event__status=get_birth_event_type())
 
     def alive_on(self, date):
         """Only birds that were alive on date (added and not removed)"""
@@ -351,20 +364,21 @@ class Animal(models.Model):
         if days is None:
             return None
         try:
-            q = self.event_set.filter(status__name=BIRTH_EVENT_NAME).get()
+            q = self.event_set.filter(status=get_birth_event_type()).get()
             return None
         except ObjectDoesNotExist:
             pass
         try:
             evt_laid = self.event_set.filter(
-                status__name=UNBORN_CREATION_EVENT_NAME
+                status=get_unborn_creation_event_type()
             ).earliest()
             return evt_laid.date + datetime.timedelta(days=days)
         except ObjectDoesNotExist:
             return None
 
     def last_location(self):
-        """Returns the location recorded in the most recent event"""
+        """Returns the location recorded in the most recent event. This method
+        will be masked if with_location() is used on the queryset."""
         try:
             return (
                 self.event_set.select_related("location")
@@ -430,8 +444,11 @@ class Event(models.Model):
         get_latest_by = ["date", "created"]
 
 
-class PairingManager(models.Manager):
-    def with_names(self):
+class PairingQuerySet(models.QuerySet):
+    def active(self):
+        return self.filter(ended__isnull=True)
+
+    def with_related(self):
         return self.select_related(
             "sire",
             "dam",
@@ -439,6 +456,40 @@ class PairingManager(models.Manager):
             "sire__band_color",
             "dam__species",
             "dam__band_color",
+        )
+
+    def with_progeny_stats(self):
+        qq_before_ended = Q(sire__children__event__date__lte=F("ended")) | Q(
+            ended__isnull=True
+        )
+        qq_after_began = Q(sire__children__event__date__gte=F("began"))
+        return self.annotate(
+            n_progeny=Count(
+                "sire__children",
+                filter=Q(sire__children__event__status=get_birth_event_type())
+                & qq_after_began
+                & qq_before_ended,
+            ),
+            n_eggs=Count(
+                "sire__children",
+                filter=Q(sire__children__event__status=get_unborn_creation_event_type())
+                & qq_after_began
+                & qq_before_ended,
+            ),
+        )
+
+    def with_location(self):
+        """Active pairs only, annotated with the most recent location"""
+        return self.active().annotate(
+            last_location=Subquery(
+                Event.objects.filter(
+                    Q(location__isnull=False),
+                    Q(date__gte=OuterRef("began")),
+                    (Q(animal=OuterRef("sire")) | Q(animal=OuterRef("dam"))),
+                )
+                .order_by("-date", "-created")
+                .values("location__name")[:1]
+            )
         )
 
 
@@ -469,7 +520,7 @@ class Pairing(models.Model):
         blank=True, help_text="notes on the outcome of the pairing"
     )
 
-    objects = PairingManager()
+    objects = PairingQuerySet.as_manager()
 
     def __str__(self):
         return "♂{} × ♀{} ({} — {})".format(
@@ -479,35 +530,36 @@ class Pairing(models.Model):
     def get_absolute_url(self):
         return reverse("birds:pairing", kwargs={"pk": self.id})
 
-    def active(self):
-        return self.ended is None
-
-    def progeny(self):
-        """Queryset with all the chicks hatched during this pairing"""
-        # TODO: restrict to children who match both parents
-        # for some reason it's not possible to chain the filter calls
+    def oldest_living_progeny_age(self):
+        # this is slow, but I'm not sure how to do it any faster
         params = {
             "event__status__name": BIRTH_EVENT_NAME,
             "event__date__gte": self.began,
         }
         if self.ended:
             params["event__date__lte"] = self.ended
-        # need to get the status before filtering, otherwise we can't see when
-        # the animal died if it was after the pairing ended
-        return self.sire.children.with_status().filter(**params)
-
-    def oldest_living_progeny_age(self):
-        # probably quite slow
-        qs = self.progeny()
-        ages = [a.age_days() for a in qs if a.alive]
-        return max(ages, default=None)
+        qs = self.sire.children.with_dates().filter(**params)
+        # ages = [a.age_days() for a in qs if a.alive]
+        # return max(ages, default=None)
+        agg = qs.annotate(
+            age=Case(
+                When(born_on__isnull=True, then=None),
+                When(died_on__isnull=True, then=Now() - F("born_on")),
+                default=None,
+            )
+        ).aggregate(Max("age"))
+        try:
+            return agg["age__max"].days
+        except AttributeError:
+            pass
 
     def eggs(self):
-        """Queryset with all the eggs laid during this pairing (including the ones that hatched)"""
+        """All the eggs laid during this pairing (hatched and unhatched)"""
         # TODO: restrict to children who match both parents
-        # We have to include hatch events here too for older pairings because
-        # eggs were not entered prior to ~2021
         params = {
+            # We have to include hatch events here too for older pairings
+            # because eggs were not entered prior to ~2021. Using the cached ids
+            # seems to slow this down so I'm keeping the name lookup.
             "event__status__name__in": (UNBORN_CREATION_EVENT_NAME, BIRTH_EVENT_NAME),
             "event__date__gte": self.began,
         }
@@ -526,7 +578,8 @@ class Pairing(models.Model):
         return qs.order_by("date")
 
     def last_location(self):
-        """Returns the most recent location in the pairing"""
+        """Returns the most recent location in the pairing. This method is
+        masked by the with_location() annotation on the queryset."""
         qs = Event.objects.filter(
             animal__in=(self.sire, self.dam),
             date__gte=self.began,
@@ -537,6 +590,10 @@ class Pairing(models.Model):
             return qs.exclude(location__isnull=True).latest().location
         except (AttributeError, Event.DoesNotExist):
             return None
+
+    def other_pairings(self):
+        """All other pairs with this sire and dam"""
+        return Pairing.objects.filter(sire=self.sire, dam=self.dam).exclude(id=self.id)
 
     def clean(self):
         # ended must be after began

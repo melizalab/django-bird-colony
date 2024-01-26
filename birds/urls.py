@@ -17,7 +17,7 @@ urlpatterns = [
     ),
     re_path(
         r"^animals/(?P<uuid>[a-f0-9\-]{36})/$",
-        views.AnimalView.as_view(),
+        views.animal_view,
         name="animal",
     ),
     re_path(
@@ -70,7 +70,7 @@ urlpatterns = [
     re_path(
         r"^pairings/active/$", views.PairingListActive.as_view(), name="pairings_active"
     ),
-    path("pairings/<int:pk>/", views.PairingView.as_view(), name="pairing"),
+    path("pairings/<int:pk>/", views.pairing_view, name="pairing"),
     path("pairings/<int:pk>/new/", views.PairingEntry.as_view(), name="new_pairing"),
     path("pairings/<int:pk>/end/", views.PairingClose.as_view(), name="end_pairing"),
     path("pairings/new/", views.PairingEntry.as_view(), name="new_pairing"),
