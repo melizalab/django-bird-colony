@@ -58,7 +58,7 @@
         <tr>
           <td>{{ event.status }}</td>
           <td>{{ event.date }}</td>
-	  <td>{% age_at animal event %}</td>
+	  <td>{{ event.age|agestr }}</td>
           <td>{{ event.location }}</td>
           <td>{{ event.description }}</td>
 	  <td>{{ event.entered_by}}</td>

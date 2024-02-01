@@ -175,6 +175,14 @@ class AnimalQuerySet(models.QuerySet):
             ),
         )
 
+    # leaving this in here to say this is not a good idea. very slow
+    # def with_child_counts(self):
+    #     return self.annotate(
+    #         n_children=Count(
+    #             "children", filter=Q(children__event__status=get_birth_event_type())
+    #         )
+    #     )
+
     def with_annotations(self):
         return self.with_status().with_dates().with_location()
 
@@ -398,7 +406,7 @@ class Animal(models.Model):
 
 
 class EventQuerySet(models.QuerySet):
-    def with_names(self):
+    def with_related(self):
         return self.select_related("animal", "status", "location", "entered_by")
 
     def has_location(self):
@@ -431,6 +439,14 @@ class Event(models.Model):
     def event_date(self):
         """Description of event and date"""
         return "%s on %s" % (self.status, self.date)
+
+    def age(self):
+        """Age of the anmial at the time of the event, or None if birthday not known"""
+        evt_birth = self.animal.event_set.filter(
+            status=get_birth_event_type()
+        ).earliest()
+        if evt_birth is not None and self.date >= evt_birth.date:
+            return self.date - evt_birth.date
 
     class Meta:
         ordering = ["-date", "-created"]

@@ -55,17 +55,3 @@ def count_summary(counter):
     return format_html_join(
         ", ", "{}s: {}", ((k, v) for k, v in sorted(counter.items()))
     )
-
-
-@register.simple_tag
-def age_at(animal, event):
-    """Returns the age of the animal at a given event (or None, if birthday is not known)"""
-    from birds.models import BIRTH_EVENT_NAME
-
-    evt_birth = animal.event_set.filter(status__name=BIRTH_EVENT_NAME).first()
-    if evt_birth is None:
-        return ""
-    diff = (event.date - evt_birth.date).days
-    if diff < 0:
-        return ""
-    return agestr(diff)

@@ -560,17 +560,18 @@ class EventList(FilterView, generic.list.MultipleObjectMixin):
         return context
 
     def get_queryset(self):
-        qs = Event.objects.with_names().filter(**self.kwargs)
+        qs = Event.objects.with_related().filter(**self.kwargs)
         return qs.order_by("-date", "-created")
 
 
+@require_http_methods(["GET"])
 def animal_view(request, uuid):
     qs = Animal.objects.with_annotations()
     animal = get_object_or_404(qs, uuid=uuid)
     kids = animal.children.with_annotations().order_by("-alive", "-created")
-    events = animal.event_set.with_names().order_by("-date", "-created")
+    events = animal.event_set.with_related().order_by("-date", "-created")
     samples = animal.sample_set.order_by("-date")
-    pairings = animal.pairings().with_progeny_stats().order_by("-began")
+    pairings = animal.pairings().with_related().with_progeny_stats().order_by("-began")
     return render(
         request,
         "birds/animal.html",
