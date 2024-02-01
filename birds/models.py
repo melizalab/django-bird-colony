@@ -26,6 +26,7 @@ from django.db.models.functions import Concat, Substr, Cast, Greatest, Now
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
+from django.utils.functional import cached_property
 
 BIRTH_EVENT_NAME = "hatched"
 UNBORN_ANIMAL_NAME = "egg"
@@ -290,11 +291,12 @@ class Animal(models.Model):
         else:
             return None
 
+    @cached_property
     def name(self):
         return "%s_%s" % (self.species.code, self.band() or self.short_uuid())
 
     def __str__(self):
-        return self.name()
+        return self.name
 
     def sire(self):
         return self.parents.filter(sex__exact="M").first()
@@ -407,7 +409,14 @@ class Animal(models.Model):
 
 class EventQuerySet(models.QuerySet):
     def with_related(self):
-        return self.select_related("animal", "status", "location", "entered_by")
+        return self.select_related(
+            "animal",
+            "animal__species",
+            "animal__band_color",
+            "status",
+            "location",
+            "entered_by",
+        )
 
     def has_location(self):
         return self.exclude(location__isnull=True)
@@ -690,7 +699,7 @@ class Sample(models.Model):
         return str(self.uuid).split("-")[0]
 
     def __str__(self):
-        return "%s:%s" % (self.animal.name(), self.type.name)
+        return "%s:%s" % (self.animal.name, self.type.name)
 
     def get_absolute_url(self):
         return reverse("birds:sample", kwargs={"uuid": self.uuid})

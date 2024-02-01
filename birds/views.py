@@ -156,9 +156,9 @@ class PairingListActive(PairingList):
 def pairing_view(request, pk):
     qs = Pairing.objects.with_related().with_progeny_stats()
     pair = get_object_or_404(qs, pk=pk)
-    eggs = pair.eggs().with_annotations().order_by("-alive", "-created")
+    eggs = pair.eggs().with_annotations().with_related().order_by("-alive", "-created")
     pairings = pair.other_pairings()
-    events = pair.related_events()
+    events = pair.related_events().with_related()
     return render(
         request,
         "birds/pairing.html",
@@ -568,7 +568,9 @@ class EventList(FilterView, generic.list.MultipleObjectMixin):
 def animal_view(request, uuid):
     qs = Animal.objects.with_annotations()
     animal = get_object_or_404(qs, uuid=uuid)
-    kids = animal.children.with_annotations().order_by("-alive", "-created")
+    kids = (
+        animal.children.with_annotations().with_related().order_by("-alive", "-created")
+    )
     events = animal.event_set.with_related().order_by("-date", "-created")
     samples = animal.sample_set.order_by("-date")
     pairings = animal.pairings().with_related().with_progeny_stats().order_by("-began")
