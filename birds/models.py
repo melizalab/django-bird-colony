@@ -159,11 +159,11 @@ class AnimalQuerySet(models.QuerySet):
             born_on=Min("event__date", filter=Q(event__status__name="hatched")),
             died_on=Max("event__date", filter=Q(event__status__removes=True)),
             acquired_on=Min("event__date", filter=Q(event__status__adds=True)),
-            # age=Case(
-            #     When(born_on__isnull, then=None),
-            #     When(died_on__isnull, then=Now() - F("born_on")),
-            #     default=F("died_on") - F("born_on"),
-            # ),
+            age=Case(
+                When(born_on__isnull=True, then=None),
+                When(died_on__isnull=True, then=Now() - F("born_on")),
+                default=F("died_on") - F("born_on"),
+            ),
         )
 
     def with_location(self):
@@ -306,28 +306,24 @@ class Animal(models.Model):
         """
         return self.event_set.filter(status__adds=True).last()
 
-    def age_days(self, date=None):
-        """Returns age in days (as of date).
+    def age(self, date=None):
+        """Returns age (as of date).
 
-        Age is days since birthdate if alive, age at death if dead, or None if unknown
+        Age is days since birthdate if alive, age at death if dead, or None if
+        unknown. This method is masked if with_dates() is used on the queryset.
 
         """
-        if self.born_on is None:
+        refdate = date or datetime.date.today()
+        events = self.event_set.filter(date__lte=refdate).aggregate(
+            born_on=Min("date", filter=Q(status=get_birth_event_type())),
+            died_on=Max("date", filter=Q(status__removes=True)),
+        )
+        if events["born_on"] is None:
             return None
-        elif self.died_on is None:
-            refdate = date or datetime.date.today()
-            return (refdate - self.born_on).days
+        if events["died_on"] is None:
+            return refdate - events["born_on"]
         else:
-            return (self.died_on - self.born_on).days
-            # event_set = self.event_set.filter(date__lte=refdate)
-            # evt_birth = event_set.filter(status__name=BIRTH_EVENT_NAME).first()
-            # if evt_birth is None:
-            #     return None
-            # evt_death = event_set.filter(status__removes=True).last()
-            # if evt_death is None:
-            #     return (refdate - evt_birth.date).days
-            # else:
-            # return (evt_death.date - evt_birth.date).days
+            return events["died_on"] - events["born_on"]
 
     def age_group(self, date=None):
         """Returns the age group of the animal (as of date) by joining on the Age model.
@@ -337,10 +333,10 @@ class Animal(models.Model):
         Otherwise, None. Returns "unclassified" if there is no match in the Age
         table (this can only happen if there is not an object with min_age = 0).
 
+        This method can only be used if the object was retrieved using the
+        with_dates() annotation.
+
         """
-        # event_set = self.event_set.filter(date__lte=refdate)
-        # event_set_adds = event_set.filter(status__adds=True)
-        # event_birth = event_set_adds.filter(status__name=BIRTH_EVENT_NAME).first()
         if self.born_on is None:
             if self.acquired_on is not None:
                 return ADULT_ANIMAL_NAME
@@ -350,7 +346,7 @@ class Animal(models.Model):
             else:
                 return None
         else:
-            age_days = self.age_days(date)
+            age_days = self.age.days
             grp = (
                 self.species.age_set.filter(min_days__lte=age_days)
                 .order_by("-min_days")
@@ -359,7 +355,8 @@ class Animal(models.Model):
             return grp.name if grp is not None else Age.DEFAULT
 
     def expected_hatch(self):
-        """For eggs, expected hatch date. None if not an egg, already hatched, or incubation time is not known."""
+        """For eggs, expected hatch date. None if not an egg, already hatched,
+        or incubation time is not known."""
         days = self.species.incubation_days
         if days is None:
             return None
@@ -529,6 +526,9 @@ class Pairing(models.Model):
 
     def get_absolute_url(self):
         return reverse("birds:pairing", kwargs={"pk": self.id})
+
+    def active(self):
+        return self.ended is None
 
     def oldest_living_progeny_age(self):
         # this is slow, but I'm not sure how to do it any faster

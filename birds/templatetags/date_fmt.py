@@ -5,19 +5,22 @@ from django.utils.html import format_html_join
 
 register = template.Library()
 
+
 @register.filter
 def ageorblank(value):
     try:
-        return "{}y {:3}d".format(value // 365, value % 365)
-    except TypeError:
+        days = value.days
+        return "{}y {:3}d".format(days // 365, days % 365)
+    except (TypeError, AttributeError):
         return ""
 
 
 @register.filter
 def agestr(value):
     try:
-        return "{}y {:3}d".format(value // 365, value % 365)
-    except TypeError:
+        days = value.days
+        return "{}y {:3}d".format(days // 365, days % 365)
+    except (TypeError, AttributeError):
         return "unknown"
 
 
@@ -40,20 +43,25 @@ def join_and(value):
 
 @register.filter
 def url_list(values):
-    """ Generate a comma-separated list of links to birds """
-    return format_html_join(", ", '<a href="{}">{}</a>',
-                            ((obj.get_absolute_url(), obj) for obj in values))
+    """Generate a comma-separated list of links to birds"""
+    return format_html_join(
+        ", ", '<a href="{}">{}</a>', ((obj.get_absolute_url(), obj) for obj in values)
+    )
+
 
 @register.filter
 def count_summary(counter):
-    """ Generate a summary of counts """
-    return format_html_join(", ", '{}s: {}', ((k, v) for k, v in sorted(counter.items())))
+    """Generate a summary of counts"""
+    return format_html_join(
+        ", ", "{}s: {}", ((k, v) for k, v in sorted(counter.items()))
+    )
 
 
 @register.simple_tag
 def age_at(animal, event):
-    """ Returns the age of the animal at a given event (or None, if birthday is not known) """
+    """Returns the age of the animal at a given event (or None, if birthday is not known)"""
     from birds.models import BIRTH_EVENT_NAME
+
     evt_birth = animal.event_set.filter(status__name=BIRTH_EVENT_NAME).first()
     if evt_birth is None:
         return ""
@@ -61,4 +69,3 @@ def age_at(animal, event):
     if diff < 0:
         return ""
     return agestr(diff)
-    

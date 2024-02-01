@@ -14,7 +14,7 @@
   <dt>uuid</dt><dd>{{ animal.uuid }}</dd>
   <dt>alive</dt><dd>{{ animal.alive|yesno }}</dd>
   <dt>acquired</dt><dd>{{ animal.acquisition_event.event_date }}</dd>
-  <dt>age</dt><dd>{{ animal.age_days|agestr }} ({{ animal.age_group }})</dd>
+  <dt>age</dt><dd>{{ animal.age|agestr }} ({{ animal.age_group }})</dd>
   {% if animal.expected_hatch %}<dt>expected hatch</dt><dd>{{ animal.expected_hatch}}</dd>{% endif %}
   <dt>living children</dt><dd>{{ animal.children.alive.count }}</dd>
   <dt>total children</dt><dd>{{ animal.children.hatched.count }}</dd>
