@@ -6,6 +6,7 @@
       "common_name": "Zebra finch",
       "genus": "Taeniopygia",
       "species": "guttata",
+      "incubation_days": 14,
       "code": "zebf"
     }
   },

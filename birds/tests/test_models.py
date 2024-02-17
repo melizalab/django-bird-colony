@@ -54,6 +54,7 @@ class AnimalModelTests(TestCase):
         self.assertIs(bird.alive(), True)
         self.assertIs(bird.alive(date=birthday), True)
         self.assertIs(bird.alive(date=birthday - datetime.timedelta(days=1)), False)
+        self.assertIs(bird.expected_hatch(), None)
 
         annotated_bird = Animal.objects.with_status().get(pk=bird.pk)
         self.assertIs(annotated_bird.alive, True)
@@ -93,6 +94,7 @@ class AnimalModelTests(TestCase):
         self.assertIs(bird.alive(), True)
         self.assertIs(bird.alive(date=acq_on), True)
         self.assertIs(bird.alive(date=acq_on - datetime.timedelta(days=1)), False)
+        self.assertIs(bird.expected_hatch(), None)
 
         annotated_bird = Animal.objects.with_status().get(pk=bird.pk)
         self.assertIs(annotated_bird.alive, True)
@@ -142,6 +144,7 @@ class AnimalModelTests(TestCase):
 
         self.assertEqual(bird.age(), died_on - born_on)
         self.assertEqual(bird.age(date=died_on), died_on - born_on)
+        self.assertIs(bird.expected_hatch(), None)
 
         annotated_bird = Animal.objects.with_status().get(pk=bird.pk)
         self.assertIs(annotated_bird.alive, False)
@@ -168,4 +171,40 @@ class AnimalModelTests(TestCase):
         )
         self.assertNotIn(
             bird, Animal.objects.existed_on(born_on - datetime.timedelta(days=1))
+        )
+
+    def test_status_of_egg(self):
+        species = Species.objects.get(pk=1)
+        egg = Animal(species=species)
+        egg.save()
+        user = models.get_sentinel_user()
+        status_laid = models.get_unborn_creation_event_type()
+        self.assertEqual(status_laid.adds, 0)
+        laid_on = datetime.date.today() - datetime.timedelta(days=10)
+        event_laid = Event(
+            animal=egg, status=status_laid, date=laid_on, entered_by=user
+        )
+        event_laid.save()
+
+        self.assertIs(egg.acquisition_event(), None)
+        self.assertIs(egg.alive(), False)
+        self.assertIs(egg.age(), None)
+        eggspected_hatch = laid_on + datetime.timedelta(days=species.incubation_days)
+        self.assertEqual(egg.expected_hatch(), eggspected_hatch)
+
+        annotated_egg = Animal.objects.with_status().get(pk=egg.pk)
+        self.assertIs(annotated_egg.alive, False)
+
+        annotated_egg = Animal.objects.with_dates().get(pk=egg.pk)
+        self.assertIs(annotated_egg.born_on, None)
+        self.assertIs(annotated_egg.acquired_on, None)
+        self.assertIs(annotated_egg.died_on, None)
+        self.assertIs(annotated_egg.age, None)
+
+        self.assertNotIn(egg, Animal.objects.alive())
+        self.assertNotIn(egg, Animal.objects.hatched())
+        self.assertIn(egg, Animal.objects.unhatched())
+        self.assertIn(egg, Animal.objects.existed_on(laid_on))
+        self.assertNotIn(
+            egg, Animal.objects.existed_on(laid_on - datetime.timedelta(days=1))
         )
