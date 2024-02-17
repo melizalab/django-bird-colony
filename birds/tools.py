@@ -28,9 +28,10 @@ def tabulate_locations(since, until):
     the other option if it becomes too slow.
 
     """
-    from birds.models import Animal, Event, Location, ADULT_ANIMAL_NAME
+    from collections import Counter, defaultdict
     from datetime import timedelta
-    from collections import defaultdict, Counter
+
+    from birds.models import ADULT_ANIMAL_NAME, Animal, Event, Location
 
     repdate = since
     nests = Location.objects.filter(nest=True).order_by("name")

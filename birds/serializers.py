@@ -3,7 +3,8 @@
 from __future__ import unicode_literals
 
 from rest_framework import serializers
-from birds.models import Animal, Parent, Event, Color, Species, Status, Location
+
+from birds.models import Animal, Event, Status
 
 
 class AnimalSerializer(serializers.ModelSerializer):

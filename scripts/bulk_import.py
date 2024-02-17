@@ -2,6 +2,7 @@
 # -*- mode: python -*-
 
 import json
+
 import requests as rq
 
 if __name__=="__main__":

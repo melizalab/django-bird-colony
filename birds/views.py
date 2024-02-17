@@ -3,38 +3,37 @@
 import datetime
 from itertools import groupby
 
-from django.shortcuts import get_object_or_404, render
 from django.core.exceptions import ObjectDoesNotExist
-from django.shortcuts import render
 from django.http import HttpResponseRedirect
+from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.views import generic
 from django.views.decorators.http import require_http_methods
-from rest_framework import generics
-from rest_framework.response import Response
-from rest_framework.decorators import api_view
 from django_filters import rest_framework as filters
 from django_filters.views import FilterView
 from drf_link_header_pagination import LinkHeaderPagination
+from rest_framework import generics
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 
 from birds import __version__, api_version
-from birds.models import Animal, Event, Sample, SampleType, NestCheck, Pairing, Status
-from birds.serializers import (
-    AnimalSerializer,
-    AnimalPedigreeSerializer,
-    AnimalDetailSerializer,
-    EventSerializer,
-)
 from birds.forms import (
     ClutchForm,
+    EndPairingForm,
+    EventForm,
     NewAnimalForm,
     NewBandForm,
-    EventForm,
+    NewPairingForm,
     ReservationForm,
     SampleForm,
-    NewPairingForm,
-    EndPairingForm,
     SexForm,
+)
+from birds.models import Animal, Event, NestCheck, Pairing, Sample, SampleType, Status
+from birds.serializers import (
+    AnimalDetailSerializer,
+    AnimalPedigreeSerializer,
+    AnimalSerializer,
+    EventSerializer,
 )
 
 
@@ -196,7 +195,7 @@ class PairingEntry(generic.FormView):
         return form
 
     def form_valid(self, form, **kwargs):
-        from birds.models import Status, MOVED_EVENT_NAME
+        from birds.models import MOVED_EVENT_NAME
 
         data = form.clean()
         if data["location"] is not None and data["entered_by"] is not None:
@@ -257,7 +256,7 @@ class PairingClose(generic.FormView):
         return form
 
     def form_valid(self, form, **kwargs):
-        from birds.models import Status, MOVED_EVENT_NAME
+        from birds.models import MOVED_EVENT_NAME
 
         data = form.clean()
         if (
@@ -299,7 +298,7 @@ class PairingClose(generic.FormView):
 @require_http_methods(["GET"])
 def location_summary(request):
     from collections import defaultdict
-    from birds.tools import sort_and_group
+
     from birds.models import ADULT_ANIMAL_NAME
 
     qs = (
@@ -329,8 +328,10 @@ def location_summary(request):
 @require_http_methods(["GET"])
 def nest_report(request):
     default_days = 4
-    from django.utils import dateparse
     from datetime import datetime, timedelta
+
+    from django.utils import dateparse
+
     from birds.tools import tabulate_locations
 
     try:
@@ -372,9 +373,11 @@ def nest_check(request):
     main nest-report page.
 
     """
-    from datetime import datetime, timedelta
     from collections import defaultdict
-    from django.forms import formset_factory, ValidationError
+    from datetime import datetime, timedelta
+
+    from django.forms import ValidationError, formset_factory
+
     from birds.forms import NestCheckForm, NestCheckUser
     from birds.tools import tabulate_locations
 
@@ -456,7 +459,7 @@ def nest_check(request):
                         },
                     )
                 eggs = nest["days"][-1]["animals"]["egg"]
-                for i in range(delta_chicks):
+                for _ in range(delta_chicks):
                     hatch = dict(
                         animal=eggs.pop(),
                         status=updated["hatch_status"],
@@ -464,7 +467,7 @@ def nest_check(request):
                     )
                     changes[location].append(hatch)
                 if delta_eggs < 0:
-                    for i in range(-delta_eggs):
+                    for _ in range(-delta_eggs):
                         lost = dict(
                             animal=eggs.pop(),
                             status=updated["lost_status"],
@@ -472,7 +475,7 @@ def nest_check(request):
                         )
                         changes[location].append(lost)
                 else:
-                    for i in range(delta_eggs):
+                    for _ in range(delta_eggs):
                         egg = dict(
                             status=updated["laid_status"],
                             sire=sire,

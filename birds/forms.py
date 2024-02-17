@@ -1,23 +1,23 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
 from django import forms
-
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
+from django.utils.translation import gettext_lazy as _
+
 from birds import models
 from birds.models import (
     Animal,
-    Event,
-    Status,
-    Location,
     Color,
-    Plumage,
-    Species,
-    Parent,
-    Sample,
+    Event,
+    Location,
     Pairing,
+    Parent,
+    Plumage,
+    Sample,
+    Species,
+    Status,
 )
-from django.utils.translation import gettext_lazy as _
 
 
 class EventForm(forms.ModelForm):
@@ -111,40 +111,41 @@ class NestCheckForm(forms.Form):
     chicks = forms.IntegerField(label="chicks", min_value=0)
 
     def clean(self):
-        from birds.models import (
-            BIRTH_EVENT_NAME,
-            UNBORN_CREATION_EVENT_NAME,
-            LOST_EVENT_NAME,
-        )
         from django.template.defaultfilters import pluralize
 
+        from birds.models import (
+            BIRTH_EVENT_NAME,
+            LOST_EVENT_NAME,
+            UNBORN_CREATION_EVENT_NAME,
+        )
+
         cleaned_data = super().clean()
-        location_name = self.initial["location"].name
+        _location_name = self.initial["location"].name
         delta_chicks = cleaned_data["chicks"] - self.initial["chicks"]
-        delta_eggs = cleaned_data["eggs"] - self.initial["eggs"] + delta_chicks
+        _delta_eggs = cleaned_data["eggs"] - self.initial["eggs"] + delta_chicks
         try:
             cleaned_data["hatch_status"] = Status.objects.get(name=BIRTH_EVENT_NAME)
-        except ObjectDoesNotExist:
+        except ObjectDoesNotExist as err:
             raise forms.ValidationError(
                 "No %(name)s status type - add one in admin",
                 params={"name": BIRTH_EVENT_NAME},
-            )
+            ) from err
         try:
             cleaned_data["laid_status"] = Status.objects.get(
                 name=UNBORN_CREATION_EVENT_NAME
             )
-        except ObjectDoesNotExist:
+        except ObjectDoesNotExist as err:
             raise forms.ValidationError(
                 "No %(name)s status type - add one in admin",
                 params={"name": UNBORN_CREATION_EVENT_NAME},
-            )
+            ) from err
         try:
             cleaned_data["lost_status"] = Status.objects.get(name=LOST_EVENT_NAME)
-        except ObjectDoesNotExist:
+        except ObjectDoesNotExist as err:
             raise forms.ValidationError(
                 "No %(name)s status type - add one in admin",
                 params={"name": LOST_EVENT_NAME},
-            )
+            ) from err
         if delta_chicks < 0:
             raise forms.ValidationError("Missing chicks need to be removed manually")
         elif delta_chicks > self.initial["eggs"]:
@@ -178,8 +179,10 @@ class NewBandForm(forms.Form):
         data = super().clean()
         try:
             data["band_status"] = Status.objects.get(name__startswith="band")
-        except ObjectDoesNotExist:
-            raise forms.ValidationError("No 'banded' status type - add one in admin")
+        except ObjectDoesNotExist as err:
+            raise forms.ValidationError(
+                "No 'banded' status type - add one in admin"
+            ) from err
         if Animal.objects.filter(
             band_color=data["band_color"], band_number=data["band_number"]
         ).exists():
@@ -226,10 +229,10 @@ class ReservationForm(forms.Form):
             self.cleaned_data["status"] = Status.objects.get(
                 name=models.RESERVATION_EVENT_NAME
             )
-        except ObjectDoesNotExist:
+        except ObjectDoesNotExist as err:
             raise forms.ValidationError(
                 f"No '{models.RESERVATION_EVENT_NAME}' status type - add one in admin"
-            )
+            ) from err
         return self.cleaned_data
 
 
@@ -246,10 +249,10 @@ class SexForm(forms.Form):
         data = super().clean()
         try:
             data["status"] = Status.objects.get(name=models.NOTE_EVENT_NAME)
-        except ObjectDoesNotExist:
+        except ObjectDoesNotExist as err:
             raise forms.ValidationError(
                 f"No '{models.NOTE_EVENT_NAME}' status type - add one in admin"
-            )
+            ) from err
         return data
 
     def update_sex(self):
@@ -292,8 +295,10 @@ class NewAnimalForm(forms.Form):
         data = self.cleaned_data
         try:
             data["band_status"] = Status.objects.get(name__startswith="band")
-        except ObjectDoesNotExist:
-            raise forms.ValidationError("No 'banded' status type - add one in admin")
+        except ObjectDoesNotExist as err:
+            raise forms.ValidationError(
+                "No 'banded' status type - add one in admin"
+            ) from err
         if "acq_status" in data and data["acq_status"].name == "hatched":
             if data["dam"] is None or data["sire"] is None:
                 raise forms.ValidationError("Parents required for hatched birds")
@@ -368,8 +373,10 @@ class ClutchForm(forms.Form):
         super(ClutchForm, self).clean()
         try:
             self.cleaned_data["status"] = Status.objects.get(name__startswith="hatch")
-        except ObjectDoesNotExist:
-            raise forms.ValidationError("No 'hatch' status type - add one in admin")
+        except ObjectDoesNotExist as err:
+            raise forms.ValidationError(
+                "No 'hatch' status type - add one in admin"
+            ) from err
         if (
             "dam" in self.cleaned_data
             and "sire" in self.cleaned_data
@@ -380,7 +387,7 @@ class ClutchForm(forms.Form):
 
     def create_clutch(self):
         ret = {"chicks": [], "events": []}
-        for i in range(self.cleaned_data["chicks"]):
+        for _i in range(self.cleaned_data["chicks"]):
             chick = Animal(species=self.cleaned_data["sire"].species, sex="U")
             chick.save()
             Parent.objects.create(child=chick, parent=self.cleaned_data["sire"])

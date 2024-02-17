@@ -2,31 +2,32 @@
 # -*- mode: python -*-
 from __future__ import unicode_literals
 
-import uuid
 import datetime
+import uuid
 from functools import lru_cache
 
-from django.core.exceptions import ValidationError, ObjectDoesNotExist
-from django.urls import reverse
-from django.db import models
-from django.db.models import (
-    Value,
-    Case,
-    When,
-    CharField,
-    Count,
-    Q,
-    F,
-    Min,
-    Max,
-    Subquery,
-    OuterRef,
-)
-from django.db.models.functions import Concat, Substr, Cast, Greatest, Now
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.utils.translation import gettext_lazy as _
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.db import models
+from django.db.models import (
+    Case,
+    Count,
+    F,
+    Max,
+    Min,
+    OuterRef,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+    When,
+)
+from django.db.models.functions import Greatest, Now, Cast
+from django.db.models.lookups import GreaterThan
+from django.urls import reverse
 from django.utils.functional import cached_property
+from django.utils.translation import gettext_lazy as _
 
 BIRTH_EVENT_NAME = "hatched"
 UNBORN_ANIMAL_NAME = "egg"
@@ -148,11 +149,16 @@ class AnimalQuerySet(models.QuerySet):
     def with_status(self):
         return self.annotate(
             # Need to compare added to removed because eggs are not "alive"
-            alive=Greatest(
-                0,
-                Count("event", filter=Q(event__status__adds=True))
-                - Count("event", filter=Q(event__status__removes=True)),
+            alive=GreaterThan(
+                Sum(Cast("event__status__adds", models.IntegerField())),
+                Sum(Cast("event__status__removes", models.IntegerField())),
             )
+            # alive=Greatest(
+            #     0,
+            #     Count("event", filter=Q(event__status__adds=True))
+            #     - Count("event", filter=Q(event__status__removes=True)),
+            # )
+            # > Value(0)
         )
 
     def with_dates(self):
@@ -334,6 +340,18 @@ class Animal(models.Model):
             return refdate - events["born_on"]
         else:
             return events["died_on"] - events["born_on"]
+
+    def alive(self, date=None):
+        """Returns true if the bird is alive (as of date).
+
+        This method is masked if with_status() is used on the queryset.
+        """
+        refdate = date or datetime.date.today()
+        is_alive = self.event_set.filter(date__lte=refdate).aggregate(
+            added=Sum(Cast("status__adds", models.IntegerField())),
+            removed=Sum(Cast("status__removes", models.IntegerField())),
+        )
+        return (is_alive["added"] or 0) > (is_alive["removed"] or 0)
 
     def age_group(self, date=None):
         """Returns the age group of the animal (as of date) by joining on the Age model.

@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 
 from django.db import migrations, models
 
+
 def set_booleans(apps, schema_editor):
     Status = apps.get_model("birds", "Status")
     for status in Status.objects.all():

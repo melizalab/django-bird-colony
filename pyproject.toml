@@ -12,4 +12,4 @@ extend-select = [
   "PGH", # pygrep-hooks
   "RUF", # Ruff-specific
 ]
-
+ignore = ["RUF012"]
