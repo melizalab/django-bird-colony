@@ -23,7 +23,7 @@ from django.db.models import (
     Value,
     When,
 )
-from django.db.models.functions import Greatest, Now, Cast
+from django.db.models.functions import Greatest, Now, Cast, TruncDay
 from django.db.models.lookups import GreaterThan
 from django.urls import reverse
 from django.utils.functional import cached_property
@@ -168,7 +168,7 @@ class AnimalQuerySet(models.QuerySet):
             acquired_on=Min("event__date", filter=Q(event__status__adds=True)),
             age=Case(
                 When(born_on__isnull=True, then=None),
-                When(died_on__isnull=True, then=Now() - F("born_on")),
+                When(died_on__isnull=True, then=TruncDay(Now()) - F("born_on")),
                 default=F("died_on") - F("born_on"),
             ),
         )
@@ -401,12 +401,17 @@ class Animal(models.Model):
         except ObjectDoesNotExist:
             return None
 
-    def last_location(self):
-        """Returns the location recorded in the most recent event. This method
-        will be masked if with_location() is used on the queryset."""
+    def last_location(self, date=None):
+        """Returns the location recorded in the most recent event before date
+        (today if not specified). This method will be masked if with_location()
+        is used on the queryset.
+
+        """
+        refdate = date or datetime.date.today()
         try:
             return (
                 self.event_set.select_related("location")
+                .filter(date__lte=refdate)
                 .exclude(location__isnull=True)
                 .latest()
                 .location
@@ -415,8 +420,12 @@ class Animal(models.Model):
             return None
 
     def pairings(self):
-        """Returns all pairings involving this animal"""
+        """Returns all pairings involving this animal as sire or dam"""
         return Pairing.objects.filter(Q(sire=self) | Q(dam=self))
+
+    def birth_pairing(self):
+        """Return the pairing to which this animal was born (or None)"""
+        raise NotImplementedError()
 
     def get_absolute_url(self):
         return reverse("birds:animal", kwargs={"uuid": self.uuid})
@@ -587,7 +596,7 @@ class Pairing(models.Model):
         agg = qs.annotate(
             age=Case(
                 When(born_on__isnull=True, then=None),
-                When(died_on__isnull=True, then=Now() - F("born_on")),
+                When(died_on__isnull=True, then=TruncDay(Now()) - F("born_on")),
                 default=None,
             )
         ).aggregate(Max("age"))

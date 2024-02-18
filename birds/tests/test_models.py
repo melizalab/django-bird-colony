@@ -5,7 +5,7 @@ import datetime
 from django.test import TestCase
 
 from birds import models
-from birds.models import Animal, Species, Event, Color, Status
+from birds.models import Animal, Species, Event, Color, Status, Location
 
 
 class AnimalModelTests(TestCase):
@@ -63,7 +63,7 @@ class AnimalModelTests(TestCase):
         self.assertEqual(annotated_bird.born_on, birthday)
         self.assertEqual(annotated_bird.acquired_on, birthday)
         self.assertIs(annotated_bird.died_on, None)
-        self.assertEqual(annotated_bird.age.days, age.days)
+        self.assertEqual(annotated_bird.age, age)
 
         self.assertIn(bird, Animal.objects.alive())
         self.assertIn(bird, Animal.objects.hatched())
@@ -104,6 +104,7 @@ class AnimalModelTests(TestCase):
         self.assertEqual(annotated_bird.acquired_on, acq_on)
         self.assertIs(annotated_bird.died_on, None)
         self.assertIs(annotated_bird.age, None)
+        self.assertEqual(annotated_bird.age_group(), models.ADULT_ANIMAL_NAME)
 
         self.assertIn(bird, Animal.objects.alive())
         self.assertNotIn(bird, Animal.objects.hatched())
@@ -200,6 +201,7 @@ class AnimalModelTests(TestCase):
         self.assertIs(annotated_egg.acquired_on, None)
         self.assertIs(annotated_egg.died_on, None)
         self.assertIs(annotated_egg.age, None)
+        self.assertEqual(annotated_egg.age_group(), models.UNBORN_ANIMAL_NAME)
 
         self.assertNotIn(egg, Animal.objects.alive())
         self.assertNotIn(egg, Animal.objects.hatched())
@@ -207,4 +209,56 @@ class AnimalModelTests(TestCase):
         self.assertIn(egg, Animal.objects.existed_on(laid_on))
         self.assertNotIn(
             egg, Animal.objects.existed_on(laid_on - datetime.timedelta(days=1))
+        )
+
+    def test_age_grouping(self):
+        species = Species.objects.get(pk=1)
+        status = models.get_birth_event_type()
+        user = models.get_sentinel_user()
+        for age_group in species.age_set.all():
+            bird = Animal(species=species)
+            bird.save()
+            birthday = datetime.date.today() - datetime.timedelta(
+                days=age_group.min_days
+            )
+            event = Event(animal=bird, status=status, date=birthday, entered_by=user)
+            event.save()
+            abird = Animal.objects.with_dates().get(pk=bird.pk)
+            self.assertEqual(abird.age_group(), age_group.name)
+
+    def test_bird_locations(self):
+        species = Species.objects.get(pk=1)
+        bird = Animal(species=species)
+        bird.save()
+        self.assertIs(bird.last_location(), None)
+        user = models.get_sentinel_user()
+        status_1 = models.get_birth_event_type()
+        birthday = datetime.date.today() - datetime.timedelta(days=10)
+        location_1 = Location.objects.get(pk=2)
+        event_1 = Event(
+            animal=bird,
+            status=status_1,
+            date=birthday,
+            entered_by=user,
+            location=location_1,
+        )
+        event_1.save()
+        self.assertEqual(bird.last_location(), location_1)
+
+        status_2 = Status.objects.get(name="moved")
+        date_2 = datetime.date.today() - datetime.timedelta(days=1)
+        location_2 = Location.objects.get(pk=1)
+        event_2 = Event(
+            animal=bird,
+            status=status_2,
+            date=date_2,
+            entered_by=user,
+            location=location_2,
+        )
+        event_2.save()
+        self.assertIs(bird.alive(), True)
+        self.assertEqual(bird.last_location(), location_2)
+        self.assertEqual(bird.last_location(date=birthday), location_1)
+        self.assertIs(
+            bird.last_location(date=birthday - datetime.timedelta(days=1)), None
         )
