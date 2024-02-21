@@ -12,6 +12,7 @@ from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import models
 from django.db.models import (
     Case,
+    CheckConstraint,
     Count,
     F,
     Max,
@@ -478,11 +479,11 @@ class Event(models.Model):
 
     def age(self):
         """Age of the anmial at the time of the event, or None if birthday not known"""
-        evt_birth = self.animal.event_set.filter(
-            status=get_birth_event_type()
-        ).earliest()
-        if evt_birth is not None and self.date >= evt_birth.date:
-            return self.date - evt_birth.date
+        events = self.animal.event_set.filter(status=get_birth_event_type())
+        if events:
+            evt_birth = events.earliest()
+            if evt_birth is not None and self.date >= evt_birth.date:
+                return self.date - evt_birth.date
 
     class Meta:
         ordering = ["-date", "-created"]
@@ -648,12 +649,19 @@ class Pairing(models.Model):
         return Pairing.objects.filter(sire=self.sire, dam=self.dam).exclude(id=self.id)
 
     def clean(self):
-        # ended must be after began
-        if self.ended is not None and self.ended <= self.began:
-            raise ValidationError(_("End date must be after the pairing began"))
+        if self.sire.sex != Animal.MALE:
+            raise ValidationError(_("Sire must be a male"))
+        if self.dam.sex != Animal.FEMALE:
+            raise ValidationError(_("Dam must be a female"))
 
     class Meta:
         ordering = ["-began", "-ended"]
+        constraints = [
+            CheckConstraint(
+                check=Q(ended__isnull=True) | Q(ended__gt=F("began")),
+                name="ended_gt_began",
+            )
+        ]
 
 
 class NestCheck(models.Model):

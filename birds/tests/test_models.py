@@ -3,9 +3,11 @@
 import datetime
 
 from django.test import TestCase
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.db.utils import IntegrityError
 
 from birds import models
-from birds.models import Animal, Species, Event, Color, Status, Location
+from birds.models import Animal, Species, Event, Color, Status, Location, Pairing
 
 
 class AnimalModelTests(TestCase):
@@ -262,3 +264,156 @@ class AnimalModelTests(TestCase):
         self.assertIs(
             bird.last_location(date=birthday - datetime.timedelta(days=1)), None
         )
+
+
+class ParentModelTests(TestCase):
+    fixtures = ["bird_colony_starter_kit"]
+
+    def test_bird_parents(self):
+        species = Species.objects.get(pk=1)
+        sire = Animal(species=species, sex=Animal.MALE)
+        sire.save()
+        dam = Animal(species=species, sex=Animal.FEMALE)
+        dam.save()
+        child = Animal(species=species)
+        child.save()
+        child.parents.set([sire, dam])
+        self.assertEqual(child.sire(), sire)
+        self.assertEqual(child.dam(), dam)
+        self.assertTrue(sire.children.contains(child))
+        self.assertTrue(dam.children.contains(child))
+
+    def test_bird_child_counts(self):
+        species = Species.objects.get(pk=1)
+        sire = Animal(species=species, sex=Animal.MALE)
+        sire.save()
+        dam = Animal(species=species, sex=Animal.FEMALE)
+        dam.save()
+        child = Animal(species=species)
+        child.save()
+        child.parents.set([sire, dam])
+        # child is unhatched
+        self.assertEqual(sire.children.unhatched().count(), 1)
+        self.assertEqual(sire.children.hatched().count(), 0)
+        self.assertEqual(sire.children.alive().count(), 0)
+        # add a hatch event
+        status = models.get_birth_event_type()
+        age = datetime.timedelta(days=5)
+        birthday = datetime.date.today() - age
+        user = models.get_sentinel_user()
+        event = Event(animal=child, status=status, date=birthday, entered_by=user)
+        event.save()
+        self.assertEqual(sire.children.unhatched().count(), 0)
+        self.assertEqual(sire.children.hatched().count(), 1)
+        self.assertEqual(sire.children.alive().count(), 1)
+
+
+class EventModelTests(TestCase):
+    fixtures = ["bird_colony_starter_kit"]
+
+    def test_age_at_event_time(self):
+        species = Species.objects.get(pk=1)
+        bird = Animal(species=species)
+        bird.save()
+        status = models.get_birth_event_type()
+        age = datetime.timedelta(days=5)
+        birthday = datetime.date.today() - age
+        user = models.get_sentinel_user()
+        event = Event(animal=bird, status=status, date=birthday, entered_by=user)
+        event.save()
+        self.assertEqual(event.age(), datetime.timedelta(days=0))
+        status_2 = Status.objects.get(name="moved")
+        date_2 = datetime.date.today() - datetime.timedelta(days=1)
+        event_2 = Event(
+            animal=bird,
+            status=status_2,
+            date=date_2,
+            entered_by=user,
+        )
+        self.assertEqual(event_2.age(), date_2 - birthday)
+
+    def test_age_at_event_time_for_unhatched_bird(self):
+        species = Species.objects.get(pk=1)
+        bird = Animal(species=species)
+        bird.save()
+        user = models.get_sentinel_user()
+        status_2 = Status.objects.get(name="moved")
+        date_2 = datetime.date.today() - datetime.timedelta(days=1)
+        event_2 = Event(
+            animal=bird,
+            status=status_2,
+            date=date_2,
+            entered_by=user,
+        )
+        self.assertEqual(event_2.age(), None)
+
+    def test_most_recent_event(self):
+        species = Species.objects.get(pk=1)
+        bird_1 = Animal(species=species)
+        bird_1.save()
+        # add two events to each bird
+        user = models.get_sentinel_user()
+        status = Status.objects.get(name="moved")
+        event_1_1 = Event(
+            animal=bird_1,
+            status=status,
+            date=datetime.date.today() - datetime.timedelta(days=1),
+            entered_by=user,
+        )
+        event_1_1.save()
+        event_1_2 = Event(
+            animal=bird_1,
+            status=status,
+            date=datetime.date.today() - datetime.timedelta(days=10),
+            entered_by=user,
+        )
+        event_1_2.save()
+
+        bird_2 = Animal(species=species)
+        bird_2.save()
+        event_2_1 = Event(
+            animal=bird_2,
+            status=status,
+            date=datetime.date.today() - datetime.timedelta(days=50),
+            entered_by=user,
+        )
+        event_2_1.save()
+
+        event_2_2 = Event(
+            animal=bird_2,
+            status=status,
+            date=datetime.date.today() - datetime.timedelta(days=25),
+            entered_by=user,
+        )
+        event_2_2.save()
+
+        latest_events = Event.objects.latest_by_animal()
+        self.assertCountEqual(latest_events, [event_1_1, event_2_2])
+
+
+class PairingModelTests(TestCase):
+    fixtures = ["bird_colony_starter_kit"]
+
+    @classmethod
+    def setUpTestData(cls):
+        species = Species.objects.get(pk=1)
+        cls.sire = Animal.objects.create(species=species, sex=Animal.MALE)
+        cls.dam = Animal.objects.create(species=species, sex=Animal.FEMALE)
+
+    def test_pairing_invalid_sexes(self):
+        pairing = Pairing.objects.create(
+            sire=self.dam,
+            dam=self.sire,
+            began=datetime.date.today(),
+        )
+        with self.assertRaises(ValidationError):
+            pairing.clean()
+
+    def test_pairing_invalid_dates(self):
+        with self.assertRaises(IntegrityError):
+            pairing = Pairing.objects.create(
+                sire=self.sire,
+                dam=self.dam,
+                began=datetime.date.today(),
+                ended=datetime.date.today() - datetime.timedelta(days=5),
+            )
