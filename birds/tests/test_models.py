@@ -41,8 +41,7 @@ class AnimalModelTests(TestCase):
 
     def test_status_of_bird_without_events(self):
         species = Species.objects.get(pk=1)
-        bird = Animal(species=species)
-        bird.save()
+        bird = Animal.objects.create(species=species)
         self.assertIs(bird.acquisition_event(), None)
         self.assertIs(bird.age(), None)
         self.assertIs(bird.alive(), False)
@@ -53,14 +52,14 @@ class AnimalModelTests(TestCase):
 
     def test_status_of_hatched_bird(self):
         species = Species.objects.get(pk=1)
-        bird = Animal(species=species)
-        bird.save()
+        bird = Animal.objects.create(species=species)
         status = models.get_birth_event_type()
         age = datetime.timedelta(days=5)
         birthday = datetime.date.today() - age
         user = models.get_sentinel_user()
-        event = Event(animal=bird, status=status, date=birthday, entered_by=user)
-        event.save()
+        event = Event.objects.create(
+            animal=bird, status=status, date=birthday, entered_by=user
+        )
         self.assertEqual(bird.acquisition_event(), event)
         self.assertEqual(bird.age(), age)
         self.assertEqual(bird.age(date=birthday), datetime.timedelta(days=0))
@@ -94,14 +93,14 @@ class AnimalModelTests(TestCase):
 
     def test_status_of_transferred_bird(self):
         species = Species.objects.get(pk=1)
-        bird = Animal(species=species)
-        bird.save()
+        bird = Animal.objects.create(species=species)
         status = Status.objects.get(name="transferred in")
         self.assertEqual(status.adds, 1)
         acq_on = datetime.date.today() - datetime.timedelta(days=10)
         user = models.get_sentinel_user()
-        event = Event(animal=bird, status=status, date=acq_on, entered_by=user)
-        event.save()
+        event = Event.objects.create(
+            animal=bird, status=status, date=acq_on, entered_by=user
+        )
 
         self.assertEqual(bird.acquisition_event(), event)
         self.assertIs(bird.age(), None)
@@ -135,23 +134,20 @@ class AnimalModelTests(TestCase):
 
     def test_status_of_dead_bird(self):
         species = Species.objects.get(pk=1)
-        bird = Animal(species=species)
-        bird.save()
+        bird = Animal.objects.create(species=species)
         user = models.get_sentinel_user()
         status_born = models.get_birth_event_type()
         self.assertEqual(status_born.adds, 1)
         born_on = datetime.date.today() - datetime.timedelta(days=10)
-        event_born = Event(
+        event_born = Event.objects.create(
             animal=bird, status=status_born, date=born_on, entered_by=user
         )
-        event_born.save()
         status_died = Status.objects.get(name="died")
         self.assertEqual(status_died.removes, 1)
         died_on = datetime.date.today() - datetime.timedelta(days=1)
-        event_died = Event(
+        event_died = Event.objects.create(
             animal=bird, status=status_died, date=died_on, entered_by=user
         )
-        event_died.save()
 
         self.assertEqual(bird.acquisition_event(), event_born)
         self.assertIs(bird.alive(), False)
@@ -229,46 +225,43 @@ class AnimalModelTests(TestCase):
         status = models.get_birth_event_type()
         user = models.get_sentinel_user()
         for age_group in species.age_set.all():
-            bird = Animal(species=species)
-            bird.save()
+            bird = Animal.objects.create(species=species)
             birthday = datetime.date.today() - datetime.timedelta(
                 days=age_group.min_days
             )
-            event = Event(animal=bird, status=status, date=birthday, entered_by=user)
-            event.save()
+            event = Event.objects.create(
+                animal=bird, status=status, date=birthday, entered_by=user
+            )
             abird = Animal.objects.with_dates().get(pk=bird.pk)
             self.assertEqual(abird.age_group(), age_group.name)
 
     def test_bird_locations(self):
         species = Species.objects.get(pk=1)
-        bird = Animal(species=species)
-        bird.save()
+        bird = Animal.objects.create(species=species)
         self.assertIs(bird.last_location(), None)
         user = models.get_sentinel_user()
         status_1 = models.get_birth_event_type()
         birthday = datetime.date.today() - datetime.timedelta(days=10)
         location_1 = Location.objects.get(pk=2)
-        event_1 = Event(
+        event_1 = Event.objects.create(
             animal=bird,
             status=status_1,
             date=birthday,
             entered_by=user,
             location=location_1,
         )
-        event_1.save()
         self.assertEqual(bird.last_location(), location_1)
 
         status_2 = Status.objects.get(name="moved")
         date_2 = datetime.date.today() - datetime.timedelta(days=1)
         location_2 = Location.objects.get(pk=1)
-        event_2 = Event(
+        event_2 = Event.objects.create(
             animal=bird,
             status=status_2,
             date=date_2,
             entered_by=user,
             location=location_2,
         )
-        event_2.save()
         self.assertIs(bird.alive(), True)
         self.assertEqual(bird.last_location(), location_2)
         self.assertEqual(bird.last_location(date=birthday), location_1)
@@ -282,10 +275,8 @@ class ParentModelTests(TestCase):
 
     def test_bird_parents(self):
         species = Species.objects.get(pk=1)
-        sire = Animal(species=species, sex=Animal.MALE)
-        sire.save()
-        dam = Animal(species=species, sex=Animal.FEMALE)
-        dam.save()
+        sire = Animal.objects.create(species=species, sex=Animal.MALE)
+        dam = Animal.objects.create(species=species, sex=Animal.FEMALE)
         child = make_child(sire, dam)
         self.assertEqual(child.sire(), sire)
         self.assertEqual(child.dam(), dam)
@@ -298,10 +289,8 @@ class ParentModelTests(TestCase):
 
     def test_bird_child_counts(self):
         species = Species.objects.get(pk=1)
-        sire = Animal(species=species, sex=Animal.MALE)
-        sire.save()
-        dam = Animal(species=species, sex=Animal.FEMALE)
-        dam.save()
+        sire = Animal.objects.create(species=species, sex=Animal.MALE)
+        dam = Animal.objects.create(species=species, sex=Animal.FEMALE)
         age = datetime.timedelta(days=5)
         birthday = datetime.date.today() - age
         child = make_child(sire, dam, birthday)
@@ -315,14 +304,14 @@ class EventModelTests(TestCase):
 
     def test_age_at_event_time(self):
         species = Species.objects.get(pk=1)
-        bird = Animal(species=species)
-        bird.save()
+        bird = Animal.objects.create(species=species)
         status = models.get_birth_event_type()
         age = datetime.timedelta(days=5)
         birthday = datetime.date.today() - age
         user = models.get_sentinel_user()
-        event = Event(animal=bird, status=status, date=birthday, entered_by=user)
-        event.save()
+        event = Event.objects.create(
+            animal=bird, status=status, date=birthday, entered_by=user
+        )
         self.assertEqual(event.age(), datetime.timedelta(days=0))
         status_2 = Status.objects.get(name="moved")
         date_2 = datetime.date.today() - datetime.timedelta(days=1)
@@ -336,8 +325,7 @@ class EventModelTests(TestCase):
 
     def test_age_at_event_time_for_unhatched_bird(self):
         species = Species.objects.get(pk=1)
-        bird = Animal(species=species)
-        bird.save()
+        bird = Animal.objects.create(species=species)
         user = models.get_sentinel_user()
         status_2 = Status.objects.get(name="moved")
         date_2 = datetime.date.today() - datetime.timedelta(days=1)
@@ -351,43 +339,37 @@ class EventModelTests(TestCase):
 
     def test_most_recent_event(self):
         species = Species.objects.get(pk=1)
-        bird_1 = Animal(species=species)
-        bird_1.save()
+        bird_1 = Animal.objects.create(species=species)
         # add two events to each bird
         user = models.get_sentinel_user()
         status = Status.objects.get(name="moved")
-        event_1_1 = Event(
+        event_1_1 = Event.objects.create(
             animal=bird_1,
             status=status,
             date=datetime.date.today() - datetime.timedelta(days=1),
             entered_by=user,
         )
-        event_1_1.save()
-        event_1_2 = Event(
+        event_1_2 = Event.objects.create(
             animal=bird_1,
             status=status,
             date=datetime.date.today() - datetime.timedelta(days=10),
             entered_by=user,
         )
-        event_1_2.save()
 
-        bird_2 = Animal(species=species)
-        bird_2.save()
-        event_2_1 = Event(
+        bird_2 = Animal.objects.create(species=species)
+        event_2_1 = Event.objects.create(
             animal=bird_2,
             status=status,
             date=datetime.date.today() - datetime.timedelta(days=50),
             entered_by=user,
         )
-        event_2_1.save()
 
-        event_2_2 = Event(
+        event_2_2 = Event.objects.create(
             animal=bird_2,
             status=status,
             date=datetime.date.today() - datetime.timedelta(days=25),
             entered_by=user,
         )
-        event_2_2.save()
 
         latest_events = Event.objects.latest_by_animal()
         self.assertCountEqual(latest_events, [event_1_1, event_2_2])
