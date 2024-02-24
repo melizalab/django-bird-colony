@@ -37,8 +37,8 @@ class SampleForm(forms.ModelForm):
 
 class NewPairingForm(forms.ModelForm):
     qs = Animal.objects.alive()
-    sire = forms.ModelChoiceField(queryset=qs.filter(sex=Animal.MALE))
-    dam = forms.ModelChoiceField(queryset=qs.filter(sex=Animal.FEMALE))
+    sire = forms.ModelChoiceField(queryset=qs.filter(sex=Animal.Sex.MALE))
+    dam = forms.ModelChoiceField(queryset=qs.filter(sex=Animal.Sex.FEMALE))
     entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
     location = forms.ModelChoiceField(
         queryset=Location.objects.filter(nest=True), required=False
@@ -47,7 +47,7 @@ class NewPairingForm(forms.ModelForm):
     def clean(self):
         data = super().clean()
         sire = data["sire"]
-        if sire.sex != Animal.MALE:
+        if sire.sex != Animal.Sex.MALE:
             raise forms.ValidationError("Sire is not male")
         if sire.age_group() != models.ADULT_ANIMAL_NAME:
             raise forms.ValidationError("Sire is not an adult")
@@ -67,7 +67,7 @@ class NewPairingForm(forms.ModelForm):
                 )
             )
         dam = data["dam"]
-        if dam.sex != Animal.FEMALE:
+        if dam.sex != Animal.Sex.FEMALE:
             raise forms.ValidationError("Dam is not female")
         if dam.age_group() != models.ADULT_ANIMAL_NAME:
             raise forms.ValidationError("Dam is not an adult")
@@ -170,7 +170,7 @@ class NewBandForm(forms.Form):
     banding_date = forms.DateField()
     band_color = forms.ModelChoiceField(queryset=Color.objects.all(), required=False)
     band_number = forms.IntegerField(min_value=1)
-    sex = forms.ChoiceField(choices=Animal.SEX_CHOICES, required=True)
+    sex = forms.ChoiceField(choices=Animal.Sex.choices, required=True)
     plumage = forms.ModelChoiceField(queryset=Plumage.objects.all(), required=False)
     location = forms.ModelChoiceField(queryset=Location.objects.all(), required=False)
     user = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
@@ -238,10 +238,10 @@ class ReservationForm(forms.Form):
 
 class SexForm(forms.Form):
     animal = forms.ModelChoiceField(
-        queryset=Animal.objects.filter(sex=Animal.UNKNOWN_SEX)
+        queryset=Animal.objects.filter(sex=Animal.Sex.UNKNOWN_SEX)
     )
     date = forms.DateField()
-    sex = forms.ChoiceField(choices=Animal.SEX_CHOICES, required=True)
+    sex = forms.ChoiceField(choices=Animal.Sex.choices, required=True)
     description = forms.CharField(widget=forms.Textarea, required=False)
     entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
 
@@ -276,7 +276,7 @@ class NewAnimalForm(forms.Form):
     acq_status = forms.ModelChoiceField(queryset=Status.objects.filter(adds=True))
     acq_date = forms.DateField()
     sex = forms.ChoiceField(
-        choices=Animal.SEX_CHOICES, initial=Animal.UNKNOWN_SEX, required=True
+        choices=Animal.Sex.choices, initial=Animal.Sex.UNKNOWN_SEX, required=True
     )
     plumage = forms.ModelChoiceField(queryset=Plumage.objects.all(), required=False)
     qs = Animal.objects.alive()

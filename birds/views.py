@@ -427,7 +427,7 @@ def nest_check(request):
                                 (
                                     animal
                                     for animal in adults
-                                    if animal.sex == Animal.MALE
+                                    if animal.sex == Animal.Sex.MALE
                                 )
                             )
                         except StopIteration:
@@ -439,7 +439,7 @@ def nest_check(request):
                                 (
                                     animal
                                     for animal in adults
-                                    if animal.sex == Animal.FEMALE
+                                    if animal.sex == Animal.Sex.FEMALE
                                 )
                             )
                         except StopIteration:
@@ -631,10 +631,10 @@ class ClutchEntry(generic.FormView):
         try:
             uuid = self.kwargs["uuid"]
             animal = Animal.objects.get(uuid=uuid)
-            if animal.sex == Animal.MALE:
+            if animal.sex == Animal.Sex.MALE:
                 form.fields["sire"].queryset = Animal.objects.filter(uuid=uuid)
                 form.initial["sire"] = animal
-            elif animal.sex == Animal.FEMALE:
+            elif animal.sex == Animal.Sex.FEMALE:
                 form.fields["dam"].queryset = Animal.objects.filter(uuid=uuid)
                 form.initial["dam"] = animal
         except (KeyError, ObjectDoesNotExist):

@@ -250,13 +250,13 @@ class Parent(models.Model):
 
 
 class Animal(models.Model):
-    MALE = "M"
-    FEMALE = "F"
-    UNKNOWN_SEX = "U"
-    SEX_CHOICES = ((MALE, "male"), (FEMALE, "female"), (UNKNOWN_SEX, "unknown"))
+    class Sex(models.TextChoices):
+        MALE = "M", _("male")
+        FEMALE = "F", _("female")
+        UNKNOWN_SEX = "U", _("unknown")
 
     species = models.ForeignKey("Species", on_delete=models.PROTECT)
-    sex = models.CharField(max_length=2, choices=SEX_CHOICES)
+    sex = models.CharField(max_length=2, choices=Sex.choices, default=Sex.UNKNOWN_SEX)
     band_color = models.ForeignKey(
         "Color", on_delete=models.SET_NULL, blank=True, null=True
     )
@@ -436,6 +436,10 @@ class Animal(models.Model):
     def get_absolute_url(self):
         return reverse("birds:animal", kwargs={"uuid": self.uuid})
 
+    def update_sex(self, sex):
+        """Update the animal's sex and create an event to note this"""
+        raise NotImplementedError()
+
     class Meta:
         ordering = ["band_color", "band_number"]
 
@@ -554,13 +558,13 @@ class Pairing(models.Model):
         "Animal",
         on_delete=models.CASCADE,
         related_name="+",
-        limit_choices_to={"sex": Animal.MALE},
+        limit_choices_to={"sex": Animal.Sex.MALE},
     )
     dam = models.ForeignKey(
         "Animal",
         on_delete=models.CASCADE,
         related_name="+",
-        limit_choices_to={"sex": Animal.FEMALE},
+        limit_choices_to={"sex": Animal.Sex.FEMALE},
     )
     began = models.DateField(help_text="date the animals were paired")
     ended = models.DateField(null=True, blank=True, help_text="date the pairing ended")
@@ -654,9 +658,9 @@ class Pairing(models.Model):
         return Pairing.objects.filter(sire=self.sire, dam=self.dam).exclude(id=self.id)
 
     def clean(self):
-        if self.sire.sex != Animal.MALE:
+        if self.sire.sex != Animal.Sex.MALE:
             raise ValidationError(_("Sire must be a male"))
-        if self.dam.sex != Animal.FEMALE:
+        if self.dam.sex != Animal.Sex.FEMALE:
             raise ValidationError(_("Dam must be a female"))
 
     class Meta:

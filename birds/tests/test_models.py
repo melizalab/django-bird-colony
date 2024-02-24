@@ -275,8 +275,8 @@ class ParentModelTests(TestCase):
 
     def test_bird_parents(self):
         species = Species.objects.get(pk=1)
-        sire = Animal.objects.create(species=species, sex=Animal.MALE)
-        dam = Animal.objects.create(species=species, sex=Animal.FEMALE)
+        sire = Animal.objects.create(species=species, sex=Animal.Sex.MALE)
+        dam = Animal.objects.create(species=species, sex=Animal.Sex.FEMALE)
         child = make_child(sire, dam)
         self.assertEqual(child.sire(), sire)
         self.assertEqual(child.dam(), dam)
@@ -289,8 +289,8 @@ class ParentModelTests(TestCase):
 
     def test_bird_child_counts(self):
         species = Species.objects.get(pk=1)
-        sire = Animal.objects.create(species=species, sex=Animal.MALE)
-        dam = Animal.objects.create(species=species, sex=Animal.FEMALE)
+        sire = Animal.objects.create(species=species, sex=Animal.Sex.MALE)
+        dam = Animal.objects.create(species=species, sex=Animal.Sex.FEMALE)
         age = datetime.timedelta(days=5)
         birthday = datetime.date.today() - age
         child = make_child(sire, dam, birthday)
@@ -381,8 +381,8 @@ class PairingModelTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         species = Species.objects.get(pk=1)
-        cls.sire = Animal.objects.create(species=species, sex=Animal.MALE)
-        cls.dam = Animal.objects.create(species=species, sex=Animal.FEMALE)
+        cls.sire = Animal.objects.create(species=species, sex=Animal.Sex.MALE)
+        cls.dam = Animal.objects.create(species=species, sex=Animal.Sex.FEMALE)
 
     def test_pairing_invalid_sexes(self):
         pairing = Pairing.objects.create(
@@ -391,7 +391,7 @@ class PairingModelTests(TestCase):
             began=datetime.date.today(),
         )
         with self.assertRaises(ValidationError):
-            pairing.clean()
+            pairing.full_clean()
 
     def test_pairing_invalid_dates(self):
         with self.assertRaises(IntegrityError):
@@ -410,7 +410,7 @@ class PairingModelTests(TestCase):
             ended=datetime.date.today() - datetime.timedelta(days=70),
         )
         other_bird = Animal.objects.create(
-            species=Species.objects.get(pk=1), sex=Animal.FEMALE
+            species=Species.objects.get(pk=1), sex=Animal.Sex.FEMALE
         )
         pairing_2 = Pairing.objects.create(
             sire=self.sire,
