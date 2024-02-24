@@ -10,6 +10,19 @@ from birds import models
 from birds.models import Animal, Species, Event, Color, Status, Location, Pairing
 
 
+def make_child(sire, dam, birthday=None):
+    """Convenience function to make a child"""
+    child = Animal.objects.create(species=sire.species)
+    child.parents.set([sire, dam])
+    if birthday is not None:
+        status = models.get_birth_event_type()
+        user = models.get_sentinel_user()
+        event = Event.objects.create(
+            animal=child, status=status, date=birthday, entered_by=user
+        )
+    return child
+
+
 class AnimalModelTests(TestCase):
     fixtures = ["bird_colony_starter_kit"]
 
@@ -178,16 +191,14 @@ class AnimalModelTests(TestCase):
 
     def test_status_of_egg(self):
         species = Species.objects.get(pk=1)
-        egg = Animal(species=species)
-        egg.save()
+        egg = Animal.objects.create(species=species)
         user = models.get_sentinel_user()
         status_laid = models.get_unborn_creation_event_type()
         self.assertEqual(status_laid.adds, 0)
         laid_on = datetime.date.today() - datetime.timedelta(days=10)
-        event_laid = Event(
+        event_laid = Event.objects.create(
             animal=egg, status=status_laid, date=laid_on, entered_by=user
         )
-        event_laid.save()
 
         self.assertIs(egg.acquisition_event(), None)
         self.assertIs(egg.alive(), False)
@@ -275,13 +286,15 @@ class ParentModelTests(TestCase):
         sire.save()
         dam = Animal(species=species, sex=Animal.FEMALE)
         dam.save()
-        child = Animal(species=species)
-        child.save()
-        child.parents.set([sire, dam])
+        child = make_child(sire, dam)
         self.assertEqual(child.sire(), sire)
         self.assertEqual(child.dam(), dam)
         self.assertTrue(sire.children.contains(child))
         self.assertTrue(dam.children.contains(child))
+        # child has no hatch event
+        self.assertEqual(sire.children.unhatched().count(), 1)
+        self.assertEqual(sire.children.hatched().count(), 0)
+        self.assertEqual(sire.children.alive().count(), 0)
 
     def test_bird_child_counts(self):
         species = Species.objects.get(pk=1)
@@ -289,20 +302,9 @@ class ParentModelTests(TestCase):
         sire.save()
         dam = Animal(species=species, sex=Animal.FEMALE)
         dam.save()
-        child = Animal(species=species)
-        child.save()
-        child.parents.set([sire, dam])
-        # child is unhatched
-        self.assertEqual(sire.children.unhatched().count(), 1)
-        self.assertEqual(sire.children.hatched().count(), 0)
-        self.assertEqual(sire.children.alive().count(), 0)
-        # add a hatch event
-        status = models.get_birth_event_type()
         age = datetime.timedelta(days=5)
         birthday = datetime.date.today() - age
-        user = models.get_sentinel_user()
-        event = Event(animal=child, status=status, date=birthday, entered_by=user)
-        event.save()
+        child = make_child(sire, dam, birthday)
         self.assertEqual(sire.children.unhatched().count(), 0)
         self.assertEqual(sire.children.hatched().count(), 1)
         self.assertEqual(sire.children.alive().count(), 1)
@@ -417,3 +419,195 @@ class PairingModelTests(TestCase):
                 began=datetime.date.today(),
                 ended=datetime.date.today() - datetime.timedelta(days=5),
             )
+
+    def test_bird_pairing_lists(self):
+        pairing_1 = Pairing.objects.create(
+            sire=self.sire,
+            dam=self.dam,
+            began=datetime.date.today() - datetime.timedelta(days=100),
+            ended=datetime.date.today() - datetime.timedelta(days=70),
+        )
+        other_bird = Animal.objects.create(
+            species=Species.objects.get(pk=1), sex=Animal.FEMALE
+        )
+        pairing_2 = Pairing.objects.create(
+            sire=self.sire,
+            dam=other_bird,
+            began=datetime.date.today() - datetime.timedelta(days=50),
+            ended=datetime.date.today() - datetime.timedelta(days=20),
+        )
+        pairing_3 = Pairing.objects.create(
+            sire=self.sire, dam=self.dam, began=datetime.date.today()
+        )
+        self.assertFalse(pairing_1.active())
+        self.assertFalse(pairing_2.active())
+        self.assertTrue(pairing_3.active())
+        self.assertCountEqual(self.sire.pairings(), [pairing_1, pairing_2, pairing_3])
+        self.assertCountEqual(self.dam.pairings(), [pairing_1, pairing_3])
+        self.assertCountEqual(pairing_1.other_pairings(), [pairing_3])
+        self.assertEqual(pairing_2.other_pairings().count(), 0)
+        self.assertCountEqual(pairing_3.other_pairings(), [pairing_1])
+
+    def test_pairing_egg_list(self):
+        pairing = Pairing.objects.create(
+            sire=self.sire,
+            dam=self.dam,
+            began=datetime.date.today() - datetime.timedelta(days=10),
+            ended=datetime.date.today(),
+        )
+        self.assertEqual(pairing.eggs().count(), 0)
+        user = models.get_sentinel_user()
+        status_laid = models.get_unborn_creation_event_type()
+
+        # this egg was laid before the pairing began, so should not be in the list
+        egg = Animal.objects.create(species=self.sire.species)
+        egg.parents.set([self.sire, self.dam])
+        laid_on = datetime.date.today() - datetime.timedelta(days=11)
+        event_laid = Event.objects.create(
+            animal=egg, status=status_laid, date=laid_on, entered_by=user
+        )
+        self.assertEqual(pairing.eggs().count(), 0)
+        self.assertNotIn(egg, pairing.eggs())
+
+        # this egg was laid after the pairing began, so should be in the list
+        egg = Animal.objects.create(species=self.sire.species)
+        egg.parents.set([self.sire, self.dam])
+        laid_on = datetime.date.today() - datetime.timedelta(days=1)
+        event_laid = Event.objects.create(
+            animal=egg, status=status_laid, date=laid_on, entered_by=user
+        )
+        self.assertCountEqual(pairing.eggs(), [egg])
+
+        # this egg was laid after the pairing ended, so should not be in the list
+        egg = Animal.objects.create(species=self.sire.species)
+        egg.parents.set([self.sire, self.dam])
+        laid_on = datetime.date.today() + datetime.timedelta(days=1)
+        event_laid = Event.objects.create(
+            animal=egg, status=status_laid, date=laid_on, entered_by=user
+        )
+        self.assertEqual(pairing.eggs().count(), 1)
+        self.assertNotIn(egg, pairing.eggs())
+
+        # check that the annotation counts eggs correctly
+        annotated_pairing = Pairing.objects.with_progeny_stats().get(pk=pairing.pk)
+        self.assertEqual(annotated_pairing.n_eggs, pairing.eggs().count())
+
+    def test_pairing_progeny_stats(self):
+        pairing = Pairing.objects.create(
+            sire=self.sire,
+            dam=self.dam,
+            began=datetime.date.today() - datetime.timedelta(days=10),
+            ended=datetime.date.today(),
+        )
+        chick_1 = make_child(
+            self.sire, self.dam, datetime.date.today() - datetime.timedelta(days=5)
+        )
+        chick_2 = make_child(
+            self.sire, self.dam, datetime.date.today() - datetime.timedelta(days=4)
+        )
+        # chicks count as eggs even if there is no event marking when the egg
+        # was laid
+        self.assertCountEqual(pairing.eggs(), [chick_1, chick_2])
+
+        self.assertEqual(pairing.oldest_living_progeny_age(), chick_1.age().days)
+
+        # check that the annotation counts eggs and progeny correctly. But in
+        # this case the chicks do not count as eggs unless there is a laid
+        # event. Should probably try to be consistent, though the discrepancy is
+        # not a huge deal
+        annotated_pairing = Pairing.objects.with_progeny_stats().get(pk=pairing.pk)
+        self.assertEqual(annotated_pairing.n_eggs, 0)
+        self.assertEqual(annotated_pairing.n_progeny, 2)
+
+    def test_pairing_lookup(self):
+        pairing = Pairing.objects.create(
+            sire=self.sire,
+            dam=self.dam,
+            began=datetime.date.today() - datetime.timedelta(days=10),
+            ended=datetime.date.today(),
+        )
+        chick_1 = make_child(
+            self.sire, self.dam, datetime.date.today() - datetime.timedelta(days=5)
+        )
+        self.assertEqual(chick_1.birth_pairing(), pairing)
+
+    def test_related_events(self):
+        pairing = Pairing.objects.create(
+            sire=self.sire,
+            dam=self.dam,
+            began=datetime.date.today() - datetime.timedelta(days=10),
+            ended=datetime.date.today() - datetime.timedelta(days=5),
+        )
+        user = models.get_sentinel_user()
+        status = Status.objects.get(name="moved")
+        event_before = Event.objects.create(
+            animal=self.sire,
+            status=status,
+            date=datetime.date.today() - datetime.timedelta(days=20),
+            entered_by=user,
+        )
+        self.assertEqual(pairing.related_events().count(), 0)
+
+        event_during = Event.objects.create(
+            animal=self.sire,
+            status=status,
+            date=datetime.date.today() - datetime.timedelta(days=6),
+            entered_by=user,
+        )
+        self.assertCountEqual(pairing.related_events(), [event_during])
+
+        event_after = Event.objects.create(
+            animal=self.sire,
+            status=status,
+            date=datetime.date.today(),
+            entered_by=user,
+        )
+        self.assertCountEqual(pairing.related_events(), [event_during])
+
+    def test_last_location(self):
+        pairing = Pairing.objects.create(
+            sire=self.sire,
+            dam=self.dam,
+            began=datetime.date.today() - datetime.timedelta(days=10),
+        )
+        self.assertIn(pairing, Pairing.objects.active())
+        annotated_pairing = Pairing.objects.with_location().get(pk=pairing.pk)
+        self.assertIs(pairing.last_location(), None)
+        self.assertIs(annotated_pairing.last_location, None)
+
+        user = models.get_sentinel_user()
+        status = Status.objects.get(name="moved")
+        location = Location.objects.get(pk=1)
+        _ = Event.objects.create(
+            animal=self.sire,
+            status=status,
+            date=datetime.date.today() - datetime.timedelta(days=20),
+            entered_by=user,
+            location=location,
+        )
+        annotated_pairing = Pairing.objects.with_location().get(pk=pairing.pk)
+        self.assertIs(pairing.last_location(), None)
+        self.assertIs(annotated_pairing.last_location, None)
+
+        _ = Event.objects.create(
+            animal=self.sire,
+            status=status,
+            date=datetime.date.today() - datetime.timedelta(days=5),
+            entered_by=user,
+            location=location,
+        )
+        annotated_pairing = Pairing.objects.with_location().get(pk=pairing.pk)
+        self.assertEqual(pairing.last_location(), location)
+        self.assertEqual(annotated_pairing.last_location, location.name)
+
+        location_2 = Location.objects.get(pk=2)
+        _ = Event.objects.create(
+            animal=self.sire,
+            status=status,
+            date=datetime.date.today() - datetime.timedelta(days=1),
+            entered_by=user,
+            location=location_2,
+        )
+        annotated_pairing = Pairing.objects.with_location().get(pk=pairing.pk)
+        self.assertEqual(pairing.last_location(), location_2)
+        self.assertEqual(annotated_pairing.last_location, location_2.name)

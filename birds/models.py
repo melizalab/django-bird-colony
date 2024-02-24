@@ -154,6 +154,7 @@ class AnimalQuerySet(models.QuerySet):
                 Sum(Cast("event__status__adds", models.IntegerField())),
                 Sum(Cast("event__status__removes", models.IntegerField())),
             )
+            # this might be faster, should check
             # alive=Greatest(
             #     0,
             #     Count("event", filter=Q(event__status__adds=True))
@@ -427,6 +428,10 @@ class Animal(models.Model):
     def birth_pairing(self):
         """Return the pairing to which this animal was born (or None)"""
         raise NotImplementedError()
+        return Pairing.objects.filter(
+            sire=self.sire,
+            dam=self.dam,
+        )
 
     def get_absolute_url(self):
         return reverse("birds:animal", kwargs={"uuid": self.uuid})
