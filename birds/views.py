@@ -703,26 +703,20 @@ def new_band_entry(request, uuid: Optional[str] = None):
     return render(request, "birds/band_entry.html", {"form": form})
 
 
-class EventEntry(generic.FormView):
-    template_name = "birds/event_entry.html"
-    form_class = EventForm
+def new_event_entry(request, uuid: str):
+    animal = get_object_or_404(Animal, pk=uuid)
+    if request.method == "POST":
+        form = EventForm(request.POST)
+        if form.is_valid():
+            event = form.save(commit=False)
+            event.animal = animal
+            event.save()
+            return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
+    else:
+        form = EventForm()
+        form.initial["entered_by"] = request.user
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        self.animal = get_object_or_404(Animal, uuid=self.kwargs["uuid"])
-        context["animal"] = self.animal
-        return context
-
-    def get_initial(self):
-        initial = super().get_initial()
-        initial["entered_by"] = self.request.user
-        return initial
-
-    def form_valid(self, form, **kwargs):
-        event = form.save(commit=False)
-        event.animal = get_object_or_404(Animal, uuid=self.kwargs["uuid"])
-        event = form.save()
-        return HttpResponseRedirect(reverse("birds:animal", args=(event.animal.pk,)))
+    return render(request, "birds/event_entry.html", {"form": form, "animal": animal})
 
 
 class ReservationEntry(generic.FormView):

@@ -32,7 +32,7 @@ urlpatterns = [
     ),
     re_path(
         r"^animals/(?P<uuid>[a-f0-9\-]{36})/events/new/$",
-        login_required(views.EventEntry.as_view()),
+        login_required(views.new_event_entry),
         name="new_event",
     ),
     re_path(
