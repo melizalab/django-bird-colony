@@ -8,7 +8,7 @@ from birds import views
 app_name = "birds"
 urlpatterns = [
     # browser ui
-    re_path(r"^$", views.IndexView.as_view(), name="index"),
+    re_path(r"^$", views.index, name="index"),
     re_path(r"^animals/$", views.AnimalList.as_view(), name="animals"),
     re_path(
         r"^animals/new/$",
@@ -88,9 +88,9 @@ urlpatterns = [
         name="location-summary",
     ),
     re_path(r"^summary/nests/$", views.nest_report, name="nest-summary"),
-    re_path(
-        r"^summary/events/([0-9]{4})/([0-9]{1,2})/$",
-        views.EventSummary.as_view(),
+    path(
+        "summary/events/<int:year>/<int:month>/",
+        views.event_summary,
         name="event_summary",
     ),
     # forms

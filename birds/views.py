@@ -3,6 +3,7 @@
 import datetime
 from itertools import groupby
 from typing import Optional
+from collections import Counter
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponseRedirect
@@ -784,37 +785,42 @@ def update_sex(request, uuid: Optional[str] = None):
     return render(request, "birds/sex_entry.html", {"form": form})
 
 
-class IndexView(generic.base.TemplateView):
-    template_name = "birds/index.html"
-
-    def get_context_data(self, **kwargs):
-        today = datetime.date.today()
-        return {
+@require_http_methods(["GET"])
+def index(request):
+    today = datetime.date.today()
+    return render(
+        request,
+        "birds/index.html",
+        {
             "today": today,
             "lastmonth": today.replace(day=1) - datetime.timedelta(days=1),
-        }
+        },
+    )
 
 
-class EventSummary(generic.base.TemplateView):
-    template_name = "birds/summary.html"
-
-    def get_context_data(self, **kwargs):
-        from collections import Counter
-
-        tots = Counter()
-        year, month = map(int, self.args[:2])
-        # aggregation by month does not appear to work properly with postgres
-        # backend, so we have to do it in python. Event counts per month will be
-        # relatively small, though, so shouldn't be too slow.
-        for event in Event.objects.filter(date__year=year, date__month=month):
-            tots[event.status.name] += 1
-        return {
+@require_http_methods(["GET"])
+def event_summary(request, year: int, month: int):
+    tots = Counter()
+    # aggregation by month does not appear to work properly with postgres
+    # backend, so we have to do it in python. Event counts per month will be
+    # relatively small, though, so shouldn't be too slow.
+    for event in Event.objects.filter(date__year=year, date__month=month):
+        tots[event.status.name] += 1
+    return render(
+        request,
+        "birds/summary.html",
+        {
             "year": year,
             "month": month,
             "next": datetime.date(year, month, 1) + datetime.timedelta(days=32),
             "prev": datetime.date(year, month, 1) - datetime.timedelta(days=1),
             "event_totals": dict(tots),
-        }
+        },
+    )
+
+
+class EventSummary(generic.base.TemplateView):
+    template_name = "birds/summary.html"
 
 
 class SampleFilter(filters.FilterSet):
