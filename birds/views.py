@@ -2,6 +2,7 @@
 # -*- mode: python -*-
 import datetime
 from itertools import groupby
+from typing import Optional
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponseRedirect
@@ -673,26 +674,33 @@ class NewAnimalEntry(generic.FormView):
         return HttpResponseRedirect(reverse("birds:animal", args=(chick.pk,)))
 
 
-class NewBandEntry(generic.FormView):
-    template_name = "birds/band_entry.html"
-    form_class = NewBandForm
-
-    def get_form(self):
-        form = super().get_form()
-        form.initial["user"] = self.request.user
-        try:
-            uuid = self.kwargs["uuid"]
-            form.fields["animal"].queryset = Animal.objects.filter(uuid=uuid)
-            animal = Animal.objects.get(uuid=uuid)
+def new_band_entry(request, uuid: Optional[str] = None):
+    if request.method == "POST":
+        form = NewBandForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            animal = data["animal"]
+            animal.update_band(
+                band_number=data["band_number"],
+                date=data["banding_date"],
+                entered_by=data["user"],
+                band_color=data["band_color"],
+                sex=data["sex"],
+                plumage=data["plumage"],
+                location=data["location"],
+            )
+            return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
+    else:
+        form = NewBandForm()
+        form.initial["user"] = request.user
+        qs = Animal.objects.filter(uuid=uuid)
+        animal = qs.first()
+        if animal is not None:
+            form.fields["animal"].queryset = qs
             form.initial["animal"] = animal
             form.initial["sex"] = animal.sex
-        except (KeyError, ObjectDoesNotExist):
-            pass
-        return form
 
-    def form_valid(self, form, **kwargs):
-        animal = form.add_band()
-        return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
+    return render(request, "birds/band_entry.html", {"form": form})
 
 
 class EventEntry(generic.FormView):
@@ -774,7 +782,14 @@ class SexEntry(generic.FormView):
         return form
 
     def form_valid(self, form, **kwargs):
-        animal = form.update_sex()
+        data = form.cleaned_data
+        animal = data["animal"]
+        animal.update_sex(
+            data["sex"],
+            data["entered_by"],
+            data["date"],
+            description=form["description"],
+        )
         return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
 
 

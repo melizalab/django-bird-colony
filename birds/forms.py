@@ -255,22 +255,6 @@ class SexForm(forms.Form):
             ) from err
         return data
 
-    def update_sex(self):
-        data = self.cleaned_data
-        animal = data["animal"]
-        animal.sex = data["sex"]
-        descr = data["description"] or f"sexed as {animal.sex}"
-        evt = Event(
-            animal=animal,
-            date=data["date"],
-            status=data["status"],
-            entered_by=data["entered_by"],
-            description=descr,
-        )
-        animal.save()
-        evt.save()
-        return animal
-
 
 class NewAnimalForm(forms.Form):
     acq_status = forms.ModelChoiceField(queryset=Status.objects.filter(adds=True))

@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 import datetime
 import uuid
 from functools import lru_cache
+from typing import Optional
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -313,7 +314,7 @@ class Animal(models.Model):
         return self.parents.filter(sex__exact="F").first()
 
     def sexed(self):
-        return self.sex != Animal.UNKNOWN_SEX
+        return self.sex != Animal.Sex.UNKNOWN_SEX
 
     def acquisition_event(self):
         """Returns event when bird was acquired.
@@ -427,18 +428,76 @@ class Animal(models.Model):
 
     def birth_pairing(self):
         """Return the pairing to which this animal was born (or None)"""
-        raise NotImplementedError()
-        return Pairing.objects.filter(
-            sire=self.sire,
-            dam=self.dam,
+        # find birthday (or when egg was laid
+        events = self.event_set.aggregate(
+            born_on=Min(
+                "date",
+                filter=Q(
+                    status__name__in=(UNBORN_CREATION_EVENT_NAME, BIRTH_EVENT_NAME)
+                ),
+            )
+        )
+        if events["born_on"] is None:
+            return None
+        return (
+            Pairing.objects.filter(
+                sire=self.sire(),
+                dam=self.dam(),
+            )
+            .exclude(began__gte=events["born_on"])
+            .exclude(ended__lte=events["born_on"])
+            .first()
         )
 
     def get_absolute_url(self):
         return reverse("birds:animal", kwargs={"uuid": self.uuid})
 
-    def update_sex(self, sex):
+    def update_sex(
+        self,
+        sex: Sex,
+        entered_by: settings.AUTH_USER_MODEL,
+        date: datetime.date,
+        *,
+        description: Optional[str] = None,
+    ):
         """Update the animal's sex and create an event to note this"""
-        raise NotImplementedError()
+        status = Status.objects.get(name=NOTE_EVENT_NAME)
+        self.sex = sex
+        self.save()
+        return Event.objects.create(
+            animal=self,
+            date=date,
+            status=status,
+            entered_by=entered_by,
+            description=description or f"sexed as {sex}",
+        )
+
+    def update_band(
+        self,
+        band_number: int,
+        date: datetime.date,
+        entered_by: settings.AUTH_USER_MODEL,
+        *,
+        band_color: Optional[Color] = None,
+        sex: Optional[Sex] = None,
+        plumage: Optional[Plumage] = None,
+        location: Optional[Location] = None,
+    ):
+        """Update the animal's band and create an event to note this"""
+        status = Status.objects.get(name=NOTE_EVENT_NAME)
+        self.band_number = band_number
+        self.band_color = band_color
+        self.sex = sex or self.Sex.UNKNOWN_SEX
+        self.plumage = plumage
+        self.save()
+        return Event.objects.create(
+            animal=self,
+            date=date,
+            status=status,
+            entered_by=entered_by,
+            location=location,
+            description=self.band(),
+        )
 
     class Meta:
         ordering = ["band_color", "band_number"]

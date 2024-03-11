@@ -269,6 +269,46 @@ class AnimalModelTests(TestCase):
             bird.last_location(date=birthday - datetime.timedelta(days=1)), None
         )
 
+    def test_updating_sex(self):
+        species = Species.objects.get(pk=1)
+        bird = Animal.objects.create(species=species)
+        self.assertFalse(bird.sexed())
+        self.assertEqual(bird.sex, Animal.Sex.UNKNOWN_SEX)
+
+        user = models.get_sentinel_user()
+        date = datetime.date.today()
+        event = bird.update_sex(Animal.Sex.FEMALE, date=date, entered_by=user)
+        # force refresh from database
+        bird = Animal.objects.get(pk=bird.pk)
+        self.assertTrue(bird.sexed())
+        self.assertEqual(bird.sex, Animal.Sex.FEMALE)
+        self.assertIn(event, bird.event_set.all())
+
+    def test_updating_band(self):
+        species = Species.objects.get(pk=1)
+        bird = Animal.objects.create(species=species)
+        self.assertEqual(bird.sex, Animal.Sex.UNKNOWN_SEX)
+        self.assertIs(bird.band_number, None)
+        self.assertIs(bird.band_color, None)
+        self.assertIs(bird.plumage, None)
+        user = models.get_sentinel_user()
+        date = datetime.date.today()
+        color = Color.objects.get(pk=1)
+        event = bird.update_band(
+            band_number=100,
+            band_color=color,
+            date=datetime.date.today(),
+            entered_by=user,
+        )
+        # force refresh from database
+        bird = Animal.objects.get(pk=bird.pk)
+        self.assertFalse(bird.sexed())
+        self.assertEqual(bird.band_number, 100)
+        self.assertEqual(bird.band_color, color)
+        self.assertIs(bird.plumage, None)
+        self.assertIs(event.location, None)
+        self.assertIn(event, bird.event_set.all())
+
 
 class ParentModelTests(TestCase):
     fixtures = ["bird_colony_starter_kit"]
