@@ -764,33 +764,30 @@ class ReservationEntry(generic.FormView):
         return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
 
 
-class SexEntry(generic.FormView):
-    template_name = "birds/sex_entry.html"
-    form_class = SexForm
-
-    def get_form(self):
-        form = super().get_form()
-        try:
-            uuid = self.kwargs["uuid"]
-            form.fields["animal"].queryset = Animal.objects.filter(uuid=uuid)
-            animal = Animal.objects.get(uuid=uuid)
+def update_sex(request, uuid: Optional[str] = None):
+    if request.method == "POST":
+        form = SexForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            animal = data["animal"]
+            animal.update_sex(
+                date=data["date"],
+                entered_by=data["entered_by"],
+                sex=data["sex"],
+                description=data["description"],
+            )
+            return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
+    else:
+        form = SexForm()
+        form.initial["entered_by"] = request.user
+        qs = Animal.objects.filter(uuid=uuid)
+        animal = qs.first()
+        if animal is not None:
+            form.fields["animal"].queryset = qs
             form.initial["animal"] = animal
             form.initial["sex"] = animal.sex
-        except (KeyError, ObjectDoesNotExist):
-            pass
-        form.initial["entered_by"] = self.request.user
-        return form
 
-    def form_valid(self, form, **kwargs):
-        data = form.cleaned_data
-        animal = data["animal"]
-        animal.update_sex(
-            data["sex"],
-            data["entered_by"],
-            data["date"],
-            description=form["description"],
-        )
-        return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
+    return render(request, "birds/sex_entry.html", {"form": form})
 
 
 class IndexView(generic.base.TemplateView):
