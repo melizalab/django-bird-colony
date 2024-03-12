@@ -10,9 +10,9 @@ from birds import models
 from birds.models import Animal, Species, Event, Color, Status, Location, Pairing
 
 
-def make_child(sire, dam, birthday=None):
+def make_child(sire, dam, birthday=None, **kwargs):
     """Convenience function to make a child"""
-    child = Animal.objects.create(species=sire.species)
+    child = Animal.objects.create(species=sire.species, **kwargs)
     child.parents.set([sire, dam])
     if birthday is not None:
         status = models.get_birth_event_type()
@@ -337,6 +337,29 @@ class ParentModelTests(TestCase):
         self.assertEqual(sire.children.unhatched().count(), 0)
         self.assertEqual(sire.children.hatched().count(), 1)
         self.assertEqual(sire.children.alive().count(), 1)
+
+    def test_genealogy(self):
+        species = Species.objects.get(pk=1)
+        sire = Animal.objects.create(species=species, sex=Animal.Sex.MALE)
+        dam = Animal.objects.create(species=species, sex=Animal.Sex.FEMALE)
+        birthday = datetime.date.today()  # date doesn't matter for birthdays
+        son = make_child(
+            sire,
+            dam,
+            birthday,
+            sex=Animal.Sex.MALE,
+        )
+        wife = Animal.objects.create(species=species, sex=Animal.Sex.FEMALE)
+        grandson = make_child(son, wife, birthday, sex=Animal.Sex.MALE)
+        granddaughter = make_child(son, wife, birthday, sex=Animal.Sex.FEMALE)
+        children = Animal.objects.descendents_of(sire, generation=1)
+        self.assertCountEqual(children, [son])
+        grandchildren = Animal.objects.descendents_of(sire, generation=2)
+        self.assertCountEqual(grandchildren, [grandson, granddaughter])
+        parents = Animal.objects.ancestors_of(grandson, generation=1)
+        self.assertCountEqual(parents, [son, wife])
+        grandparents = Animal.objects.ancestors_of(grandson, generation=2)
+        self.assertCountEqual(grandparents, [sire, dam])
 
 
 class EventModelTests(TestCase):

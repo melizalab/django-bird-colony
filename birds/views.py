@@ -3,12 +3,14 @@
 import datetime
 from itertools import groupby
 from typing import Optional
-from collections import Counter
+from collections import Counter, defaultdict
 
 from django.core.exceptions import ObjectDoesNotExist
+from django.forms import ValidationError, formset_factory
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
+from django.utils import dateparse
 from django.views import generic
 from django.views.decorators.http import require_http_methods
 from django_filters import rest_framework as filters
@@ -23,6 +25,8 @@ from birds.forms import (
     ClutchForm,
     EndPairingForm,
     EventForm,
+    NestCheckForm,
+    NestCheckUser,
     NewAnimalForm,
     NewBandForm,
     NewPairingForm,
@@ -330,10 +334,6 @@ def location_summary(request):
 @require_http_methods(["GET"])
 def nest_report(request):
     default_days = 4
-    from datetime import datetime, timedelta
-
-    from django.utils import dateparse
-
     from birds.tools import tabulate_locations
 
     try:
@@ -344,8 +344,8 @@ def nest_report(request):
         since = dateparse.parse_date(request.GET["since"])
     except (ValueError, KeyError):
         since = None
-    until = until or datetime.now().date()
-    since = since or (until - timedelta(days=default_days))
+    until = until or datetime.datetime.now().date()
+    since = since or (until - datetime.timedelta(days=default_days))
     dates, nest_data = tabulate_locations(since, until)
     checks = NestCheck.objects.filter(
         datetime__date__gte=since, datetime__date__lte=until
@@ -375,21 +375,15 @@ def nest_check(request):
     main nest-report page.
 
     """
-    from collections import defaultdict
-    from datetime import datetime, timedelta
-
-    from django.forms import ValidationError, formset_factory
-
-    from birds.forms import NestCheckForm, NestCheckUser
     from birds.tools import tabulate_locations
 
     NestCheckFormSet = formset_factory(NestCheckForm, extra=0)
-    until = datetime.now().date()
-    since = until - timedelta(days=2)
+    until = datetime.datetime.now().date()
+    since = until - datetime.timedelta(days=2)
     dates, nest_data = tabulate_locations(since, until)
     initial = []
     previous_checks = NestCheck.objects.filter(
-        datetime__date__gte=(until - timedelta(days=7))
+        datetime__date__gte=(until - datetime.timedelta(days=7))
     ).order_by("datetime")
     for nest in nest_data:
         today_counts = nest["days"][-1]["counts"]
@@ -570,7 +564,7 @@ class EventList(FilterView, generic.list.MultipleObjectMixin):
 
 
 @require_http_methods(["GET"])
-def animal_view(request, uuid):
+def animal_view(request, uuid: str):
     qs = Animal.objects.with_annotations()
     animal = get_object_or_404(qs, uuid=uuid)
     kids = (
@@ -588,6 +582,34 @@ def animal_view(request, uuid):
             "event_list": events,
             "sample_list": samples,
             "pairing_list": pairings,
+        },
+    )
+
+
+@require_http_methods(["GET"])
+def animal_genealogy(request, uuid: str):
+    animal = get_object_or_404(Animal.objects.with_dates(), pk=uuid)
+    generations = (1, 2, 3, 4)
+    ancestors = [
+        Animal.objects.ancestors_of(animal, generation=gen).with_annotations()
+        for gen in generations
+    ]
+    descendents = [
+        Animal.objects.descendents_of(animal, generation=gen)
+        .hatched()
+        .with_annotations()
+        .order_by("-alive")
+        for gen in generations
+    ]
+    living = [qs.alive() for qs in descendents]
+    return render(
+        request,
+        "birds/genealogy.html",
+        {
+            "animal": animal,
+            "ancestors": ancestors,
+            "descendents": descendents,
+            "living": living,
         },
     )
 

@@ -241,6 +241,18 @@ class AnimalQuerySet(models.QuerySet):
             ),
         ).filter(noted__gt=0, removed__lte=0)
 
+    def ancestors_of(self, animal, generation: int = 1):
+        """All ancestors of animal at specified generation"""
+        key = "__".join(("children",) * generation)
+        kwargs = {key: animal}
+        return self.filter(**kwargs)
+
+    def descendents_of(self, animal, generation: int = 1):
+        """All descendents of animal at specified generation"""
+        key = "__".join(("parents",) * generation)
+        kwargs = {key: animal}
+        return self.filter(**kwargs)
+
 
 class Parent(models.Model):
     id = models.AutoField(primary_key=True)

@@ -22,7 +22,7 @@ urlpatterns = [
     ),
     re_path(
         r"^animals/(?P<uuid>[a-f0-9\-]{36})/genealogy/$",
-        views.GenealogyView.as_view(),
+        views.animal_genealogy,
         name="genealogy",
     ),
     re_path(
