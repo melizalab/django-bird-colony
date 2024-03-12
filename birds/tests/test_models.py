@@ -414,6 +414,54 @@ class EventModelTests(TestCase):
         latest_events = Event.objects.latest_by_animal()
         self.assertCountEqual(latest_events, [event_1_1, event_2_2])
 
+    def test_this_month_filter(self):
+        species = Species.objects.get(pk=1)
+        bird = Animal.objects.create(species=species)
+        status = models.get_birth_event_type()
+        user = models.get_sentinel_user()
+        event = Event.objects.create(
+            animal=bird, status=status, date=datetime.date.today(), entered_by=user
+        )
+        self.assertCountEqual(Event.objects.in_month(), [event])
+
+    def test_specific_month_filter(self):
+        species = Species.objects.get(pk=1)
+        bird = Animal.objects.create(species=species)
+        status = Status.objects.get(name="note")
+        user = models.get_sentinel_user()
+        month = datetime.date(2024, 4, 1)
+        event_1 = Event.objects.create(
+            animal=bird, status=status, date=datetime.date(2024, 3, 1), entered_by=user
+        )
+        event_2 = Event.objects.create(
+            animal=bird, status=status, date=month, entered_by=user
+        )
+        event_3 = Event.objects.create(
+            animal=bird, status=status, date=datetime.date(2024, 5, 1), entered_by=user
+        )
+        self.assertCountEqual(Event.objects.in_month(month), [event_2])
+
+    def test_event_counts(self):
+        species = Species.objects.get(pk=1)
+        bird = Animal.objects.create(species=species)
+        user = models.get_sentinel_user()
+        status_1 = Status.objects.get(name="note")
+        _event = Event.objects.create(
+            animal=bird, status=status_1, date=datetime.date.today(), entered_by=user
+        )
+        _event = Event.objects.create(
+            animal=bird, status=status_1, date=datetime.date.today(), entered_by=user
+        )
+        status_2 = Status.objects.get(name="moved")
+        _event = Event.objects.create(
+            animal=bird, status=status_2, date=datetime.date.today(), entered_by=user
+        )
+        counts = {
+            item["status__name"]: item["count"]
+            for item in Event.objects.in_month().count_by_status()
+        }
+        self.assertEqual(counts, {"note": 2, "moved": 1})
+
 
 class PairingModelTests(TestCase):
     fixtures = ["bird_colony_starter_kit"]

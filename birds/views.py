@@ -800,27 +800,19 @@ def index(request):
 
 @require_http_methods(["GET"])
 def event_summary(request, year: int, month: int):
-    tots = Counter()
-    # aggregation by month does not appear to work properly with postgres
-    # backend, so we have to do it in python. Event counts per month will be
-    # relatively small, though, so shouldn't be too slow.
-    for event in Event.objects.filter(date__year=year, date__month=month):
-        tots[event.status.name] += 1
+    date = datetime.date(year=year, month=month, day=1)
+    counts = Event.objects.in_month(date).count_by_status()
     return render(
         request,
         "birds/summary.html",
         {
             "year": year,
             "month": month,
-            "next": datetime.date(year, month, 1) + datetime.timedelta(days=32),
-            "prev": datetime.date(year, month, 1) - datetime.timedelta(days=1),
-            "event_totals": dict(tots),
+            "next": date + datetime.timedelta(days=32),
+            "prev": date - datetime.timedelta(days=1),
+            "event_totals": counts.order_by(),
         },
     )
-
-
-class EventSummary(generic.base.TemplateView):
-    template_name = "birds/summary.html"
 
 
 class SampleFilter(filters.FilterSet):

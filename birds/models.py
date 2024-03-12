@@ -15,6 +15,7 @@ from django.db.models import (
     Case,
     CheckConstraint,
     Count,
+    DateField,
     F,
     Max,
     Min,
@@ -25,7 +26,7 @@ from django.db.models import (
     Value,
     When,
 )
-from django.db.models.functions import Greatest, Now, Cast, TruncDay
+from django.db.models.functions import Greatest, Now, Cast, TruncDay, Trunc
 from django.db.models.lookups import GreaterThan
 from django.urls import reverse
 from django.utils.functional import cached_property
@@ -519,6 +520,18 @@ class EventQuerySet(models.QuerySet):
 
     def latest_by_animal(self):
         return self.order_by("animal_id", "-date", "-created").distinct("animal_id")
+
+    def in_month(self, date: Optional[datetime.date] = None):
+        """Only events in a given month (the current one if None)"""
+        if date is None:
+            date = datetime.date.today()
+        month = datetime.date(year=date.year, month=date.month, day=1)
+        return self.annotate(
+            month=Trunc("date", "month", output_field=DateField())
+        ).filter(month=month)
+
+    def count_by_status(self):
+        return self.values("status__name").annotate(count=Count("id"))
 
 
 class Event(models.Model):

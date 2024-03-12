@@ -12,10 +12,10 @@
     <th>Total</th>
   </thead>
   <tbody>
-    {% for name, count in event_totals.items %}
+    {% for item in event_totals %}
     <tr>
-      <td>{{ name }}</td>
-      <td>{{ count }}</td>
+      <td>{{ item.status__name }}</td>
+      <td>{{ item.count }}</td>
     </tr>
     {% endfor %}
   </tbody>
