@@ -37,12 +37,12 @@ urlpatterns = [
     ),
     re_path(
         r"^animals/(?P<animal>[a-f0-9\-]{36})/samples/$",
-        views.SampleList.as_view(),
+        views.sample_list,
         name="animal_samples",
     ),
     re_path(
         r"^animals/(?P<uuid>[a-f0-9\-]{36})/samples/new/$",
-        login_required(views.SampleEntry.as_view()),
+        login_required(views.new_sample_entry),
         name="new_sample",
     ),
     re_path(
@@ -72,11 +72,11 @@ urlpatterns = [
     path("pairings/<int:pk>/new/", views.PairingEntry.as_view(), name="new_pairing"),
     path("pairings/<int:pk>/end/", views.PairingClose.as_view(), name="end_pairing"),
     path("pairings/new/", views.PairingEntry.as_view(), name="new_pairing"),
-    re_path(r"^sampletypes/$", views.SampleTypeList.as_view(), name="sampletypes"),
-    re_path(r"^samples/$", views.SampleList.as_view(), name="samples"),
+    re_path(r"^sampletypes/$", views.sample_type_list, name="sampletypes"),
+    re_path(r"^samples/$", views.sample_list, name="samples"),
     re_path(
         r"^samples/(?P<uuid>[a-f0-9\-]{36})/$",
-        views.SampleView.as_view(),
+        views.sample_view,
         name="sample",
     ),
     # summary views

@@ -859,64 +859,57 @@ class SampleFilter(filters.FilterSet):
         }
 
 
-class SampleTypeList(generic.ListView):
-    model = SampleType
-    template_name = "birds/sample_type_list.html"
+@require_http_methods(["GET"])
+def sample_type_list(request):
+    qs = SampleType.objects.all()
+    return render(request, "birds/sample_type_list.html", {"sampletype_list": qs})
 
 
-class SampleList(FilterView):
-    model = Sample
-    filterset_class = SampleFilter
-    template_name = "birds/sample_list.html"
-    paginate_by = 25
-    strict = False
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["query"] = self.request.GET.copy()
-        try:
-            del context["query"]["page"]
-        except KeyError:
-            pass
-        return context
-
-    def get_queryset(self):
-        qs = Sample.objects.filter(**self.kwargs)
-        return qs.select_related("type", "location", "collected_by").order_by("-date")
+@require_http_methods(["GET"])
+def sample_list(request, animal: Optional[str] = None):
+    qs = Sample.objects.select_related("type", "location", "collected_by").order_by(
+        "-date"
+    )
+    if animal is not None:
+        animal = get_object_or_404(Animal, uuid=animal)
+        qs = qs.filter(animal=animal)
+    f = SampleFilter(request.GET, queryset=qs)
+    paginator = Paginator(f.qs, 25)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+    return render(
+        request,
+        "birds/sample_list.html",
+        {"filter": f, "page_obj": page_obj, "sample_list": page_obj.object_list},
+    )
 
 
-class SampleView(generic.DetailView):
-    model = Sample
-    template_name = "birds/sample.html"
-    slug_field = "uuid"
-    slug_url_kwarg = "uuid"
+@require_http_methods(["GET"])
+def sample_view(request, uuid: str):
+    sample = get_object_or_404(Sample, uuid=uuid)
+    return render(
+        request,
+        "birds/sample.html",
+        {"sample": sample},
+    )
 
 
-class SampleEntry(generic.FormView):
-    template_name = "birds/sample_entry.html"
-    form_class = SampleForm
+@require_http_methods(["GET", "POST"])
+def new_sample_entry(request, uuid: str):
+    animal = get_object_or_404(Animal, pk=uuid)
+    if request.method == "POST":
+        form = SampleForm(request.POST)
+        if form.is_valid():
+            sample = form.save(commit=False)
+            sample.animal = animal
+            sample.save()
+            return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
+    else:
+        form = SampleForm()
+        form.fields["source"].queryset = Sample.objects.filter(animal=animal)
+        form.initial["collected_by"] = request.user
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["animal"] = self.animal
-        return context
-
-    def get_form(self):
-        form = super().get_form()
-        self.animal = get_object_or_404(Animal, uuid=self.kwargs["uuid"])
-        form.fields["source"].queryset = Sample.objects.filter(animal=self.animal)
-        return form
-
-    def get_initial(self):
-        initial = super().get_initial()
-        initial["collected_by"] = self.request.user
-        return initial
-
-    def form_valid(self, form, **kwargs):
-        sample = form.save(commit=False)
-        sample.animal = self.animal
-        sample.save()
-        return HttpResponseRedirect(reverse("birds:animal", args=(sample.animal.pk,)))
+    return render(request, "birds/sample_entry.html", {"form": form, "animal": animal})
 
 
 ### API
