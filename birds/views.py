@@ -6,6 +6,7 @@ from typing import Optional
 from collections import Counter, defaultdict
 
 from django.core.exceptions import ObjectDoesNotExist
+from django.core.paginator import Paginator
 from django.forms import ValidationError, formset_factory
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
@@ -114,29 +115,22 @@ class PairingFilter(filters.FilterSet):
         return queryset.filter(ended__isnull=value)
 
 
-class AnimalList(FilterView):
-    model = Animal
-    filterset_class = AnimalFilter
-    template_name = "birds/animal_list.html"
-    paginate_by = 25
-    strict = False
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["query"] = self.request.GET.copy()
-        try:
-            del context["query"]["page"]
-        except KeyError:
-            pass
-        return context
-
-    def get_queryset(self):
-        return (
-            Animal.objects.with_annotations()
-            .with_related()
-            .filter(**self.kwargs)
-            .order_by("band_color", "band_number")
-        )
+@require_http_methods(["GET"])
+def animal_list(request):
+    qs = (
+        Animal.objects.with_annotations()
+        .with_related()
+        .order_by("band_color", "band_number")
+    )
+    f = AnimalFilter(request.GET, queryset=qs)
+    paginator = Paginator(f.qs, 25)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+    return render(
+        request,
+        "birds/animal_list.html",
+        {"filter": f, "page_obj": page_obj, "animal_list": page_obj.object_list},
+    )
 
 
 class PairingList(FilterView):
@@ -303,25 +297,21 @@ class PairingClose(generic.FormView):
 
 @require_http_methods(["GET"])
 def location_summary(request):
-    from collections import defaultdict
-
     from birds.models import ADULT_ANIMAL_NAME
 
     qs = (
-        Animal.objects.alive()
-        .with_dates()
-        .with_location()
-        .select_related("species", "band_color")
+        Animal.objects.with_annotations()
+        .with_related()
+        .alive()
         .order_by("last_location")
     )
-    sex_choices = dict(Animal.SEX_CHOICES)
     loc_data = []
     for location, animals in groupby(qs, key=lambda animal: animal.last_location):
         d = defaultdict(list)
         for animal in animals:
             age_group = animal.age_group()
             if age_group == ADULT_ANIMAL_NAME:
-                group_name = "{} {}".format(age_group, sex_choices[animal.sex])
+                group_name = "{} {}".format(age_group, Animal.Sex(animal.sex).label)
                 d[group_name].append(animal)
             else:
                 d[age_group].append(animal)

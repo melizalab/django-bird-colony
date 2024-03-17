@@ -9,7 +9,7 @@ app_name = "birds"
 urlpatterns = [
     # browser ui
     re_path(r"^$", views.index, name="index"),
-    re_path(r"^animals/$", views.AnimalList.as_view(), name="animals"),
+    re_path(r"^animals/$", views.animal_list, name="animals"),
     re_path(
         r"^animals/new/$",
         login_required(views.NewAnimalEntry.as_view()),
@@ -84,7 +84,7 @@ urlpatterns = [
     # summary views
     re_path(
         r"^summary/locations/$",
-        views.location_summary,  # LocationSummary.as_view(),
+        views.location_summary,
         name="location-summary",
     ),
     re_path(r"^summary/nests/$", views.nest_report, name="nest-summary"),

@@ -198,7 +198,9 @@ class AnimalQuerySet(models.QuerySet):
         return self.with_status().with_dates().with_location()
 
     def with_related(self):
-        return self.select_related("reserved_by", "species", "band_color")
+        return self.select_related(
+            "reserved_by", "species", "band_color"
+        ).prefetch_related("species__age_set")
 
     def alive(self):
         """Only birds that are alive now"""
@@ -391,12 +393,20 @@ class Animal(models.Model):
                 return None
         else:
             age_days = self.age.days
-            grp = (
-                self.species.age_set.filter(min_days__lte=age_days)
-                .order_by("-min_days")
-                .first()
+            # for multiple animals, it's faster to do this lookup in python if
+            # age_set is prefetched
+            groups = sorted(
+                filter(
+                    lambda ag: ag.min_days <= age_days,
+                    self.species.age_set.all(),
+                ),
+                key=lambda ag: ag.min_days,
+                reverse=True,
             )
-            return grp.name if grp is not None else Age.DEFAULT
+            try:
+                return groups[0].name
+            except IndexError:
+                pass
 
     def expected_hatch(self):
         """For eggs, expected hatch date. None if not an egg, already hatched,
