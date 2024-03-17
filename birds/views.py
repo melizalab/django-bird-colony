@@ -133,25 +133,32 @@ def animal_list(request):
     )
 
 
-class PairingList(FilterView):
-    model = Pairing
-    filterset_class = PairingFilter
-    template_name = "birds/pairing_list.html"
-    paginate_by = 25
-    strict = False
-
-    def get_queryset(self):
-        return Pairing.objects.with_related().with_progeny_stats().filter(**self.kwargs)
-
-
-class PairingListActive(PairingList):
-    template_name = "birds/pairing_list_active.html"
-
-    def get_queryset(self):
-        # with_location implies only active pairs
-        return super().get_queryset().with_location()
+@require_http_methods(["GET"])
+def pairing_list(request):
+    qs = Pairing.objects.with_related().with_progeny_stats()
+    f = PairingFilter(request.GET, queryset=qs)
+    paginator = Paginator(f.qs, 25)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+    return render(
+        request,
+        "birds/pairing_list.html",
+        {"page_obj": page_obj, "pairing_list": page_obj.object_list},
+    )
 
 
+@require_http_methods(["GET"])
+def active_pairing_list(request):
+    qs = Pairing.objects.with_related().with_progeny_stats().with_location()
+    f = PairingFilter(request.GET, queryset=qs)
+    return render(
+        request,
+        "birds/pairing_list_active.html",
+        {"pairing_list": f.qs},
+    )
+
+
+@require_http_methods(["GET"])
 def pairing_view(request, pk):
     qs = Pairing.objects.with_related().with_progeny_stats()
     pair = get_object_or_404(qs, pk=pk)
@@ -532,25 +539,21 @@ def nest_check(request):
     )
 
 
-class EventList(FilterView, generic.list.MultipleObjectMixin):
-    model = Event
-    filterset_class = EventFilter
-    template_name = "birds/event_list.html"
-    paginate_by = 25
-    strict = False
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["query"] = self.request.GET.copy()
-        try:
-            del context["query"]["page"]
-        except KeyError:
-            pass
-        return context
-
-    def get_queryset(self):
-        qs = Event.objects.with_related().filter(**self.kwargs)
-        return qs.order_by("-date", "-created")
+@require_http_methods(["GET"])
+def event_list(request, animal: Optional[str] = None):
+    qs = Event.objects.with_related().order_by("-date", "-created")
+    if animal is not None:
+        animal = get_object_or_404(Animal, uuid=animal)
+        qs = qs.filter(animal=animal)
+    f = EventFilter(request.GET, queryset=qs)
+    paginator = Paginator(f.qs, 25)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+    return render(
+        request,
+        "birds/event_list.html",
+        {"filter": f, "page_obj": page_obj, "event_list": page_obj.object_list},
+    )
 
 
 @require_http_methods(["GET"])
@@ -771,6 +774,7 @@ class ReservationEntry(generic.FormView):
         return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
 
 
+@require_http_methods(["GET", "POST"])
 def update_sex(request, uuid: Optional[str] = None):
     if request.method == "POST":
         form = SexForm(request.POST)
