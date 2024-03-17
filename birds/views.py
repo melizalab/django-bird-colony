@@ -37,6 +37,7 @@ from birds.models import Animal, Event, NestCheck, Pairing, Sample, SampleType, 
 from birds.serializers import (
     AnimalDetailSerializer,
     AnimalPedigreeSerializer,
+    PedigreeRequestSerializer,
     AnimalSerializer,
     EventSerializer,
 )
@@ -837,7 +838,11 @@ def api_info(request, format=None):
 
 
 class APIAnimalsList(generics.ListAPIView):
-    queryset = Animal.objects.all()
+    queryset = (
+        Animal.objects.with_status()
+        .select_related("reserved_by", "species", "band_color")
+        .prefetch_related("parents")
+    )
     serializer_class = AnimalSerializer
     filter_backends = (DjangoFilterBackend,)
     filterset_class = AnimalFilter
@@ -846,21 +851,22 @@ class APIAnimalsList(generics.ListAPIView):
 class APIAnimalChildList(APIAnimalsList):
     """List all the children of an animal"""
 
-    def get_object(self):
-        return get_object_or_404(Animal, uuid=self.kwargs["pk"])
-
     def get_queryset(self):
-        animal = self.get_object()
-        return animal.children.all()
+        animal = get_object_or_404(Animal, uuid=self.kwargs["pk"])
+        return (
+            animal.children.with_status()
+            .select_related("reserved_by", "species", "band_color")
+            .prefetch_related("parents")
+        )
 
 
 class APIAnimalDetail(generics.RetrieveAPIView):
-    queryset = Animal.objects.all()
+    queryset = Animal.objects.with_annotations()
     serializer_class = AnimalDetailSerializer
 
 
 class APIEventsList(generics.ListAPIView):
-    queryset = Event.objects.all()
+    queryset = Event.objects.with_related()
     serializer_class = EventSerializer
     filter_backends = (DjangoFilterBackend,)
     filterset_class = EventFilter
@@ -869,7 +875,8 @@ class APIEventsList(generics.ListAPIView):
 class APIAnimalPedigree(generics.ListAPIView):
     """A list of animals and their parents.
 
-    If query param restrict is False, includes all animals, not just those useful in constructing a pedigree.
+    If query param restrict is False, includes all animals, not just
+    the ones useful for constructing a pedigree.
     """
 
     serializer_class = AnimalPedigreeSerializer
@@ -880,13 +887,17 @@ class APIAnimalPedigree(generics.ListAPIView):
     def get_queryset(self):
         from django.db.models import Count, Q
 
-        if self.request.GET.get("restrict", True):
-            qs = Animal.objects.annotate(nchildren=Count("children")).filter(
+        queryset = (
+            Animal.objects.with_status()
+            .with_dates()
+            .select_related("reserved_by", "species", "band_color", "plumage")
+            .prefetch_related("parents__species")
+            .prefetch_related("parents__band_color")
+            .order_by("band_color", "band_number")
+        )
+        request_parsed = PedigreeRequestSerializer(data=self.request.query_params)
+        if request_parsed.is_valid() and request_parsed.data["restrict"]:
+            queryset = queryset.annotate(nchildren=Count("children")).filter(
                 Q(alive__gt=0) | Q(nchildren__gt=0)
             )
-        else:
-            qs = Animal.objects.all()
-        return qs
-
-
-# Create your views here.
+        return queryset

@@ -1,10 +1,17 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
-from __future__ import unicode_literals
+import datetime
 
 from rest_framework import serializers
 
 from birds.models import Animal, Event, Status
+
+
+class AgeSerializer(serializers.Field):
+    """Serialize age into days"""
+
+    def to_representation(self, value: datetime.timedelta):
+        return value.days
 
 
 class AnimalSerializer(serializers.ModelSerializer):
@@ -38,11 +45,26 @@ class AnimalPedigreeSerializer(serializers.ModelSerializer):
     dam = serializers.StringRelatedField()
     plumage = serializers.StringRelatedField()
     alive = serializers.BooleanField(required=False)
-    acquisition_event = serializers.SlugRelatedField(read_only=True, slug_field='date')
+    acquired_on = serializers.DateField(read_only=True)
 
     class Meta:
         model = Animal
-        fields = ("uuid", "name", "sire", "dam", "sex", "alive", "plumage", "acquisition_event")
+        fields = (
+            "uuid",
+            "name",
+            "sire",
+            "dam",
+            "sex",
+            "alive",
+            "plumage",
+            "acquired_on",
+        )
+
+
+class PedigreeRequestSerializer(serializers.Serializer):
+    """Used to parse requests for pedigree"""
+
+    restrict = serializers.BooleanField(default=True)
 
 
 class AnimalDetailSerializer(AnimalSerializer):
@@ -52,6 +74,7 @@ class AnimalDetailSerializer(AnimalSerializer):
     reserved_by = serializers.StringRelatedField()
     sire = serializers.PrimaryKeyRelatedField(read_only=True)
     dam = serializers.PrimaryKeyRelatedField(read_only=True)
+    age_days = AgeSerializer(source="age", read_only=True)
     alive = serializers.BooleanField(required=False)
     last_location = serializers.StringRelatedField()
 

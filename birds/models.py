@@ -323,10 +323,16 @@ class Animal(models.Model):
         return self.name
 
     def sire(self):
-        return self.parents.filter(sex__exact="M").first()
+        # find the male parent in python to avoid hitting the database again if
+        # parents were prefetched
+        for parent in self.parents.all():
+            if parent.sex == Animal.Sex.MALE:
+                return parent
 
     def dam(self):
-        return self.parents.filter(sex__exact="F").first()
+        for parent in self.parents.all():
+            if parent.sex == Animal.Sex.FEMALE:
+                return parent
 
     def sexed(self):
         return self.sex != Animal.Sex.UNKNOWN_SEX
