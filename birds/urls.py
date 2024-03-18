@@ -60,18 +60,21 @@ urlpatterns = [
         login_required(views.ReservationEntry.as_view()),
         name="update_reservation",
     ),
-    re_path(
-        r"^animals/(?P<uuid>[a-f0-9\-]{36})/new-clutch/$",
-        login_required(views.ClutchEntry.as_view()),
-        name="clutch",
-    ),
     re_path(r"^events/$", views.event_list, name="events"),
     re_path(r"^pairings/$", views.pairing_list, name="pairings"),
     re_path(r"^pairings/active/$", views.active_pairing_list, name="pairings_active"),
     path("pairings/<int:pk>/", views.pairing_view, name="pairing"),
-    path("pairings/<int:pk>/new/", views.new_pairing_entry, name="new_pairing"),
-    path("pairings/<int:pk>/end/", views.close_pairing, name="end_pairing"),
-    path("pairings/new/", views.new_pairing_entry, name="new_pairing"),
+    path(
+        "pairings/<int:pk>/new/",
+        login_required(views.new_pairing_entry),
+        name="new_pairing",
+    ),
+    path(
+        "pairings/<int:pk>/end/",
+        login_required(views.close_pairing),
+        name="end_pairing",
+    ),
+    path("pairings/new/", login_required(views.new_pairing_entry), name="new_pairing"),
     re_path(r"^sampletypes/$", views.sample_type_list, name="sampletypes"),
     re_path(r"^samples/$", views.sample_list, name="samples"),
     re_path(
@@ -92,11 +95,7 @@ urlpatterns = [
         name="event_summary",
     ),
     # forms
-    # re_path(r'^nest-check/$', login_required(views.NestCheck.as_view()), name='nest-check'),
     re_path(r"^nest-check/$", login_required(views.nest_check), name="nest-check"),
-    re_path(
-        r"^new-clutch/$", login_required(views.ClutchEntry.as_view()), name="clutch"
-    ),
     re_path(r"^new-band/$", login_required(views.new_band_entry), name="new_band"),
     re_path(r"^set-sex/$", login_required(views.update_sex), name="set_sex"),
     re_path(

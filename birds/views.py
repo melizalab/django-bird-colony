@@ -23,7 +23,6 @@ from rest_framework.response import Response
 
 from birds import __version__, api_version
 from birds.forms import (
-    ClutchForm,
     EndPairingForm,
     EventForm,
     NestCheckForm,
@@ -528,43 +527,6 @@ class GenealogyView(generic.DetailView):
         ]
         context["living"] = [qs.filter(alive=True) for qs in context["descendents"]]
         return context
-
-
-class ClutchEntry(generic.FormView):
-    template_name = "birds/clutch_entry.html"
-    form_class = ClutchForm
-
-    def get_form(self):
-        form = super().get_form()
-        try:
-            uuid = self.kwargs["uuid"]
-            animal = Animal.objects.get(uuid=uuid)
-            if animal.sex == Animal.Sex.MALE:
-                form.fields["sire"].queryset = Animal.objects.filter(uuid=uuid)
-                form.initial["sire"] = animal
-            elif animal.sex == Animal.Sex.FEMALE:
-                form.fields["dam"].queryset = Animal.objects.filter(uuid=uuid)
-                form.initial["dam"] = animal
-        except (KeyError, ObjectDoesNotExist):
-            pass
-        return form
-
-    def get_initial(self):
-        initial = super().get_initial()
-        initial["user"] = self.request.user
-        return initial
-
-    def form_valid(self, form, **kwargs):
-        """For valid entries, render a page with a list of the created events"""
-        objs = form.create_clutch()
-        return render(
-            self.request,
-            "birds/event_list.html",
-            {
-                "event_list": objs["events"],
-                "header_text": "Hatch events for new clutch",
-            },
-        )
 
 
 class NewAnimalEntry(generic.FormView):
