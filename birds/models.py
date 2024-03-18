@@ -39,6 +39,7 @@ ADULT_ANIMAL_NAME = "adult"
 LOST_EVENT_NAME = "lost"
 MOVED_EVENT_NAME = "moved"
 NOTE_EVENT_NAME = "note"
+BANDED_EVENT_NAME = "banded"
 RESERVATION_EVENT_NAME = "reservation"
 
 
@@ -146,6 +147,59 @@ class Age(models.Model):
         unique_together = ("name", "species")
 
 
+class AnimalManager(models.Manager):
+    def create_with_event(
+        self,
+        species: Species,
+        *,
+        date: datetime.date,
+        status: Status,
+        entered_by: settings.AUTH_USER_MODEL,
+        location: Location,
+        description: Optional[str] = None,
+        **animal_properties,
+    ):
+        """Create a new animal and add a creation event"""
+        animal = self.create(species=species, **animal_properties)
+        _event = Event.objects.create(
+            animal=animal,
+            date=date,
+            status=status,
+            location=location,
+            entered_by=entered_by,
+            description=description or "",
+        )
+        return animal
+
+    def create_from_parents(
+        self,
+        *,
+        sire: "Animal",
+        dam: "Animal",
+        date: datetime.date,
+        status: Status,
+        entered_by: settings.AUTH_USER_MODEL,
+        location: Location,
+        description: Optional[str] = None,
+        **animal_properties,
+    ):
+        species = sire.species
+        if species != dam.species:
+            raise ValueError("sire and dam species do not match")
+        animal = self.create_with_event(
+            species,
+            date=date,
+            status=status,
+            entered_by=entered_by,
+            location=location,
+            description=description,
+            **animal_properties,
+        )
+        animal.parents.set([sire, dam])
+        animal.save()
+        return animal
+
+
 class AnimalQuerySet(models.QuerySet):
     """Supports queries based on status that require joining on the event table"""
 
@@ -156,13 +210,6 @@ class AnimalQuerySet(models.QuerySet):
                 Sum(Cast("event__status__adds", models.IntegerField())),
                 Sum(Cast("event__status__removes", models.IntegerField())),
             )
-            # this might be faster, should check
-            # alive=Greatest(
-            #     0,
-            #     Count("event", filter=Q(event__status__adds=True))
-            #     - Count("event", filter=Q(event__status__removes=True)),
-            # )
-            # > Value(0)
         )
 
     def with_dates(self):
@@ -301,7 +348,7 @@ class Animal(models.Model):
         blank=True,
         help_text="specify additional attributes for the animal",
     )
-    objects = AnimalQuerySet.as_manager()
+    objects = AnimalManager.from_queryset(AnimalQuerySet)()
 
     def short_uuid(self):
         return str(self.uuid).split("-")[0]
@@ -513,7 +560,7 @@ class Animal(models.Model):
         location: Optional[Location] = None,
     ):
         """Update the animal's band and create an event to note this"""
-        status = Status.objects.get(name=NOTE_EVENT_NAME)
+        status = Status.objects.get(name=BANDED_EVENT_NAME)
         self.band_number = band_number
         self.band_color = band_color
         self.sex = sex or self.Sex.UNKNOWN_SEX
@@ -525,7 +572,7 @@ class Animal(models.Model):
             status=status,
             entered_by=entered_by,
             location=location,
-            description=self.band(),
+            description=f"banded as {self.band()}",
         )
 
     class Meta:

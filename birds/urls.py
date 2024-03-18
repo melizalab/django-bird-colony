@@ -12,7 +12,7 @@ urlpatterns = [
     re_path(r"^animals/$", views.animal_list, name="animals"),
     re_path(
         r"^animals/new/$",
-        login_required(views.NewAnimalEntry.as_view()),
+        login_required(views.new_animal_entry),
         name="new_animal",
     ),
     re_path(

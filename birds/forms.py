@@ -192,25 +192,6 @@ class NewBandForm(forms.Form):
             )
         return data
 
-    def add_band(self):
-        data = self.cleaned_data
-        animal = data["animal"]
-        animal.band_color = data["band_color"]
-        animal.band_number = data["band_number"]
-        animal.sex = data["sex"]
-        animal.plumage = data["plumage"]
-        animal.save()
-        evt = Event(
-            animal=animal,
-            date=data["banding_date"],
-            status=data["band_status"],
-            location=data["location"],
-            description=animal.band(),
-            entered_by=data["user"],
-        )
-        evt.save()
-        return animal
-
 
 class ReservationForm(forms.Form):
     animal = forms.ModelChoiceField(queryset=Animal.objects.all())
@@ -221,16 +202,14 @@ class ReservationForm(forms.Form):
     )
 
     def clean(self):
-        super().clean()
+        data = super().clean()
         try:
-            self.cleaned_data["status"] = Status.objects.get(
-                name=models.RESERVATION_EVENT_NAME
-            )
+            data["status"] = Status.objects.get(name=models.RESERVATION_EVENT_NAME)
         except ObjectDoesNotExist as err:
             raise forms.ValidationError(
                 f"No '{models.RESERVATION_EVENT_NAME}' status type - add one in admin"
             ) from err
-        return self.cleaned_data
+        return data
 
 
 class SexForm(forms.Form):
@@ -272,24 +251,23 @@ class NewAnimalForm(forms.Form):
     user = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
 
     def clean(self):
-        super(NewAnimalForm, self).clean()
-        data = self.cleaned_data
+        data = super().clean()
         try:
-            data["band_status"] = Status.objects.get(name__startswith="band")
+            _ = Status.objects.get(name=models.BANDED_EVENT_NAME)
         except ObjectDoesNotExist as err:
             raise forms.ValidationError(
-                "No 'banded' status type - add one in admin"
+                _("No 'banded' status type - add one in admin")
             ) from err
         if "acq_status" in data and data["acq_status"].name == "hatched":
             if data["dam"] is None or data["sire"] is None:
-                raise forms.ValidationError("Parents required for hatched birds")
+                raise forms.ValidationError(_("Parents required for hatched birds"))
             if data["dam"].species != data["sire"].species:
-                raise forms.ValidationError("Parents must be the same species")
+                raise forms.ValidationError(_("Parents must be the same species"))
             data["species"] = data["dam"].species
         else:
             if data["species"] is None:
                 raise forms.ValidationError(
-                    "Species required for non-hatch acquisition"
+                    _("Species required for non-hatch acquisition")
                 )
             data["dam"] = None
             data["sire"] = None
@@ -304,37 +282,3 @@ class NewAnimalForm(forms.Form):
                 params=data,
             )
         return data
-
-    def create_chick(self):
-        data = self.cleaned_data
-        chick = Animal(
-            species=data["species"],
-            sex=data["sex"],
-            plumage=data["plumage"],
-            band_color=data["band_color"],
-            band_number=data["band_number"],
-        )
-        chick.save()
-        if data["sire"] and data["dam"]:
-            Parent.objects.create(child=chick, parent=data["sire"])
-            Parent.objects.create(child=chick, parent=data["dam"])
-            chick.save()
-        evt = Event(
-            animal=chick,
-            date=data["acq_date"],
-            status=data["acq_status"],
-            description=data["comments"],
-            location=data["location"],
-            entered_by=data["user"],
-        )
-        evt.save()
-        evt = Event(
-            animal=chick,
-            date=data["banding_date"],
-            status=data["band_status"],
-            location=data["location"],
-            description=chick.band(),
-            entered_by=data["user"],
-        )
-        evt.save()
-        return chick

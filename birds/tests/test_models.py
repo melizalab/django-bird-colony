@@ -26,6 +26,29 @@ def make_child(sire, dam, birthday=None, **kwargs):
 class AnimalModelTests(TestCase):
     fixtures = ["bird_colony_starter_kit"]
 
+    def test_create_bird_with_event(self):
+        species = Species.objects.get(pk=1)
+        status = models.get_birth_event_type()
+        age = datetime.timedelta(days=5)
+        birthday = datetime.date.today() - age
+        user = models.get_sentinel_user()
+        location = Location.objects.get(pk=2)
+        bird = Animal.objects.create_with_event(
+            species=species,
+            date=birthday,
+            status=status,
+            entered_by=user,
+            location=location,
+            sex=Animal.Sex.MALE,
+        )
+        self.assertEqual(bird.age(), age)
+        self.assertEqual(bird.sex, Animal.Sex.MALE)
+        self.assertEqual(bird.event_set.count(), 1)
+        event = bird.event_set.first()
+        self.assertEqual(event.location, location)
+        self.assertEqual(event.date, birthday)
+        self.assertEqual(event.status, status)
+
     def test_name_of_banded_bird(self):
         band_number = 10
         species = Species.objects.get(pk=1)
@@ -57,6 +80,7 @@ class AnimalModelTests(TestCase):
         age = datetime.timedelta(days=5)
         birthday = datetime.date.today() - age
         user = models.get_sentinel_user()
+
         event = Event.objects.create(
             animal=bird, status=status, date=birthday, entered_by=user
         )
@@ -326,6 +350,36 @@ class ParentModelTests(TestCase):
         self.assertEqual(sire.children.unhatched().count(), 1)
         self.assertEqual(sire.children.hatched().count(), 0)
         self.assertEqual(sire.children.alive().count(), 0)
+
+    def test_create_bird_from_parents(self):
+        species = Species.objects.get(pk=1)
+        sire = Animal.objects.create(species=species, sex=Animal.Sex.MALE)
+        dam = Animal.objects.create(species=species, sex=Animal.Sex.FEMALE)
+        status = models.get_birth_event_type()
+        age = datetime.timedelta(days=5)
+        birthday = datetime.date.today() - age
+        user = models.get_sentinel_user()
+        location = Location.objects.get(pk=2)
+        bird = Animal.objects.create_from_parents(
+            sire=sire,
+            dam=dam,
+            date=birthday,
+            status=status,
+            entered_by=user,
+            location=location,
+            description="testing 123",
+            sex=Animal.Sex.FEMALE,
+        )
+        self.assertEqual(bird.age(), age)
+        self.assertEqual(bird.event_set.count(), 1)
+        event = bird.event_set.first()
+        self.assertEqual(event.location, location)
+        self.assertEqual(event.date, birthday)
+        self.assertEqual(event.status, status)
+        self.assertEqual(bird.sire(), sire)
+        self.assertEqual(bird.dam(), dam)
+        self.assertTrue(sire.children.contains(bird))
+        self.assertTrue(dam.children.contains(bird))
 
     def test_bird_child_counts(self):
         species = Species.objects.get(pk=1)

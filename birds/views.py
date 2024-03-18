@@ -529,18 +529,47 @@ class GenealogyView(generic.DetailView):
         return context
 
 
-class NewAnimalEntry(generic.FormView):
-    template_name = "birds/animal_entry.html"
-    form_class = NewAnimalForm
+def new_animal_entry(request):
+    if request.method == "POST":
+        form = NewAnimalForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            if data["sire"] is not None and data["dam"] is not None:
+                animal = Animal.objects.create_from_parents(
+                    sire=data["sire"],
+                    dam=data["dam"],
+                    date=data["acq_date"],
+                    status=data["acq_status"],
+                    description=data["comments"],
+                    location=data["location"],
+                    entered_by=data["user"],
+                    sex=data["sex"],
+                    plumage=data["plumage"],
+                )
+            else:
+                animal = Animal.objects.create_with_event(
+                    species=data["species"],
+                    date=data["acq_date"],
+                    status=data["acq_status"],
+                    description=data["comments"],
+                    location=data["location"],
+                    entered_by=data["user"],
+                    sex=data["sex"],
+                    plumage=data["plumage"],
+                )
+            animal.update_band(
+                band_number=data["band_number"],
+                band_color=data["band_color"],
+                date=data["banding_date"],
+                location=data["location"],
+                entered_by=data["user"],
+            )
+            return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
+    else:
+        form = NewAnimalForm()
+        form.initial["user"] = request.user
 
-    def get_initial(self):
-        initial = super().get_initial()
-        initial["user"] = self.request.user
-        return initial
-
-    def form_valid(self, form, **kwargs):
-        chick = form.create_chick()
-        return HttpResponseRedirect(reverse("birds:animal", args=(chick.pk,)))
+    return render(request, "birds/animal_entry.html", {"form": form})
 
 
 def new_band_entry(request, uuid: Optional[str] = None):
