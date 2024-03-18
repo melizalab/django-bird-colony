@@ -704,3 +704,55 @@ class PairingModelTests(TestCase):
         annotated_pairing = Pairing.objects.with_location().get(pk=pairing.pk)
         self.assertEqual(pairing.last_location(), location_2)
         self.assertEqual(annotated_pairing.last_location, location_2.name)
+
+    def test_pairing_close_with_location(self):
+        pairing = Pairing.objects.create(
+            sire=self.sire,
+            dam=self.dam,
+            began=datetime.date.today() - datetime.timedelta(days=10),
+        )
+        user = models.get_sentinel_user()
+        location = Location.objects.get(pk=1)
+        date = datetime.date.today()
+        pairing.close(
+            ended=date,
+            entered_by=user,
+            location=location,
+            comment="test comment",
+        )
+        self.assertFalse(pairing.active())
+        sire_events = self.sire.event_set.all()
+        self.assertEqual(sire_events.count(), 1)
+        self.assertEqual(sire_events.first().date, date)
+        dam_events = self.dam.event_set.all()
+        self.assertEqual(dam_events.count(), 1)
+        self.assertEqual(dam_events.first().date, date)
+        with self.assertRaises(ValueError):
+            pairing.close(
+                ended=date,
+                entered_by=user,
+                location=location,
+            )
+
+    def test_pairing_close_without_location(self):
+        pairing = Pairing.objects.create(
+            sire=self.sire,
+            dam=self.dam,
+            began=datetime.date.today() - datetime.timedelta(days=10),
+        )
+        user = models.get_sentinel_user()
+        date = datetime.date.today()
+        pairing.close(
+            ended=date,
+            entered_by=user,
+        )
+        self.assertFalse(pairing.active())
+        sire_events = self.sire.event_set.all()
+        self.assertEqual(sire_events.count(), 0)
+        dam_events = self.dam.event_set.all()
+        self.assertEqual(dam_events.count(), 0)
+        with self.assertRaises(ValueError):
+            pairing.close(
+                ended=date,
+                entered_by=user,
+            )

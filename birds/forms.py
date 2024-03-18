@@ -93,14 +93,11 @@ class NewPairingForm(forms.ModelForm):
         fields = ["sire", "dam", "began", "purpose"]
 
 
-class EndPairingForm(forms.ModelForm):
+class EndPairingForm(forms.Form):
     ended = forms.DateField(required=True)
     location = forms.ModelChoiceField(queryset=Location.objects.all(), required=False)
     entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
-
-    class Meta:
-        model = Pairing
-        fields = ["began", "ended", "comment"]
+    comment = forms.CharField(widget=forms.Textarea, required=False)
 
 
 class NestCheckForm(forms.Form):

@@ -754,10 +754,50 @@ class Pairing(models.Model):
             return None
 
     def other_pairings(self):
-        """All other pairs with this sire and dam"""
+        """Returns queryset with all other pairings of this sire and dam"""
         return Pairing.objects.filter(sire=self.sire, dam=self.dam).exclude(id=self.id)
 
+    def close(
+        self,
+        ended: datetime.date,
+        entered_by: settings.AUTH_USER_MODEL,
+        *,
+        location: Optional[Location] = None,
+        comment: Optional[str] = None,
+    ):
+        """Close an active pairing.
+
+        Raises a ValueError if the pairing is not active. Sets ended date and a
+        comment on the model. If location is not None, adds "moved" events to
+        the sire and the dam.
+
+        """
+        if not self.active():
+            raise ValueError("Pairing is already closed")
+        self.ended = ended
+        self.comment = comment or ""
+        self.save()  # will throw integrity error if ended <= began
+        status = Status.objects.get(name=MOVED_EVENT_NAME)
+        if location is not None:
+            Event.objects.create(
+                animal=self.sire,
+                date=ended,
+                status=status,
+                entered_by=entered_by,
+                location=location,
+                description=f"Ended pairing with {self.dam}",
+            )
+            Event.objects.create(
+                animal=self.dam,
+                date=ended,
+                status=status,
+                entered_by=entered_by,
+                location=location,
+                description=f"Ended pairing with {self.sire}",
+            )
+
     def clean(self):
+        """Validate the pairing"""
         if self.sire.sex != Animal.Sex.MALE:
             raise ValidationError(_("Sire must be a male"))
         if self.dam.sex != Animal.Sex.FEMALE:

@@ -7,11 +7,13 @@ from collections import Counter, defaultdict
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.paginator import Paginator
+from django.db.utils import IntegrityError
 from django.forms import ValidationError, formset_factory
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils import dateparse
+from django.utils.translation import gettext_lazy as _
 from django.views import generic
 from django.views.decorators.http import require_http_methods
 from drf_link_header_pagination import LinkHeaderPagination
@@ -183,64 +185,38 @@ class PairingEntry(generic.FormView):
         return HttpResponseRedirect(reverse("birds:pairing", args=(pairing.pk,)))
 
 
-class PairingClose(generic.FormView):
-    template_name = "birds/pairing_close.html"
-    form_class = EndPairingForm
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["pair"] = self.pairing
-        return context
-
-    def get_form(self):
-        form = super().get_form()
-        self.pairing = get_object_or_404(Pairing, pk=self.kwargs["pk"])
-        form.initial["began"] = self.pairing.began
-        form.initial["entered_by"] = self.request.user
-        # users should not be accessing this form for inactive pairings, but
-        # make sure the fields are populated if it is
-        form.initial["ended"] = self.pairing.ended
-        form.initial["comment"] = self.pairing.comment
-        return form
-
-    def form_valid(self, form, **kwargs):
-        from birds.models import MOVED_EVENT_NAME
-
-        data = form.clean()
-        if (
-            self.pairing.ended is None
-            and data["location"] is not None
-            and data["entered_by"] is not None
-        ):
+def close_pairing(request, pk: int):
+    pairing = get_object_or_404(Pairing, pk=pk)
+    if request.method == "POST":
+        form = EndPairingForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            # some dirty validation logic to catch errors thrown by the model
             try:
-                move_status = Status.objects.get(name=MOVED_EVENT_NAME)
-            except ObjectDoesNotExist:
-                print(
-                    f"Unable to create move events - no {MOVED_EVENT_NAME} status type"
-                )
-            else:
-                sire_event = Event(
-                    animal=self.pairing.sire,
-                    date=data["ended"],
-                    status=move_status,
-                    location=data["location"],
+                pairing.close(
+                    ended=data["ended"],
                     entered_by=data["entered_by"],
-                    description=f"Ended pairing with {self.pairing.dam}",
-                )
-                dam_event = Event(
-                    animal=self.pairing.dam,
-                    date=data["ended"],
-                    status=move_status,
                     location=data["location"],
-                    entered_by=data["entered_by"],
-                    description=f"Ended pairing with {self.pairing.sire}",
+                    comment=data["comment"],
                 )
-                sire_event.save()
-                dam_event.save()
-        self.pairing.ended = data["ended"]
-        self.pairing.comment = data["comment"]
-        self.pairing.save()
-        return HttpResponseRedirect(reverse("birds:pairing", args=(self.pairing.pk,)))
+                return HttpResponseRedirect(reverse("birds:pairing", args=(pk,)))
+            except IntegrityError as err:
+                form.add_error(
+                    None,
+                    ValidationError(
+                        _("Ending date must be after beginning (%(value)s)"),
+                        params={"value": pairing.began},
+                    ),
+                )
+            except ValueError as err:
+                form.add_error(None, ValidationError(_(str(err))))
+    else:
+        form = EndPairingForm()
+        form.initial["entered_by"] = request.user
+
+    return render(
+        request, "birds/pairing_close.html", {"form": form, "pairing": pairing}
+    )
 
 
 @require_http_methods(["GET"])
