@@ -495,8 +495,28 @@ class PairingModelTests(TestCase):
         cls.sire = Animal.objects.create(species=species, sex=Animal.Sex.MALE)
         cls.dam = Animal.objects.create(species=species, sex=Animal.Sex.FEMALE)
 
+    def test_create_pairing_with_events(self):
+        user = models.get_sentinel_user()
+        location = Location.objects.get(pk=1)
+        date = datetime.date.today()
+        pairing = Pairing.objects.create_with_events(
+            sire=self.sire,
+            dam=self.dam,
+            began=date,
+            purpose="testing",
+            entered_by=user,
+            location=location,
+        )
+        self.assertTrue(pairing.active())
+        sire_events = self.sire.event_set.all()
+        self.assertEqual(sire_events.count(), 1)
+        self.assertEqual(sire_events.first().date, date)
+        dam_events = self.dam.event_set.all()
+        self.assertEqual(dam_events.count(), 1)
+        self.assertEqual(dam_events.first().date, date)
+
     def test_pairing_invalid_sexes(self):
-        pairing = Pairing.objects.create(
+        pairing = Pairing(
             sire=self.dam,
             dam=self.sire,
             began=datetime.date.today(),

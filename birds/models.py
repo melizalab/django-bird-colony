@@ -603,6 +603,41 @@ class Event(models.Model):
         get_latest_by = ["date", "created"]
 
 
+class PairingManager(models.Manager):
+    def create_with_events(
+        self,
+        *,
+        sire: Animal,
+        dam: Animal,
+        began: datetime.date,
+        purpose: str,
+        entered_by: settings.AUTH_USER_MODEL,
+        location: Location,
+    ):
+        """Create a new pairing and add events to the sire and dam"""
+        status = Status.objects.get(name=MOVED_EVENT_NAME)
+        pairing = self.create(
+            sire=sire, dam=dam, began=began, ended=None, purpose=purpose
+        )
+        _sire_event = Event.objects.create(
+            animal=sire,
+            date=began,
+            status=status,
+            location=location,
+            entered_by=entered_by,
+            description=f"Paired with {dam}",
+        )
+        _dam_event = Event.objects.create(
+            animal=dam,
+            date=began,
+            status=status,
+            location=location,
+            entered_by=entered_by,
+            description=f"Paired with {sire}",
+        )
+        return pairing
+
+
 class PairingQuerySet(models.QuerySet):
     def active(self):
         return self.filter(ended__isnull=True)
@@ -679,7 +714,7 @@ class Pairing(models.Model):
         blank=True, help_text="notes on the outcome of the pairing"
     )
 
-    objects = PairingQuerySet.as_manager()
+    objects = PairingManager.from_queryset(PairingQuerySet)()
 
     def __str__(self):
         return "♂{} × ♀{} ({} — {})".format(

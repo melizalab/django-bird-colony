@@ -69,9 +69,9 @@ urlpatterns = [
     re_path(r"^pairings/$", views.pairing_list, name="pairings"),
     re_path(r"^pairings/active/$", views.active_pairing_list, name="pairings_active"),
     path("pairings/<int:pk>/", views.pairing_view, name="pairing"),
-    path("pairings/<int:pk>/new/", views.PairingEntry.as_view(), name="new_pairing"),
+    path("pairings/<int:pk>/new/", views.new_pairing_entry, name="new_pairing"),
     path("pairings/<int:pk>/end/", views.close_pairing, name="end_pairing"),
-    path("pairings/new/", views.PairingEntry.as_view(), name="new_pairing"),
+    path("pairings/new/", views.new_pairing_entry, name="new_pairing"),
     re_path(r"^sampletypes/$", views.sample_type_list, name="sampletypes"),
     re_path(r"^samples/$", views.sample_list, name="samples"),
     re_path(

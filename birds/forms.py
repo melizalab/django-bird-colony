@@ -36,7 +36,7 @@ class SampleForm(forms.ModelForm):
 
 
 class NewPairingForm(forms.ModelForm):
-    qs = Animal.objects.alive()
+    qs = Animal.objects.with_dates().alive()
     sire = forms.ModelChoiceField(queryset=qs.filter(sex=Animal.Sex.MALE))
     dam = forms.ModelChoiceField(queryset=qs.filter(sex=Animal.Sex.FEMALE))
     entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
@@ -48,43 +48,43 @@ class NewPairingForm(forms.ModelForm):
         data = super().clean()
         sire = data["sire"]
         if sire.sex != Animal.Sex.MALE:
-            raise forms.ValidationError("Sire is not male")
+            raise forms.ValidationError(_("Sire is not male"))
         if sire.age_group() != models.ADULT_ANIMAL_NAME:
-            raise forms.ValidationError("Sire is not an adult")
+            raise forms.ValidationError(_("Sire is not an adult"))
         if not sire.alive:
-            raise forms.ValidationError("Sire is not alive")
+            raise forms.ValidationError(_("Sire is not alive"))
         if sire.pairings().filter(ended__isnull=True).count():
-            raise forms.ValidationError("Sire is already in an active pairing")
+            raise forms.ValidationError(_("Sire is already in an active pairing"))
         sire_overlaps = sire.pairings().filter(
             began__lte=data["began"], ended__gte=data["began"]
         )
         if sire_overlaps.count() > 0:
             raise forms.ValidationError(
                 _(
-                    "Start date %(began)s overlaps with an existing pairing for sire: %(prev)s",
-                    code="invalid",
-                    params=data | {"prev": sire_overlaps.first()},
-                )
+                    "Start date %(began)s overlaps with an existing pairing for sire: %(prev)s"
+                ),
+                code="invalid",
+                params=data | {"prev": sire_overlaps.first()},
             )
         dam = data["dam"]
         if dam.sex != Animal.Sex.FEMALE:
-            raise forms.ValidationError("Dam is not female")
+            raise forms.ValidationError(_("Dam is not female"))
         if dam.age_group() != models.ADULT_ANIMAL_NAME:
-            raise forms.ValidationError("Dam is not an adult")
+            raise forms.ValidationError(_("Dam is not an adult"))
         if not dam.alive:
-            raise forms.ValidationError("Dam is not alive")
+            raise forms.ValidationError(_("Dam is not alive"))
         if dam.pairings().filter(ended__isnull=True).count():
-            raise forms.ValidationError("Dam is in an active pairing")
+            raise forms.ValidationError(_("Dam is in an active pairing"))
         dam_overlaps = dam.pairings().filter(
             began__lte=data["began"], ended__gte=data["began"]
         )
         if dam_overlaps.count() > 0:
             raise forms.ValidationError(
                 _(
-                    "Start date %(began)s overlaps with an existing pairing for dam: %(prev)s",
-                    code="invalid",
-                    params=data | {"prev": dam_overlaps.first()},
-                )
+                    "Start date %(began)s overlaps with an existing pairing for dam: %(prev)s"
+                ),
+                code="invalid",
+                params=data | {"prev": dam_overlaps.first()},
             )
         return data
 

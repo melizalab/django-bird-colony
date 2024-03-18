@@ -120,69 +120,43 @@ def pairing_view(request, pk):
     )
 
 
-class PairingEntry(generic.FormView):
-    template_name = "birds/pairing_entry.html"
-    form_class = NewPairingForm
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["pair"] = getattr(self, "pairing", None)
-        return context
-
-    def get_form(self):
-        form = super().get_form()
-        if "pk" in self.kwargs:
-            self.pairing = get_object_or_404(Pairing, pk=self.kwargs["pk"])
-            form.fields["sire"].queryset = Animal.objects.filter(
-                uuid=self.pairing.sire.uuid
-            )
-            form.initial["sire"] = self.pairing.sire
-            form.fields["dam"].queryset = Animal.objects.filter(
-                uuid=self.pairing.dam.uuid
-            )
-            form.initial["dam"] = self.pairing.dam
-        form.initial["entered_by"] = self.request.user
-        return form
-
-    def form_valid(self, form, **kwargs):
-        from birds.models import MOVED_EVENT_NAME
-
-        data = form.clean()
-        if data["location"] is not None and data["entered_by"] is not None:
-            try:
-                move_status = Status.objects.get(name=MOVED_EVENT_NAME)
-            except ObjectDoesNotExist:
-                print(
-                    f"Unable to create move events - no {MOVED_EVENT_NAME} status type"
+def new_pairing_entry(request, pk: Optional[int] = None):
+    if request.method == "POST":
+        form = NewPairingForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            if data["location"] is None:
+                pair = Pairing.objects.create(
+                    sire=data["sire"],
+                    dam=data["dam"],
+                    began=data["began"],
+                    purpose=data["purpose"],
                 )
             else:
-                sire_event = Event(
-                    animal=data["sire"],
-                    date=data["began"],
-                    status=move_status,
+                pair = Pairing.objects.create_with_events(
+                    sire=data["sire"],
+                    dam=data["dam"],
+                    began=data["began"],
+                    purpose=data["purpose"],
                     location=data["location"],
                     entered_by=data["entered_by"],
-                    description=f"Paired with {data['dam']}",
                 )
-                dam_event = Event(
-                    animal=data["dam"],
-                    date=data["began"],
-                    status=move_status,
-                    location=data["location"],
-                    entered_by=data["entered_by"],
-                    description=f"Paired with {data['sire']}",
-                )
-                sire_event.save()
-                dam_event.save()
-        pairing = Pairing(
-            sire=data["sire"],
-            dam=data["dam"],
-            began=data["began"],
-            purpose=data["purpose"],
-            ended=None,
-        )
-        pairing.save()
-        return HttpResponseRedirect(reverse("birds:pairing", args=(pairing.pk,)))
+            return HttpResponseRedirect(reverse("birds:pairing", args=(pair.pk,)))
+    else:
+        form = NewPairingForm()
+        form.initial["entered_by"] = request.user
+        if pk is not None:
+            old_pairing = get_object_or_404(Pairing, pk=pk)
+            form.fields["sire"].queryset = Animal.objects.filter(
+                uuid=old_pairing.sire.uuid
+            )
+            form.initial["sire"] = old_pairing.sire
+            form.fields["dam"].queryset = Animal.objects.filter(
+                uuid=old_pairing.dam.uuid
+            )
+            form.initial["dam"] = old_pairing.dam
+
+    return render(request, "birds/pairing_entry.html", {"form": form})
 
 
 def close_pairing(request, pk: int):
