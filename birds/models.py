@@ -123,6 +123,15 @@ class Location(models.Model):
         default=False, help_text="select for locations used for breeding"
     )
 
+    def birds(self, on_date: Optional[datetime.date] = None):
+        """Returns an AnimalQuerySet with all the birds in this location"""
+        refdate = on_date or datetime.date.today()
+        return (
+            Animal.objects.with_status()
+            .with_location(on_date=on_date)
+            .filter(last_location=self)
+        )
+
     def __str__(self):
         return self.name
 
@@ -224,10 +233,15 @@ class AnimalQuerySet(models.QuerySet):
             ),
         )
 
-    def with_location(self):
+    def with_location(self, on_date: Optional[datetime.date] = None):
+        refdate = on_date or datetime.date.today()
         return self.annotate(
             last_location=Subquery(
-                Event.objects.filter(location__isnull=False, animal=OuterRef("pk"))
+                Event.objects.filter(
+                    location__isnull=False,
+                    date__lte=refdate,
+                    animal=OuterRef("pk"),
+                )
                 .order_by("-date", "-created")
                 .values("location__name")[:1]
             ),
@@ -261,7 +275,7 @@ class AnimalQuerySet(models.QuerySet):
         """Only birds that were not born in the colony (includes eggs)"""
         return self.exclude(event__status=get_birth_event_type())
 
-    def alive_on(self, date):
+    def alive_on(self, date: datetime.date):
         """Only birds that were alive on date (added and not removed)"""
         return self.annotate(
             alive=Greatest(
@@ -277,7 +291,7 @@ class AnimalQuerySet(models.QuerySet):
             )
         ).filter(alive__gt=0)
 
-    def existed_on(self, date):
+    def existed_on(self, date: datetime.date):
         """Only birds that existed on date (created but not removed)"""
         return self.annotate(
             noted=Count(
@@ -393,7 +407,7 @@ class Animal(models.Model):
         """
         return self.event_set.filter(status__adds=True).last()
 
-    def age(self, date=None):
+    def age(self, date: Optional[datetime.date] = None):
         """Returns age (as of date).
 
         Age is days since birthdate if alive, age at death if dead, or None if
@@ -412,7 +426,7 @@ class Animal(models.Model):
         else:
             return events["died_on"] - events["born_on"]
 
-    def alive(self, date=None):
+    def alive(self, date: Optional[datetime.date] = None):
         """Returns true if the bird is alive (as of date).
 
         This method is masked if with_status() is used on the queryset.
@@ -424,7 +438,7 @@ class Animal(models.Model):
         )
         return (is_alive["added"] or 0) > (is_alive["removed"] or 0)
 
-    def age_group(self, date=None):
+    def age_group(self, date: Optional[datetime.date] = None):
         """Returns the age group of the animal (as of date) by joining on the Age model.
 
         Classified as an adult if there was a non-hatch acquisition event.
@@ -480,7 +494,7 @@ class Animal(models.Model):
         except ObjectDoesNotExist:
             return None
 
-    def last_location(self, date=None):
+    def last_location(self, date: Optional[datetime.date] = None):
         """Returns the location recorded in the most recent event before date
         (today if not specified). This method will be masked if with_location()
         is used on the queryset.

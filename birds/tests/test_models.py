@@ -862,3 +862,56 @@ class PairingModelTests(TestCase):
                 ended=date,
                 entered_by=user,
             )
+
+
+class LocationModelTests(TestCase):
+    fixtures = ["bird_colony_starter_kit"]
+
+    def test_location_birds(self):
+        location = Location.objects.get(pk=2)
+        self.assertFalse(location.birds().exists())
+        species = Species.objects.get(pk=1)
+        user = models.get_sentinel_user()
+        status = Status.objects.get(name="moved")
+        bird = Animal.objects.create_with_event(
+            species,
+            date=datetime.date.today(),
+            status=status,
+            entered_by=user,
+            location=location,
+        )
+        self.assertCountEqual(location.birds(), [bird])
+
+    def test_location_birds_on_date(self):
+        location_1 = Location.objects.get(pk=2)
+        location_2 = Location.objects.get(pk=1)
+        self.assertFalse(location_1.birds().exists())
+        self.assertFalse(location_2.birds().exists())
+
+        species = Species.objects.get(pk=1)
+        user = models.get_sentinel_user()
+        status = Status.objects.get(name="moved")
+        today = datetime.date.today()
+        last_week = today - datetime.timedelta(days=7)
+        bird = Animal.objects.create_with_event(
+            species,
+            date=last_week,
+            status=status,
+            entered_by=user,
+            location=location_1,
+        )
+        yesterday = today - datetime.timedelta(days=1)
+        _event = Event.objects.create(
+            animal=bird,
+            date=yesterday,
+            status=status,
+            entered_by=user,
+            location=location_2,
+        )
+
+        self.assertFalse(location_1.birds().exists())
+        self.assertCountEqual(location_2.birds(), [bird])
+        self.assertFalse(location_1.birds(on_date=yesterday).exists())
+        self.assertCountEqual(location_2.birds(on_date=yesterday), [bird])
+        self.assertCountEqual(location_1.birds(on_date=last_week), [bird])
+        self.assertFalse(location_2.birds(on_date=last_week).exists())
