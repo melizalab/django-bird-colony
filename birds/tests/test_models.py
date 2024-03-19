@@ -7,7 +7,16 @@ from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db.utils import IntegrityError
 
 from birds import models
-from birds.models import Animal, Species, Event, Color, Status, Location, Pairing
+from birds.models import (
+    Animal,
+    Species,
+    Event,
+    Color,
+    Status,
+    Location,
+    Pairing,
+    Plumage,
+)
 
 
 def make_child(sire, dam, birthday=None, **kwargs):
@@ -333,6 +342,28 @@ class AnimalModelTests(TestCase):
         self.assertIs(event.location, None)
         self.assertIn(event, bird.event_set.all())
 
+    def test_updating_band_does_not_clear_properties(self):
+        species = Species.objects.get(pk=1)
+        plumage = Plumage.objects.get(pk=1)
+        bird = Animal.objects.create(
+            species=species, sex=Animal.Sex.MALE, plumage=plumage
+        )
+        user = models.get_sentinel_user()
+        date = datetime.date.today()
+        color = Color.objects.get(pk=1)
+        event = bird.update_band(
+            band_number=100,
+            band_color=color,
+            date=datetime.date.today(),
+            entered_by=user,
+        )
+        # force refresh from database
+        bird = Animal.objects.get(pk=bird.pk)
+        self.assertEqual(bird.sex, Animal.Sex.MALE)
+        self.assertEqual(bird.band_number, 100)
+        self.assertEqual(bird.band_color, color)
+        self.assertEqual(bird.plumage, plumage)
+
 
 class ParentModelTests(TestCase):
     fixtures = ["bird_colony_starter_kit"]
@@ -371,6 +402,7 @@ class ParentModelTests(TestCase):
             sex=Animal.Sex.FEMALE,
         )
         self.assertEqual(bird.age(), age)
+        self.assertEqual(bird.sex, Animal.Sex.FEMALE)
         self.assertEqual(bird.event_set.count(), 1)
         event = bird.event_set.first()
         self.assertEqual(event.location, location)

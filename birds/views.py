@@ -543,8 +543,6 @@ def new_animal_entry(request):
                     description=data["comments"],
                     location=data["location"],
                     entered_by=data["user"],
-                    sex=data["sex"],
-                    plumage=data["plumage"],
                 )
             else:
                 animal = Animal.objects.create_with_event(
@@ -554,8 +552,6 @@ def new_animal_entry(request):
                     description=data["comments"],
                     location=data["location"],
                     entered_by=data["user"],
-                    sex=data["sex"],
-                    plumage=data["plumage"],
                 )
             animal.update_band(
                 band_number=data["band_number"],
@@ -563,6 +559,8 @@ def new_animal_entry(request):
                 date=data["banding_date"],
                 location=data["location"],
                 entered_by=data["user"],
+                sex=data["sex"],
+                plumage=data["plumage"],
             )
             return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
     else:

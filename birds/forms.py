@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
 from django import forms
+from django.template.defaultfilters import pluralize
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils.translation import gettext_lazy as _
@@ -108,50 +109,42 @@ class NestCheckForm(forms.Form):
     chicks = forms.IntegerField(label="chicks", min_value=0)
 
     def clean(self):
-        from django.template.defaultfilters import pluralize
-
-        from birds.models import (
-            BIRTH_EVENT_NAME,
-            LOST_EVENT_NAME,
-            UNBORN_CREATION_EVENT_NAME,
-        )
-
-        cleaned_data = super().clean()
+        data = super().clean()
         _location_name = self.initial["location"].name
-        delta_chicks = cleaned_data["chicks"] - self.initial["chicks"]
-        _delta_eggs = cleaned_data["eggs"] - self.initial["eggs"] + delta_chicks
+        delta_chicks = data["chicks"] - self.initial["chicks"]
+        _delta_eggs = data["eggs"] - self.initial["eggs"] + delta_chicks
         try:
-            cleaned_data["hatch_status"] = Status.objects.get(name=BIRTH_EVENT_NAME)
+            data["hatch_status"] = Status.objects.get(name=models.BIRTH_EVENT_NAME)
         except ObjectDoesNotExist as err:
             raise forms.ValidationError(
-                "No %(name)s status type - add one in admin",
-                params={"name": BIRTH_EVENT_NAME},
+                _("No %(name)s status type - add one in admin"),
+                params={"name": models.BIRTH_EVENT_NAME},
             ) from err
         try:
-            cleaned_data["laid_status"] = Status.objects.get(
-                name=UNBORN_CREATION_EVENT_NAME
+            data["laid_status"] = Status.objects.get(
+                name=models.UNBORN_CREATION_EVENT_NAME
             )
         except ObjectDoesNotExist as err:
             raise forms.ValidationError(
-                "No %(name)s status type - add one in admin",
-                params={"name": UNBORN_CREATION_EVENT_NAME},
+                _("No %(name)s status type - add one in admin"),
+                params={"name": models.UNBORN_CREATION_EVENT_NAME},
             ) from err
         try:
-            cleaned_data["lost_status"] = Status.objects.get(name=LOST_EVENT_NAME)
+            data["lost_status"] = Status.objects.get(name=models.LOST_EVENT_NAME)
         except ObjectDoesNotExist as err:
             raise forms.ValidationError(
-                "No %(name)s status type - add one in admin",
-                params={"name": LOST_EVENT_NAME},
+                _("No %(name)s status type - add one in admin"),
+                params={"name": models.LOST_EVENT_NAME},
             ) from err
         if delta_chicks < 0:
-            raise forms.ValidationError("Missing chicks need to be removed manually")
+            raise forms.ValidationError(_("Missing chicks need to be removed manually"))
         elif delta_chicks > self.initial["eggs"]:
             raise forms.ValidationError(
-                "Not enough eggs to make %(chicks)d new chick%(plural)s",
+                _("Not enough eggs to make %(chicks)d new chick%(plural)s"),
                 params={"chicks": delta_chicks, "plural": pluralize(delta_chicks)},
             )
 
-        return cleaned_data
+        return data
 
 
 class NestCheckUser(forms.Form):
@@ -175,10 +168,11 @@ class NewBandForm(forms.Form):
     def clean(self):
         data = super().clean()
         try:
-            data["band_status"] = Status.objects.get(name__startswith="band")
+            data["band_status"] = Status.objects.get(name=models.BANDED_EVENT_NAME)
         except ObjectDoesNotExist as err:
             raise forms.ValidationError(
-                "No 'banded' status type - add one in admin"
+                _("No %(name)s status type - add one in admin"),
+                params={"name": models.BANDED_EVENT_NAME},
             ) from err
         if Animal.objects.filter(
             band_color=data["band_color"], band_number=data["band_number"]
@@ -207,7 +201,8 @@ class ReservationForm(forms.Form):
             data["status"] = Status.objects.get(name=models.RESERVATION_EVENT_NAME)
         except ObjectDoesNotExist as err:
             raise forms.ValidationError(
-                f"No '{models.RESERVATION_EVENT_NAME}' status type - add one in admin"
+                _("No %(name)s status type - add one in admin"),
+                params={"name": models.RESERVATION_EVENT_NAME},
             ) from err
         return data
 
@@ -227,7 +222,8 @@ class SexForm(forms.Form):
             data["status"] = Status.objects.get(name=models.NOTE_EVENT_NAME)
         except ObjectDoesNotExist as err:
             raise forms.ValidationError(
-                f"No '{models.NOTE_EVENT_NAME}' status type - add one in admin"
+                _("No %(name)s status type - add one in admin"),
+                params={"name": models.NOTE_EVENT_NAME},
             ) from err
         return data
 
@@ -253,10 +249,11 @@ class NewAnimalForm(forms.Form):
     def clean(self):
         data = super().clean()
         try:
-            _ = Status.objects.get(name=models.BANDED_EVENT_NAME)
+            _status = Status.objects.get(name=models.BANDED_EVENT_NAME)
         except ObjectDoesNotExist as err:
             raise forms.ValidationError(
-                _("No 'banded' status type - add one in admin")
+                _("No %(name)s status type - add one in admin"),
+                params={"name": models.BIRTH_EVENT_NAME},
             ) from err
         if "acq_status" in data and data["acq_status"].name == "hatched":
             if data["dam"] is None or data["sire"] is None:

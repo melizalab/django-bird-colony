@@ -562,9 +562,12 @@ class Animal(models.Model):
         """Update the animal's band and create an event to note this"""
         status = Status.objects.get(name=BANDED_EVENT_NAME)
         self.band_number = band_number
-        self.band_color = band_color
-        self.sex = sex or self.Sex.UNKNOWN_SEX
-        self.plumage = plumage
+        if band_color:
+            self.band_color = band_color
+        if sex:
+            self.sex = sex
+        if plumage:
+            self.plumage = plumage
         self.save()
         return Event.objects.create(
             animal=self,
