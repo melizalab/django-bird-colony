@@ -24,26 +24,18 @@
 
 <div class="panel panel-default">
   <div class="panel-heading">
-    <h3 class="panel-title">Banding entry</h3>
+    <h3 class="panel-title">Banding entry: {{ animal }} </h3>
   </div>
   <div class="panel-body">
-    <form action="{% url 'birds:new_band' %}" class="form-horizontal" method="post" role="form">
+    <form action="{% url 'birds:new_band' animal.uuid %}" class="form-horizontal" method="post" role="form">
       {% csrf_token %}
-      <p><strong>Instructions</strong>: This form is for banding a single bird,
-      optionally setting the sex. Use this only if the bird has already been
-      entered into the database. If you are adding a new bird, use the
+      <p><strong>Instructions</strong>: This form is for banding a single animal,
+      optionally setting the sex. If you are adding a new animal, use the
         <a href="{% url 'birds:new_animal' %}">new animal</a> form. </p>
 
       {% if form.non_field_errors %}
       <div class="alert alert-danger">{{ form.non_field_errors }}</div>
       {% endif %}
-
-      <div class="form-group {% if form.animal.errors %}has-error{% endif %}">
-        <label for="id_sire" class="col-sm-2 control-label">Animal</label>
-        <div class="col-sm-5">
-          {% render_field form.animal class+="form-control" %}
-        </div>
-      </div>
 
       <div class="form-group {% if form.banding_date.errors %}has-error{% endif %}">
         <label for="id_banding_date" class="col-sm-2 control-label">Banding date</label>

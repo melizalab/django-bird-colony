@@ -154,9 +154,6 @@ class NestCheckUser(forms.Form):
 
 
 class NewBandForm(forms.Form):
-    animal = forms.ModelChoiceField(
-        queryset=Animal.objects.alive().filter(band_number__isnull=True)
-    )
     banding_date = forms.DateField()
     band_color = forms.ModelChoiceField(queryset=Color.objects.all(), required=False)
     band_number = forms.IntegerField(min_value=1)
@@ -207,9 +204,6 @@ class ReservationForm(forms.Form):
 
 
 class SexForm(forms.Form):
-    animal = forms.ModelChoiceField(
-        queryset=Animal.objects.filter(sex=Animal.Sex.UNKNOWN_SEX)
-    )
     date = forms.DateField()
     sex = forms.ChoiceField(choices=Animal.Sex.choices, required=True)
     description = forms.CharField(widget=forms.Textarea, required=False)

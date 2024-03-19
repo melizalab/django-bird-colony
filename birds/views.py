@@ -529,6 +529,7 @@ class GenealogyView(generic.DetailView):
         return context
 
 
+@require_http_methods(["GET", "POST"])
 def new_animal_entry(request):
     if request.method == "POST":
         form = NewAnimalForm(request.POST)
@@ -570,12 +571,13 @@ def new_animal_entry(request):
     return render(request, "birds/animal_entry.html", {"form": form})
 
 
-def new_band_entry(request, uuid: Optional[str] = None):
+@require_http_methods(["GET", "POST"])
+def new_band_entry(request, uuid: str):
+    animal = get_object_or_404(Animal, pk=uuid)
     if request.method == "POST":
         form = NewBandForm(request.POST)
         if form.is_valid():
             data = form.cleaned_data
-            animal = data["animal"]
             animal.update_band(
                 band_number=data["band_number"],
                 date=data["banding_date"],
@@ -589,16 +591,12 @@ def new_band_entry(request, uuid: Optional[str] = None):
     else:
         form = NewBandForm()
         form.initial["user"] = request.user
-        qs = Animal.objects.filter(uuid=uuid)
-        animal = qs.first()
-        if animal is not None:
-            form.fields["animal"].queryset = qs
-            form.initial["animal"] = animal
-            form.initial["sex"] = animal.sex
+        form.initial["sex"] = animal.sex
 
-    return render(request, "birds/band_entry.html", {"form": form})
+    return render(request, "birds/band_entry.html", {"animal": animal, "form": form})
 
 
+@require_http_methods(["GET", "POST"])
 def new_event_entry(request, uuid: str):
     animal = get_object_or_404(Animal, pk=uuid)
     if request.method == "POST":
@@ -615,6 +613,7 @@ def new_event_entry(request, uuid: str):
     return render(request, "birds/event_entry.html", {"form": form, "animal": animal})
 
 
+@require_http_methods(["GET", "POST"])
 def reservation_entry(request, uuid: str):
     animal = get_object_or_404(Animal, pk=uuid)
     if request.method == "POST":
@@ -647,12 +646,12 @@ def reservation_entry(request, uuid: str):
 
 
 @require_http_methods(["GET", "POST"])
-def update_sex(request, uuid: Optional[str] = None):
+def update_sex(request, uuid: str):
+    animal = get_object_or_404(Animal, pk=uuid)
     if request.method == "POST":
         form = SexForm(request.POST)
         if form.is_valid():
             data = form.cleaned_data
-            animal = data["animal"]
             animal.update_sex(
                 date=data["date"],
                 entered_by=data["entered_by"],
@@ -663,14 +662,9 @@ def update_sex(request, uuid: Optional[str] = None):
     else:
         form = SexForm()
         form.initial["entered_by"] = request.user
-        qs = Animal.objects.filter(uuid=uuid)
-        animal = qs.first()
-        if animal is not None:
-            form.fields["animal"].queryset = qs
-            form.initial["animal"] = animal
-            form.initial["sex"] = animal.sex
+        form.initial["sex"] = animal.sex
 
-    return render(request, "birds/sex_entry.html", {"form": form})
+    return render(request, "birds/sex_entry.html", {"animal": animal, "form": form})
 
 
 @require_http_methods(["GET"])

@@ -96,8 +96,6 @@ urlpatterns = [
     ),
     # forms
     re_path(r"^nest-check/$", login_required(views.nest_check), name="nest-check"),
-    re_path(r"^new-band/$", login_required(views.new_band_entry), name="new_band"),
-    re_path(r"^set-sex/$", login_required(views.update_sex), name="set_sex"),
     # api
     re_path(r"^api/info/$", views.api_info, name="api_info"),
     re_path(r"^api/animals/$", views.APIAnimalsList.as_view(), name="animals_api"),
