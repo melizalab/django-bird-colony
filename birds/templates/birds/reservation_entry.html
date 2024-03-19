@@ -23,10 +23,10 @@
 
 <div class="panel panel-default">
   <div class="panel-heading">
-    <h3 class="panel-title">Create or clear a reservation</h3>
+    <h3 class="panel-title">Create or clear a reservation: {{ animal }}</h3>
   </div>
   <div class="panel-body">
-    <form action="{% url 'birds:update_reservation' %}" class="form-horizontal" method="post" role="form">
+    <form action="{% url 'birds:update_reservation' animal.uuid %}" class="form-horizontal" method="post" role="form">
       {% csrf_token %}
       <p><strong>Instructions</strong>: This form will update the reservation
       status of an animal and generate a corresponding event in the database.
@@ -35,13 +35,6 @@
       {% if form.non_field_errors %}
       <div class="alert alert-danger">{{ form.non_field_errors }}</div>
       {% endif %}
-
-      <div class="form-group {% if form.animal.errors %}has-error{% endif %}">
-        <label for="id_sire" class="col-sm-2 control-label">Animal</label>
-        <div class="col-sm-5">
-          {% render_field form.animal class+="form-control" %}
-        </div>
-      </div>
 
       <div class="form-group {% if form.date.errors %}has-error{% endif %}">
         <label for="id_date" class="col-sm-2 control-label">Event date * </label>

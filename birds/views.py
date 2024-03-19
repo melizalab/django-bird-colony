@@ -615,43 +615,35 @@ def new_event_entry(request, uuid: str):
     return render(request, "birds/event_entry.html", {"form": form, "animal": animal})
 
 
-class ReservationEntry(generic.FormView):
-    template_name = "birds/reservation_entry.html"
-    form_class = ReservationForm
-
-    def get_form(self):
-        form = super().get_form()
-        try:
-            uuid = self.kwargs["uuid"]
-            form.fields["animal"].queryset = Animal.objects.filter(uuid=uuid)
-            animal = Animal.objects.get(uuid=uuid)
-            form.initial["animal"] = animal
-            if animal.reserved_by is None:
-                form.initial["entered_by"] = self.request.user
-        except (KeyError, ObjectDoesNotExist):
-            pass
-        return form
-
-    def form_valid(self, form, **kwargs):
-        data = form.cleaned_data
-        animal = data["animal"]
-        animal.reserved_by = data["entered_by"]
+def reservation_entry(request, uuid: str):
+    animal = get_object_or_404(Animal, pk=uuid)
+    if request.method == "POST":
+        form = ReservationForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            if data["entered_by"] is None:
+                user = request.user
+                animal.reserved_by = None
+                descr = f"reservation released: {data['description']}"
+            else:
+                user = animal.reserved_by = data["entered_by"]
+                descr = f"reservation created: {data['description']}"
+            animal.save()
+            evt = Event.objects.create(
+                animal=animal,
+                date=data["date"],
+                status=data["status"],
+                entered_by=user,
+                description=descr,
+            )
+            return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
+    else:
+        form = ReservationForm()
         if animal.reserved_by is None:
-            user = self.request.user
-            descr = f"reservation released: {data['description']}"
-        else:
-            user = animal.reserved_by
-            descr = f"reservation created: {data['description']}"
-        evt = Event(
-            animal=animal,
-            date=data["date"],
-            status=data["status"],
-            entered_by=user,
-            description=descr,
-        )
-        animal.save()
-        evt.save()
-        return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
+            form.initial["entered_by"] = request.user
+    return render(
+        request, "birds/reservation_entry.html", {"animal": animal, "form": form}
+    )
 
 
 @require_http_methods(["GET", "POST"])

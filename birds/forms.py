@@ -188,7 +188,6 @@ class NewBandForm(forms.Form):
 
 
 class ReservationForm(forms.Form):
-    animal = forms.ModelChoiceField(queryset=Animal.objects.all())
     date = forms.DateField()
     description = forms.CharField(widget=forms.Textarea, required=False)
     entered_by = forms.ModelChoiceField(
