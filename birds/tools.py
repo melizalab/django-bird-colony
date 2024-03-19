@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
 """ Tools for classifying birds and computing summaries """
+from collections import Counter, defaultdict
+from datetime import timedelta, date
+
+from birds.models import ADULT_ANIMAL_NAME, Animal, Event, Location
 
 
 def sort_and_group(qs, key):
@@ -28,11 +32,6 @@ def tabulate_locations(since, until):
     the other option if it becomes too slow.
 
     """
-    from collections import Counter, defaultdict
-    from datetime import timedelta
-
-    from birds.models import ADULT_ANIMAL_NAME, Animal, Event, Location
-
     repdate = since
     nests = Location.objects.filter(nest=True).order_by("name")
     dates = []
@@ -67,6 +66,36 @@ def tabulate_locations(since, until):
             days.append(locdata)
         nest_data.append({"location": nest, "days": days})
     return dates, nest_data
+
+
+def tabulate_nests(since: date, until: date):
+    """Determines which animals are in which nests by date.
+
+    In principle, it would be best to do this by using the database to generate
+    a summary for day 0, then march through the subsequent days and use new
+    events to generate new summaries. However, in practice it's not trivial to
+    update this structure, so we're taking the lazy but probably more
+    inefficient route of querying the database for each day and each nest.
+    Consider the other option if it becomes too slow.
+
+    """
+    n_days = (until - since).days + 1
+    dates = [since + timedelta(days=x) for x in range(n_days)]
+    data = []
+    for nest in Location.objects.filter(nest=True).order_by("name"):
+        days = []
+        for date in dates:
+            by_group = defaultdict(list)
+            counts = Counter()
+            birds = nest.birds(date).existed_on(date).with_dates().with_related()
+            for bird in birds:
+                age_group = bird.age_group(date)
+                by_group[age_group].append(bird)
+                if age_group != ADULT_ANIMAL_NAME:
+                    counts[age_group] += 1
+            days.append({"animals": by_group, "counts": counts})
+        data.append({"location": nest, "days": days})
+    return dates, data
 
 
 # Expressions for annotating animal records with names. This avoids a bunch of

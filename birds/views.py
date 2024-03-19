@@ -34,7 +34,16 @@ from birds.forms import (
     SampleForm,
     SexForm,
 )
-from birds.models import Animal, Event, NestCheck, Pairing, Sample, SampleType, Status
+from birds.models import (
+    ADULT_ANIMAL_NAME,
+    Animal,
+    Event,
+    NestCheck,
+    Pairing,
+    Sample,
+    SampleType,
+    Status,
+)
 from birds.serializers import (
     AnimalDetailSerializer,
     AnimalPedigreeSerializer,
@@ -49,6 +58,7 @@ from birds.filters import (
     PairingFilter,
     DjangoFilterBackend,
 )
+from birds.tools import tabulate_locations, tabulate_nests
 
 
 class LargeResultsSetPagination(LinkHeaderPagination):
@@ -194,8 +204,7 @@ def close_pairing(request, pk: int):
 
 @require_http_methods(["GET"])
 def location_summary(request):
-    from birds.models import ADULT_ANIMAL_NAME
-
+    # do this with a single query and then group by location
     qs = (
         Animal.objects.with_annotations()
         .with_related()
@@ -221,7 +230,6 @@ def location_summary(request):
 @require_http_methods(["GET"])
 def nest_report(request):
     default_days = 4
-    from birds.tools import tabulate_locations
 
     try:
         until = dateparse.parse_date(request.GET["until"])
@@ -233,7 +241,7 @@ def nest_report(request):
         since = None
     until = until or datetime.datetime.now().date()
     since = since or (until - datetime.timedelta(days=default_days))
-    dates, nest_data = tabulate_locations(since, until)
+    dates, nest_data = tabulate_nests(since, until)
     checks = NestCheck.objects.filter(
         datetime__date__gte=since, datetime__date__lte=until
     ).order_by("datetime")
@@ -262,12 +270,11 @@ def nest_check(request):
     main nest-report page.
 
     """
-    from birds.tools import tabulate_locations
 
     NestCheckFormSet = formset_factory(NestCheckForm, extra=0)
     until = datetime.datetime.now().date()
     since = until - datetime.timedelta(days=2)
-    dates, nest_data = tabulate_locations(since, until)
+    dates, nest_data = tabulate_nests(since, until)
     initial = []
     previous_checks = NestCheck.objects.filter(
         datetime__date__gte=(until - datetime.timedelta(days=7))
