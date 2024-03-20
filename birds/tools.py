@@ -87,11 +87,17 @@ def tabulate_nests(since: date, until: date):
         for date in dates:
             by_group = defaultdict(list)
             counts = Counter()
-            birds = nest.birds(date).existed_on(date).with_dates().with_related()
+            birds = (
+                nest.birds(date)
+                .existed_on(date)
+                .with_dates()
+                .select_related("species", "band_color")
+                .prefetch_related("species__age_set")
+            )
             for bird in birds:
                 age_group = bird.age_group(date)
                 by_group[age_group].append(bird)
-                if age_group != ADULT_ANIMAL_NAME:
+                if age_group is not None and age_group != ADULT_ANIMAL_NAME:
                     counts[age_group] += 1
             days.append({"animals": by_group, "counts": counts})
         data.append({"location": nest, "days": days})

@@ -223,6 +223,7 @@ class AnimalQuerySet(models.QuerySet):
 
     def with_dates(self):
         return self.annotate(
+            first_event_on=Min("event__date"),
             born_on=Min("event__date", filter=Q(event__status__name="hatched")),
             died_on=Max("event__date", filter=Q(event__status__removes=True)),
             acquired_on=Min("event__date", filter=Q(event__status__adds=True)),
@@ -454,7 +455,7 @@ class Animal(models.Model):
         if self.born_on is None:
             if self.acquired_on is not None:
                 return ADULT_ANIMAL_NAME
-            if self.event_set.filter(date__lte=refdate).count() > 0:
+            elif self.first_event_on is not None and self.first_event_on <= refdate:
                 return UNBORN_ANIMAL_NAME
             else:
                 return None
@@ -704,6 +705,7 @@ class PairingManager(models.Manager):
 
 class PairingQuerySet(models.QuerySet):
     def active(self):
+        # TODO add on_date support?
         return self.filter(ended__isnull=True)
 
     def with_related(self):
@@ -738,6 +740,7 @@ class PairingQuerySet(models.QuerySet):
 
     def with_location(self):
         """Active pairs only, annotated with the most recent location"""
+        # TODO add on_date?
         return self.active().annotate(
             last_location=Subquery(
                 Event.objects.filter(
