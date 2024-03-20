@@ -257,6 +257,7 @@ class AnimalModelTests(TestCase):
         species = Species.objects.get(pk=1)
         status = models.get_birth_event_type()
         user = models.get_sentinel_user()
+        youngest_group = species.age_set.get(min_days=0)
         for age_group in species.age_set.all():
             bird = Animal.objects.create(species=species)
             birthday = datetime.date.today() - datetime.timedelta(
@@ -267,6 +268,7 @@ class AnimalModelTests(TestCase):
             )
             abird = Animal.objects.with_dates().get(pk=bird.pk)
             self.assertEqual(abird.age_group(), age_group.name)
+            self.assertEqual(abird.age_group(birthday), youngest_group.name)
 
     def test_bird_locations(self):
         species = Species.objects.get(pk=1)

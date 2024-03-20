@@ -450,16 +450,16 @@ class Animal(models.Model):
         with_dates() annotation.
 
         """
+        refdate = date or datetime.date.today()
         if self.born_on is None:
             if self.acquired_on is not None:
                 return ADULT_ANIMAL_NAME
-            refdate = date or datetime.date.today()
             if self.event_set.filter(date__lte=refdate).count() > 0:
                 return UNBORN_ANIMAL_NAME
             else:
                 return None
         else:
-            age_days = self.age.days
+            age_days = (refdate - self.born_on).days
             # for multiple animals, it's faster to do this lookup in python if
             # age_set is prefetched
             groups = sorted(
