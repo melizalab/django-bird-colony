@@ -7,6 +7,7 @@ from collections import Counter, defaultdict
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.paginator import Paginator
+from django.db.models import F
 from django.db.utils import IntegrityError
 from django.forms import ValidationError, formset_factory
 from django.http import HttpResponseRedirect
@@ -458,7 +459,9 @@ def animal_view(request, uuid: str):
     qs = Animal.objects.with_annotations()
     animal = get_object_or_404(qs, uuid=uuid)
     kids = (
-        animal.children.with_annotations().with_related().order_by("-alive", "-created")
+        animal.children.with_annotations()
+        .with_related()
+        .order_by("-alive", F("age").desc(nulls_last=True))
     )
     events = animal.event_set.with_related().order_by("-date", "-created")
     samples = animal.sample_set.order_by("-date")

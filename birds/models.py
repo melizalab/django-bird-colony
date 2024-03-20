@@ -248,13 +248,13 @@ class AnimalQuerySet(models.QuerySet):
             ),
         )
 
-    # leaving this in here to say this is not a good idea. very slow
-    # def with_child_counts(self):
-    #     return self.annotate(
-    #         n_children=Count(
-    #             "children", filter=Q(children__event__status=get_birth_event_type())
-    #         )
-    #     )
+    def with_child_counts(self):
+        # TODO fix me
+        return self.annotate(
+            n_children=Count(
+                "children", filter=Q(children__event__status=get_birth_event_type())
+            )
+        )
 
     def with_annotations(self):
         return self.with_status().with_dates().with_location()
