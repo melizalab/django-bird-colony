@@ -812,10 +812,7 @@ class Pairing(models.Model):
                 default=None,
             )
         ).aggregate(Max("age"))
-        try:
-            return agg["age__max"].days
-        except AttributeError:
-            pass
+        return agg["age__max"]
 
     def eggs(self):
         """All the eggs laid during this pairing (hatched and unhatched)"""

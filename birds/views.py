@@ -115,7 +115,7 @@ def pairing_view(request, pk):
     qs = Pairing.objects.with_related().with_progeny_stats()
     pair = get_object_or_404(qs, pk=pk)
     eggs = pair.eggs().with_annotations().with_related().order_by("-alive", "-created")
-    pairings = pair.other_pairings()
+    pairings = pair.other_pairings().with_progeny_stats()
     events = pair.related_events().with_related()
     return render(
         request,
@@ -712,9 +712,14 @@ def sample_type_list(request):
 
 @require_http_methods(["GET"])
 def sample_list(request, animal: Optional[str] = None):
-    qs = Sample.objects.select_related("type", "location", "collected_by").order_by(
-        "-date"
-    )
+    qs = Sample.objects.select_related(
+        "type",
+        "location",
+        "collected_by",
+        "animal",
+        "animal__species",
+        "animal__band_color",
+    ).order_by("-date")
     if animal is not None:
         animal = get_object_or_404(Animal, uuid=animal)
         qs = qs.filter(animal=animal)

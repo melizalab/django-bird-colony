@@ -736,7 +736,7 @@ class PairingModelTests(TestCase):
         # was laid
         self.assertCountEqual(pairing.eggs(), [chick_1, chick_2])
 
-        self.assertEqual(pairing.oldest_living_progeny_age(), chick_1.age().days)
+        self.assertEqual(pairing.oldest_living_progeny_age(), chick_1.age())
 
         # check that the annotation counts eggs and progeny correctly. But in
         # this case the chicks do not count as eggs unless there is a laid

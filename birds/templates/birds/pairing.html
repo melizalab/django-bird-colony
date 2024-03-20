@@ -16,8 +16,8 @@
   <dt>ended</dt><dd>{{ pairing.ended|default_if_none:"(still active)" }}</dd>
   <dt>purpose</dt><dd>{{ pairing.purpose|default_if_none:"" }}</dd>
   <dt>last location</dt><dd> {{ pairing.last_location|default_if_none:"" }}</dd>
-  <dt>eggs laid</dt><dd>{{ pairing.eggs.count }}</dd>
-  <dt>progeny</dt><dd>{{ pairing.progeny.count }}</dd>
+  <dt>eggs laid</dt><dd>{{ pairing.n_eggs }}</dd>
+  <dt>progeny</dt><dd>{{ pairing.n_progeny }}</dd>
   <dt>oldest living progeny</dt><dd>{{ pairing.oldest_living_progeny_age|ageorblank }}</dd>
   <dt>comment</dt><dd>{{ pairing.comment }}</dd>
 </dl>
@@ -80,8 +80,8 @@
     <tr>
           <td><a href="{% url 'birds:pairing' pairing.id %}">{{ pairing.began }} — {{ pairing.ended|default_if_none:"" }}</a></td>
           <td>{{ pairing.purpose }}</td>
-          <td>{{ pairing.eggs.count }}</td>
-          <td>{{ pairing.progeny.count }}</td>
+          <td>{{ pairing.n_eggs }}</td>
+          <td>{{ pairing.n_progeny }}</td>
       <td>{{ pairing.comment }}</td>
         </tr>
     {% endfor %}
