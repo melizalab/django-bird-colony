@@ -489,12 +489,13 @@ def animal_genealogy(request, uuid: str):
     ]
     descendents = [
         Animal.objects.descendents_of(animal, generation=gen)
-        .hatched()
         .with_annotations()
-        .order_by("-alive")
+        .hatched()
+        .order_by("-alive", "-age")
         for gen in generations
     ]
-    living = [qs.alive() for qs in descendents]
+    # have to manually filter here because alive() will call with_status()
+    living = [qs.filter(alive__gt=0) for qs in descendents]
     return render(
         request,
         "birds/genealogy.html",

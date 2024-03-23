@@ -165,6 +165,7 @@ class AnimalModelTests(TestCase):
         self.assertIn(bird, Animal.objects.alive())
         self.assertNotIn(bird, Animal.objects.hatched())
         self.assertIn(bird, Animal.objects.unhatched())
+        self.assertIn(bird, Animal.objects.unhatched().alive())
         self.assertIn(bird, Animal.objects.alive_on(acq_on))
         self.assertNotIn(
             bird, Animal.objects.alive_on(acq_on - datetime.timedelta(days=1))
@@ -227,6 +228,35 @@ class AnimalModelTests(TestCase):
         self.assertNotIn(
             bird, Animal.objects.existed_on(born_on - datetime.timedelta(days=1))
         )
+
+    def test_bird_hatched_alive_order(self):
+        species = Species.objects.get(pk=1)
+        bird = Animal.objects.create(species=species)
+        user = models.get_sentinel_user()
+        status_born = models.get_birth_event_type()
+        self.assertEqual(status_born.adds, 1)
+        born_on = datetime.date.today() - datetime.timedelta(days=10)
+        event_born = Event.objects.create(
+            animal=bird, status=status_born, date=born_on, entered_by=user
+        )
+        # it should not matter what order these are called in
+        self.assertIn(bird, Animal.objects.alive().hatched())
+        self.assertIn(bird, Animal.objects.hatched(alive=True))
+        self.assertNotIn(bird, Animal.objects.unhatched().alive())
+        self.assertNotIn(bird, Animal.objects.alive().unhatched())
+
+        status_died = Status.objects.get(name="died")
+        self.assertEqual(status_died.removes, 1)
+        died_on = datetime.date.today() - datetime.timedelta(days=1)
+        event_died = Event.objects.create(
+            animal=bird, status=status_died, date=died_on, entered_by=user
+        )
+        # this does not work because of filter interaction
+        # self.assertNotIn(bird, Animal.objects.hatched().alive())
+        self.assertNotIn(bird, Animal.objects.alive().hatched())
+        self.assertNotIn(bird, Animal.objects.hatched(alive=True))
+        self.assertNotIn(bird, Animal.objects.unhatched().alive())
+        self.assertNotIn(bird, Animal.objects.alive().unhatched())
 
     def test_status_of_egg(self):
         species = Species.objects.get(pk=1)
@@ -454,26 +484,102 @@ class ParentModelTests(TestCase):
 
     def test_genealogy(self):
         species = Species.objects.get(pk=1)
-        sire = Animal.objects.create(species=species, sex=Animal.Sex.MALE)
-        dam = Animal.objects.create(species=species, sex=Animal.Sex.FEMALE)
-        birthday = datetime.date.today()  # date doesn't matter for birthdays
-        son = make_child(
-            sire,
-            dam,
-            birthday,
+        born_status = models.get_birth_event_type()
+        died_status = models.get_death_event_type()
+        user = models.get_sentinel_user()
+        location = Location.objects.get(pk=2)
+
+        birthday = datetime.date.today() - datetime.timedelta(days=365)
+        sire = Animal.objects.create_with_event(
+            species=species,
+            date=birthday,
+            entered_by=user,
+            location=location,
+            status=born_status,
             sex=Animal.Sex.MALE,
         )
-        wife = Animal.objects.create(species=species, sex=Animal.Sex.FEMALE)
-        grandson = make_child(son, wife, birthday, sex=Animal.Sex.MALE)
-        granddaughter = make_child(son, wife, birthday, sex=Animal.Sex.FEMALE)
+        dam = Animal.objects.create_with_event(
+            species=species,
+            date=birthday,
+            entered_by=user,
+            location=location,
+            status=born_status,
+            sex=Animal.Sex.FEMALE,
+        )
+        # add death event for dam to check that alive status is correct
+        Event.objects.create(
+            animal=dam,
+            date=datetime.date.today() - datetime.timedelta(days=5),
+            entered_by=user,
+            status=died_status,
+        )
+        son = Animal.objects.create_from_parents(
+            sire=sire,
+            dam=dam,
+            date=datetime.date.today() - datetime.timedelta(days=100),
+            status=born_status,
+            entered_by=user,
+            location=location,
+            sex=Animal.Sex.MALE,
+        )
+        wife = Animal.objects.create_with_event(
+            species=species,
+            date=datetime.date.today() - datetime.timedelta(days=99),
+            location=location,
+            status=born_status,
+            entered_by=user,
+            sex=Animal.Sex.FEMALE,
+        )
+        grandson = make_child(
+            son,
+            wife,
+            datetime.date.today() - datetime.timedelta(days=50),
+            sex=Animal.Sex.MALE,
+        )
+        granddaughter_1 = make_child(
+            son,
+            wife,
+            datetime.date.today() - datetime.timedelta(days=50),
+            sex=Animal.Sex.FEMALE,
+        )
+        granddaughter_2 = make_child(
+            son,
+            wife,
+            datetime.date.today() - datetime.timedelta(days=45),
+            sex=Animal.Sex.FEMALE,
+        )
+        # add death event to check that alive status of descendents is correct
+        Event.objects.create(
+            animal=granddaughter_2,
+            date=datetime.date.today() - datetime.timedelta(days=1),
+            entered_by=user,
+            status=died_status,
+        )
         children = Animal.objects.descendents_of(sire, generation=1)
         self.assertCountEqual(children, [son])
         grandchildren = Animal.objects.descendents_of(sire, generation=2)
-        self.assertCountEqual(grandchildren, [grandson, granddaughter])
+        self.assertCountEqual(
+            grandchildren, [grandson, granddaughter_1, granddaughter_2]
+        )
+        self.assertCountEqual(
+            grandchildren.hatched(), [grandson, granddaughter_1, granddaughter_2]
+        )
+        self.assertCountEqual(
+            grandchildren.hatched(alive=True), [grandson, granddaughter_1]
+        )
+        self.assertCountEqual(grandchildren.alive(), [grandson, granddaughter_1])
+        self.assertCountEqual(
+            Animal.objects.ancestors_of(son, generation=1), [sire, dam]
+        )
+        self.assertCountEqual(
+            Animal.objects.descendents_of(son, generation=1),
+            [grandson, granddaughter_1, granddaughter_2],
+        )
         parents = Animal.objects.ancestors_of(grandson, generation=1)
         self.assertCountEqual(parents, [son, wife])
         grandparents = Animal.objects.ancestors_of(grandson, generation=2)
         self.assertCountEqual(grandparents, [sire, dam])
+        self.assertCountEqual(grandparents.alive(), [sire])
 
 
 class EventModelTests(TestCase):

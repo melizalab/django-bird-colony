@@ -33,6 +33,7 @@ from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
 
 BIRTH_EVENT_NAME = "hatched"
+DEATH_EVENT_NAME = "died"
 UNBORN_ANIMAL_NAME = "egg"
 UNBORN_CREATION_EVENT_NAME = "laid"
 ADULT_ANIMAL_NAME = "adult"
@@ -51,6 +52,11 @@ def get_birth_event_type():
 @lru_cache
 def get_unborn_creation_event_type():
     return Status.objects.get(name=UNBORN_CREATION_EVENT_NAME)
+
+
+@lru_cache
+def get_death_event_type():
+    return Status.objects.get(name=DEATH_EVENT_NAME)
 
 
 def get_sentinel_user():
@@ -213,6 +219,11 @@ class AnimalQuerySet(models.QuerySet):
     """Supports queries based on status that require joining on the event table"""
 
     def with_status(self):
+        """Annotate the results with the animal's status (alive or not)
+
+        Warning: use this before filtering birds on related events, as the annotation
+        depends on having all the events.
+        """
         return self.annotate(
             # Need to compare added to removed because eggs are not "alive"
             alive=GreaterThan(
@@ -222,6 +233,11 @@ class AnimalQuerySet(models.QuerySet):
         )
 
     def with_dates(self):
+        """Annotate the birds with important dates (born, died, etc)
+
+        Warning: use this before filtering birds on related events, as the annotations
+        depend on having all the events.
+        """
         return self.annotate(
             first_event_on=Min("event__date"),
             born_on=Min("event__date", filter=Q(event__status__name="hatched")),
@@ -249,7 +265,7 @@ class AnimalQuerySet(models.QuerySet):
         )
 
     def with_child_counts(self):
-        # TODO fix me
+        # TODO fix me - very slow
         return self.annotate(
             n_children=Count(
                 "children", filter=Q(children__event__status=get_birth_event_type())
@@ -265,12 +281,29 @@ class AnimalQuerySet(models.QuerySet):
         ).prefetch_related("species__age_set")
 
     def alive(self):
-        """Only birds that are alive now"""
+        """Only birds that are alive now.
+
+        Warning: this filter cannot be used after filtering birds on `event`,
+        because it calls `with_status`, and that needs to happen before
+        filtering. Instead of `hatched().alive()` call `alive().hatched()` or
+        use `.hatched(alive=True)`
+
+        """
         return self.with_status().filter(alive__gt=0)
 
-    def hatched(self):
-        """Only birds that were born in the colony (excludes eggs)"""
-        return self.filter(event__status=get_birth_event_type())
+    def hatched(self, alive: bool = False):
+        """Only birds that were born in the colony (excludes eggs).
+
+        alive: restrict only to living birds. Use this instead of alive()
+        queryset method because this filter interacts poorly with filters and
+        annotations that depend on counting events.
+
+        """
+        qs = self.with_status().filter(event__status=get_birth_event_type())
+        if alive:
+            return qs.filter(alive__gt=0)
+        else:
+            return qs
 
     def unhatched(self):
         """Only birds that were not born in the colony (includes eggs)"""
