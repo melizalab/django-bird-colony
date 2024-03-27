@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
+import calendar
 import datetime
 from itertools import groupby
 from typing import Optional
@@ -37,6 +38,7 @@ from birds.forms import (
 )
 from birds.models import (
     ADULT_ANIMAL_NAME,
+    Age,
     Animal,
     Event,
     NestCheck,
@@ -694,7 +696,16 @@ def index(request):
 @require_http_methods(["GET"])
 def event_summary(request, year: int, month: int):
     date = datetime.date(year=year, month=month, day=1)
-    counts = Event.objects.in_month(date).count_by_status()
+    event_counts = Event.objects.in_month(date).count_by_status()
+    end_of_month = datetime.date(
+        year=year, month=month, day=calendar.monthrange(year, month)[1]
+    )
+    # age_groups = Age.objects.all()
+    # birds = (
+    #     Animal.objects.with_dates()
+    #     .alive_on(end_of_month)
+    # )
+
     return render(
         request,
         "birds/summary.html",
@@ -703,7 +714,7 @@ def event_summary(request, year: int, month: int):
             "month": month,
             "next": date + datetime.timedelta(days=32),
             "prev": date - datetime.timedelta(days=1),
-            "event_totals": counts.order_by(),
+            "event_totals": event_counts.order_by(),
         },
     )
 
@@ -783,6 +794,7 @@ class APIAnimalsList(generics.ListAPIView):
         Animal.objects.with_status()
         .select_related("reserved_by", "species", "band_color")
         .prefetch_related("parents")
+        .order_by("band_color", "band_number")
     )
     serializer_class = AnimalSerializer
     filter_backends = (DjangoFilterBackend,)
@@ -798,6 +810,7 @@ class APIAnimalChildList(APIAnimalsList):
             animal.children.with_status()
             .select_related("reserved_by", "species", "band_color")
             .prefetch_related("parents")
+            .order_by("band_color", "band_number")
         )
 
 

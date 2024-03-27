@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
 import datetime
-
 from django.test import TestCase
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db.utils import IntegrityError
