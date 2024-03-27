@@ -44,7 +44,7 @@ class AnimalPedigreeSerializer(serializers.ModelSerializer):
     sire = serializers.StringRelatedField()
     dam = serializers.StringRelatedField()
     plumage = serializers.StringRelatedField()
-    alive = serializers.BooleanField(required=False)
+    alive = serializers.BooleanField()
     acquired_on = serializers.DateField(read_only=True)
 
     class Meta:
@@ -75,7 +75,7 @@ class AnimalDetailSerializer(AnimalSerializer):
     sire = serializers.PrimaryKeyRelatedField(read_only=True)
     dam = serializers.PrimaryKeyRelatedField(read_only=True)
     age_days = AgeSerializer(source="age", read_only=True)
-    alive = serializers.BooleanField(required=False)
+    alive = serializers.BooleanField()
     last_location = serializers.StringRelatedField()
 
     class Meta:

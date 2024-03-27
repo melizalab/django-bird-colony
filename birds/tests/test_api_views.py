@@ -22,196 +22,112 @@ from birds.models import (
 class ApiViewTests(APITestCase):
     fixtures = ["bird_colony_starter_kit"]
 
+    def setUp(self):
+        self.species = Species.objects.get(pk=1)
+        self.sire = Animal.objects.create(species=self.species, sex=Animal.Sex.MALE)
+        self.dam = Animal.objects.create(species=self.species, sex=Animal.Sex.FEMALE)
+        self.event_type = models.get_birth_event_type()
+        self.age = datetime.timedelta(days=5)
+        self.birthday = datetime.date.today() - self.age
+        self.user = models.get_sentinel_user()
+        self.location = Location.objects.get(pk=2)
+        self.children = [
+            Animal.objects.create_from_parents(
+                sire=self.sire,
+                dam=self.dam,
+                date=self.birthday,
+                status=self.event_type,
+                entered_by=self.user,
+                location=self.location,
+                sex=Animal.Sex.MALE,
+            )
+            for _ in range(2)
+        ]
+        self.all_birds = self.children + [self.sire, self.dam]
+        self.uuids = {str(bird.uuid) for bird in self.all_birds}
+        self.n_birds = len(self.children) + 2
+
     def test_bird_list_view(self):
-        species = Species.objects.get(pk=1)
-        event_type = models.get_birth_event_type()
-        age = datetime.timedelta(days=5)
-        birthday = datetime.date.today() - age
-        user = models.get_sentinel_user()
-        location = Location.objects.get(pk=2)
-        bird_1 = Animal.objects.create_with_event(
-            species=species,
-            date=birthday,
-            status=event_type,
-            entered_by=user,
-            location=location,
-            sex=Animal.Sex.MALE,
-        )
-        bird_2 = Animal.objects.create_with_event(
-            species=species,
-            date=birthday,
-            status=event_type,
-            entered_by=user,
-            location=location,
-            sex=Animal.Sex.FEMALE,
-        )
         response = self.client.get(reverse("birds:animals_api"))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), self.n_birds)
+        self.assertEqual({bird["uuid"] for bird in response.data}, self.uuids)
+
+    def test_bird_detail_view(self):
+        for child in self.children:
+            response = self.client.get(reverse("birds:animal_api", args=[child.uuid]))
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertDictContainsSubset(
+                {
+                    "uuid": str(child.uuid),
+                    "species": self.species.common_name,
+                    "sex": Animal.Sex.MALE,
+                    "sire": self.sire.uuid,
+                    "dam": self.dam.uuid,
+                    "age_days": self.age.days,
+                    "last_location": self.location.name,
+                    "alive": True,
+                },
+                response.data,
+            )
+        for parent in (self.sire, self.dam):
+            response = self.client.get(reverse("birds:animal_api", args=[parent.uuid]))
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertDictContainsSubset(
+                {
+                    "uuid": str(parent.uuid),
+                    "species": self.species.common_name,
+                    "sex": parent.sex,
+                    "sire": None,
+                    "dam": None,
+                    "age_days": None,
+                    "last_location": None,
+                    "alive": False,
+                },
+                response.data,
+            )
+
+    def test_bird_children_list_view(self):
+        response = self.client.get(reverse("birds:children_api", args=[self.sire.uuid]))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
         self.assertEqual(
             {bird["uuid"] for bird in response.data},
-            {str(bird_1.uuid), str(bird_2.uuid)},
+            {str(child.uuid) for child in self.children},
         )
-
-    def test_bird_detail_view(self):
-        species = Species.objects.get(pk=1)
-        event_type = models.get_birth_event_type()
-        age = datetime.timedelta(days=5)
-        birthday = datetime.date.today() - age
-        user = models.get_sentinel_user()
-        location = Location.objects.get(pk=2)
-        bird = Animal.objects.create_with_event(
-            species=species,
-            date=birthday,
-            status=event_type,
-            entered_by=user,
-            location=location,
-            sex=Animal.Sex.MALE,
-        )
-        response = self.client.get(reverse("birds:animal_api", args=[bird.uuid]))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertDictContainsSubset(
-            {
-                "uuid": str(bird.uuid),
-                "species": species.common_name,
-                "sex": Animal.Sex.MALE,
-                "sire": None,
-                "dam": None,
-                "age_days": age.days,
-                "last_location": location.name,
-                "alive": True,
-            },
-            response.data,
-        )
-
-    def test_bird_with_parents_detail_view(self):
-        species = Species.objects.get(pk=1)
-        sire = Animal.objects.create(species=species, sex=Animal.Sex.MALE)
-        dam = Animal.objects.create(species=species, sex=Animal.Sex.FEMALE)
-        event_type = models.get_birth_event_type()
-        age = datetime.timedelta(days=5)
-        birthday = datetime.date.today() - age
-        user = models.get_sentinel_user()
-        location = Location.objects.get(pk=2)
-        bird = Animal.objects.create_from_parents(
-            sire=sire,
-            dam=dam,
-            date=birthday,
-            status=event_type,
-            entered_by=user,
-            location=location,
-            description="testing 123",
-            sex=Animal.Sex.FEMALE,
-        )
-        response = self.client.get(reverse("birds:animal_api", args=[bird.uuid]))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertDictContainsSubset(
-            {
-                "uuid": str(bird.uuid),
-                "species": species.common_name,
-                "sex": Animal.Sex.FEMALE,
-                "sire": sire.uuid,
-                "dam": dam.uuid,
-                "age_days": age.days,
-                "last_location": location.name,
-                "alive": True,
-            },
-            response.data,
-        )
-
-    def test_bird_children_list_view(self):
-        species = Species.objects.get(pk=1)
-        sire = Animal.objects.create(species=species, sex=Animal.Sex.MALE)
-        dam = Animal.objects.create(species=species, sex=Animal.Sex.FEMALE)
-        event_type = models.get_birth_event_type()
-        age = datetime.timedelta(days=5)
-        birthday = datetime.date.today() - age
-        user = models.get_sentinel_user()
-        location = Location.objects.get(pk=2)
-        birds = [
-            Animal.objects.create_from_parents(
-                sire=sire,
-                dam=dam,
-                date=birthday,
-                status=event_type,
-                entered_by=user,
-                location=location,
-            )
-            for _ in range(2)
-        ]
-        response = self.client.get(reverse("birds:animal_api", args=[sire.uuid]))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        response = self.client.get(reverse("birds:children_api", args=[sire.uuid]))
+        response = self.client.get(reverse("birds:children_api", args=[self.dam.uuid]))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
         self.assertEqual(
-            {bird["uuid"] for bird in response.data}, {str(bird.uuid) for bird in birds}
+            {bird["uuid"] for bird in response.data},
+            {str(child.uuid) for child in self.children},
         )
-        response = self.client.get(reverse("birds:animal_api", args=[dam.uuid]))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        response = self.client.get(reverse("birds:children_api", args=[dam.uuid]))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 2)
-        self.assertEqual(
-            {bird["uuid"] for bird in response.data}, {str(bird.uuid) for bird in birds}
-        )
-        bird_1 = birds[0]
-        response = self.client.get(reverse("birds:animal_api", args=[bird_1.uuid]))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        response = self.client.get(reverse("birds:children_api", args=[bird_1.uuid]))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 0)
+        for child in self.children:
+            response = self.client.get(reverse("birds:children_api", args=[child.uuid]))
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(len(response.data), 0)
 
     def test_event_list_view(self):
-        species = Species.objects.get(pk=1)
-        event_type = models.get_birth_event_type()
-        age = datetime.timedelta(days=5)
-        birthday = datetime.date.today() - age
-        user = models.get_sentinel_user()
-        location = Location.objects.get(pk=2)
-        bird = Animal.objects.create_with_event(
-            species=species,
-            date=birthday,
-            status=event_type,
-            entered_by=user,
-            location=location,
-            sex=Animal.Sex.MALE,
-        )
         response = self.client.get(reverse("birds:events_api"))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 1)
-        self.assertDictContainsSubset(
-            {
-                "animal": bird.uuid,
-                "date": str(birthday),
-                "status": event_type.name,
-                "location": location.name,
-            },
-            response.data[0],
-        )
+        self.assertEqual(len(response.data), 2)
+        for ret in response.data:
+            self.assertDictContainsSubset(
+                {
+                    "date": str(self.birthday),
+                    "status": self.event_type.name,
+                    "location": self.location.name,
+                },
+                ret,
+            )
 
     def test_pedigree_view(self):
-        species = Species.objects.get(pk=1)
-        sire = Animal.objects.create(species=species, sex=Animal.Sex.MALE)
-        dam = Animal.objects.create(species=species, sex=Animal.Sex.FEMALE)
-        event_type = models.get_birth_event_type()
-        age = datetime.timedelta(days=5)
-        birthday = datetime.date.today() - age
-        user = models.get_sentinel_user()
-        location = Location.objects.get(pk=2)
-        birds = [
-            Animal.objects.create_from_parents(
-                sire=sire,
-                dam=dam,
-                date=birthday,
-                status=event_type,
-                entered_by=user,
-                location=location,
-            )
-            for _ in range(2)
-        ]
         response = self.client.get(reverse("birds:pedigree_api"))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 4)
-        uuids = {bird["uuid"] for bird in response.data}
+        # pedigree will include parents even though they aren't alive
+        self.assertEqual(len(response.data), self.n_birds)
+        self.assertEqual(
+            {bird["uuid"] for bird in response.data},
+            self.uuids,
+        )
         # needs more testing

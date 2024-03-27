@@ -814,9 +814,11 @@ class APIAnimalChildList(APIAnimalsList):
         )
 
 
-class APIAnimalDetail(generics.RetrieveAPIView):
-    queryset = Animal.objects.with_annotations()
-    serializer_class = AnimalDetailSerializer
+@api_view(["GET"])
+def api_animal_detail(request, pk: str, format=None):
+    animal = get_object_or_404(Animal, pk=pk)
+    serializer = AnimalDetailSerializer(animal)
+    return Response(serializer.data)
 
 
 class APIEventsList(generics.ListAPIView):

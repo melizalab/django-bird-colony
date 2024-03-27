@@ -101,7 +101,7 @@ urlpatterns = [
     re_path(r"^api/animals/$", views.APIAnimalsList.as_view(), name="animals_api"),
     re_path(
         r"^api/animals/(?P<pk>[a-f0-9\-]{36})/$",
-        views.APIAnimalDetail.as_view(),
+        views.api_animal_detail,
         name="animal_api",
     ),
     re_path(
