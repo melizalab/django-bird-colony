@@ -6,9 +6,28 @@
 
 <h2>Summary for {{ month }}/{{ year }}</h2>
 
+<h3>Living animals</h3>
+
 <table class="table table-striped table-condensed">
   <thead>
-    <th>Event</th>
+    <th>Age Group</th>
+    <th>Total</th>
+  </thead>
+  <tbody>
+    {% for group,count in bird_counts %}
+    <tr>
+      <td>{{ group }}</td>
+      <td>{{ count }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h3>Events</h3>
+
+<table class="table table-striped table-condensed">
+  <thead>
+    <th>Event Type</th>
     <th>Total</th>
   </thead>
   <tbody>

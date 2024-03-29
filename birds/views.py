@@ -701,10 +701,13 @@ def event_summary(request, year: int, month: int):
         year=year, month=month, day=calendar.monthrange(year, month)[1]
     )
     # age_groups = Age.objects.all()
-    # birds = (
-    #     Animal.objects.with_dates()
-    #     .alive_on(end_of_month)
-    # )
+    birds = (
+        Animal.objects.with_dates()
+        .prefetch_related("species__age_set")
+        .alive_on(end_of_month)
+        .order_by("born_on")
+    )
+    counts = Counter(bird.age_group(end_of_month) for bird in birds)
 
     return render(
         request,
@@ -715,6 +718,7 @@ def event_summary(request, year: int, month: int):
             "next": date + datetime.timedelta(days=32),
             "prev": date - datetime.timedelta(days=1),
             "event_totals": event_counts.order_by(),
+            "bird_counts": counts.items(),
         },
     )
 
