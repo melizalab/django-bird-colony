@@ -46,10 +46,12 @@ class SampleForm(forms.ModelForm):
         fields = ["type", "source", "location", "comments", "date", "collected_by"]
 
 
-class NewPairingForm(forms.ModelForm):
+class NewPairingForm(forms.Form):
     qs = Animal.objects.with_dates().alive()
     sire = forms.ModelChoiceField(queryset=qs.filter(sex=Animal.Sex.MALE))
     dam = forms.ModelChoiceField(queryset=qs.filter(sex=Animal.Sex.FEMALE))
+    began = forms.DateField()
+    purpose = forms.CharField(widget=forms.Textarea, required=False)
     entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
     location = forms.ModelChoiceField(
         queryset=Location.objects.filter(nest=True), required=False
@@ -57,7 +59,9 @@ class NewPairingForm(forms.ModelForm):
 
     def clean(self):
         data = super().clean()
-        sire = data["sire"]
+        sire = data.get("sire")
+        if sire is None:
+            raise forms.ValidationError(_("Must provide a sire"))
         if sire.sex != Animal.Sex.MALE:
             raise forms.ValidationError(_("Sire is not male"))
         if sire.age_group() != models.ADULT_ANIMAL_NAME:
@@ -77,7 +81,9 @@ class NewPairingForm(forms.ModelForm):
                 code="invalid",
                 params=data | {"prev": sire_overlaps.first()},
             )
-        dam = data["dam"]
+        dam = data.get("dam")
+        if dam is None:
+            raise forms.ValidationError(_("Must provide a dam"))
         if dam.sex != Animal.Sex.FEMALE:
             raise forms.ValidationError(_("Dam is not female"))
         if dam.age_group() != models.ADULT_ANIMAL_NAME:
@@ -98,10 +104,6 @@ class NewPairingForm(forms.ModelForm):
                 params=data | {"prev": dam_overlaps.first()},
             )
         return data
-
-    class Meta:
-        model = Pairing
-        fields = ["sire", "dam", "began", "purpose"]
 
 
 class EndPairingForm(forms.Form):

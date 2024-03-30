@@ -5,7 +5,7 @@ import datetime
 from django.test import TestCase
 
 from birds import models
-from birds.models import Animal, Location, Plumage, Color, Status, Species
+from birds.models import Animal, Location, Plumage, Color, Status, Species, Pairing
 from birds.forms import (
     NewBandForm,
     ReservationForm,
@@ -259,6 +259,150 @@ class NewAnimalFormTest(TestCase):
                 "band_number": 1,
                 "location": self.location,
                 "user": self.user,
+            }
+        )
+        self.assertFalse(form.is_valid())
+
+
+class NewPairingFormTest(TestCase):
+    fixtures = ["bird_colony_starter_kit"]
+
+    @classmethod
+    def setUpTestData(cls):
+        birthday = datetime.date.today() - datetime.timedelta(days=365)
+        cls.status = models.get_birth_event_type()
+        cls.user = models.get_sentinel_user()
+        cls.location = Location.objects.get(pk=2)
+        cls.species = Species.objects.get(pk=1)
+        cls.sire = Animal.objects.create_with_event(
+            species=cls.species,
+            status=cls.status,
+            date=birthday,
+            entered_by=cls.user,
+            location=cls.location,
+            sex=Animal.Sex.MALE,
+            band_number=1,
+        )
+        cls.dam = Animal.objects.create_with_event(
+            species=cls.species,
+            status=cls.status,
+            date=birthday,
+            entered_by=cls.user,
+            location=cls.location,
+            sex=Animal.Sex.FEMALE,
+        )
+
+    def test_create_new_pairing(self):
+        form = NewPairingForm(
+            {
+                "sire": self.sire,
+                "dam": self.dam,
+                "entered_by": self.user,
+                "began": datetime.date.today(),
+            }
+        )
+        self.assertTrue(form.is_valid())
+
+    def test_wrong_sex(self):
+        form = NewPairingForm(
+            {
+                "sire": self.dam,
+                "dam": self.sire,
+                "entered_by": self.user,
+                "began": datetime.date.today(),
+            }
+        )
+        self.assertFalse(form.is_valid())
+
+    def test_not_alive(self):
+        dead_sire = Animal.objects.create(species=self.species, sex=Animal.Sex.MALE)
+        form = NewPairingForm(
+            {
+                "sire": dead_sire,
+                "dam": self.dam,
+                "entered_by": self.user,
+                "began": datetime.date.today(),
+            }
+        )
+        self.assertFalse(form.is_valid())
+        dead_dam = Animal.objects.create(species=self.species, sex=Animal.Sex.FEMALE)
+        form = NewPairingForm(
+            {
+                "sire": self.sire,
+                "dam": dead_dam,
+                "entered_by": self.user,
+                "began": datetime.date.today(),
+            }
+        )
+        self.assertFalse(form.is_valid())
+
+    def test_not_adults(self):
+        invalid_sire = Animal.objects.create_with_event(
+            species=self.species,
+            status=self.status,
+            date=datetime.date.today() - datetime.timedelta(days=5),
+            entered_by=self.user,
+            location=self.location,
+            sex=Animal.Sex.MALE,
+            band_number=1,
+        )
+        form = NewPairingForm(
+            {
+                "sire": invalid_sire,
+                "dam": self.dam,
+                "entered_by": self.user,
+                "began": datetime.date.today(),
+            }
+        )
+        self.assertFalse(form.is_valid())
+        invalid_dam = Animal.objects.create_with_event(
+            species=self.species,
+            status=self.status,
+            date=datetime.date.today() - datetime.timedelta(days=5),
+            entered_by=self.user,
+            location=self.location,
+            sex=Animal.Sex.FEMALE,
+            band_number=1,
+        )
+        form = NewPairingForm(
+            {
+                "sire": self.sire,
+                "dam": invalid_dam,
+                "entered_by": self.user,
+                "began": datetime.date.today(),
+            }
+        )
+        self.assertFalse(form.is_valid())
+
+    def test_in_active_pairing(self):
+        _pairing = Pairing.objects.create(
+            sire=self.sire,
+            dam=self.dam,
+            began=datetime.date.today() - datetime.timedelta(days=10),
+        )
+        form = NewPairingForm(
+            {
+                "sire": self.dam,
+                "dam": self.sire,
+                "entered_by": self.user,
+                "began": datetime.date.today(),
+            }
+        )
+        self.assertFalse(form.is_valid())
+
+    def test_overlaps_pairing(self):
+        _pairing = Pairing.objects.create(
+            sire=self.sire,
+            dam=self.dam,
+            began=datetime.date.today() - datetime.timedelta(days=50),
+            ended=datetime.date.today() - datetime.timedelta(days=5),
+        )
+        form = NewPairingForm(
+            {
+                "sire": self.dam,
+                "dam": self.sire,
+                "entered_by": self.user,
+                "began": datetime.date.today() - datetime.timedelta(days=10),
             }
         )
         self.assertFalse(form.is_valid())
