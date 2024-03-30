@@ -55,3 +55,9 @@ def count_summary(counter):
     return format_html_join(
         ", ", "{}s: {}", ((k, v) for k, v in sorted(counter.items()))
     )
+
+
+@register.filter
+def count_total(counter):
+    """Call the total() method on a Counter"""
+    return f"{counter.total()}"

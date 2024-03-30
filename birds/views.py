@@ -697,17 +697,28 @@ def index(request):
 def event_summary(request, year: int, month: int):
     date = datetime.date(year=year, month=month, day=1)
     event_counts = Event.objects.in_month(date).count_by_status()
-    end_of_month = datetime.date(
-        year=year, month=month, day=calendar.monthrange(year, month)[1]
-    )
-    # age_groups = Age.objects.all()
+    today = datetime.date.today()
+    if date.year == today.year and date.month == today.month:
+        refdate = today
+    else:
+        refdate = datetime.date(
+            year=year, month=month, day=calendar.monthrange(year, month)[1]
+        )
     birds = (
         Animal.objects.with_dates()
         .prefetch_related("species__age_set")
-        .alive_on(end_of_month)
-        .order_by("born_on")
+        .alive_on(refdate)
+        .order_by("species", "born_on")
     )
-    counts = Counter(bird.age_group(end_of_month) for bird in birds)
+    counter = defaultdict(lambda: defaultdict(Counter))
+    for bird in birds:
+        age_group = bird.age_group(refdate)
+        counter[bird.species.common_name][age_group][bird.sex] += 1
+    # template engine really wants plain dicts
+    counts = [
+        (species, [(age, counts) for age, counts in ages.items()])
+        for species, ages in counter.items()
+    ]
 
     return render(
         request,
@@ -718,7 +729,7 @@ def event_summary(request, year: int, month: int):
             "next": date + datetime.timedelta(days=32),
             "prev": date - datetime.timedelta(days=1),
             "event_totals": event_counts.order_by(),
-            "bird_counts": counts.items(),
+            "bird_counts": counts,
         },
     )
 

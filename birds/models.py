@@ -152,6 +152,7 @@ class Age(models.Model):
     name = models.CharField(
         max_length=16,
     )
+    # it may be possible to do this with an IntegerRangeField
     min_days = models.PositiveIntegerField()
     species = models.ForeignKey("Species", on_delete=models.CASCADE)
 

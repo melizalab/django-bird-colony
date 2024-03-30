@@ -1,4 +1,5 @@
 {% extends "base_view.html" %}
+{% load date_fmt %}
 
 {% block title %} meliza-lab : bird colony {% endblock %}
 
@@ -8,20 +9,29 @@
 
 <h3>Living animals</h3>
 
+{% for species, sp_counts in bird_counts %}
+<h4>{{ species }}</h4>
 <table class="table table-striped table-condensed">
   <thead>
     <th>Age Group</th>
+    <th>Males</th>
+    <th>Females</th>
+    <th>Unknown</th>
     <th>Total</th>
   </thead>
   <tbody>
-    {% for group,count in bird_counts %}
+    {% for group,count in sp_counts %}
     <tr>
       <td>{{ group }}</td>
-      <td>{{ count }}</td>
+      <td>{{ count.M|default:"" }}</td>
+      <td>{{ count.F|default:"" }}</td>
+      <td>{{ count.U|default:"" }}</td>
+      <td>{{ count|count_total }}</td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
+{% endfor %}
 
 <h3>Events</h3>
 
