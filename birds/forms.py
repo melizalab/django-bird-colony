@@ -21,6 +21,16 @@ from birds.models import (
 )
 
 
+def get_status_or_error(name: str):
+    try:
+        return Status.objects.get(name=name)
+    except ObjectDoesNotExist as err:
+        raise forms.ValidationError(
+            _("No %(name)s status type - add one in admin"),
+            params={"name": name},
+        ) from err
+
+
 class EventForm(forms.ModelForm):
     date = forms.DateField()
     entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
@@ -113,29 +123,9 @@ class NestCheckForm(forms.Form):
         _location_name = self.initial["location"].name
         delta_chicks = data["chicks"] - self.initial["chicks"]
         _delta_eggs = data["eggs"] - self.initial["eggs"] + delta_chicks
-        try:
-            data["hatch_status"] = Status.objects.get(name=models.BIRTH_EVENT_NAME)
-        except ObjectDoesNotExist as err:
-            raise forms.ValidationError(
-                _("No %(name)s status type - add one in admin"),
-                params={"name": models.BIRTH_EVENT_NAME},
-            ) from err
-        try:
-            data["laid_status"] = Status.objects.get(
-                name=models.UNBORN_CREATION_EVENT_NAME
-            )
-        except ObjectDoesNotExist as err:
-            raise forms.ValidationError(
-                _("No %(name)s status type - add one in admin"),
-                params={"name": models.UNBORN_CREATION_EVENT_NAME},
-            ) from err
-        try:
-            data["lost_status"] = Status.objects.get(name=models.LOST_EVENT_NAME)
-        except ObjectDoesNotExist as err:
-            raise forms.ValidationError(
-                _("No %(name)s status type - add one in admin"),
-                params={"name": models.LOST_EVENT_NAME},
-            ) from err
+        data["hatch_status"] = get_status_or_error(models.BIRTH_EVENT_NAME)
+        data["laid_status"] = get_status_or_error(models.UNBORN_CREATION_EVENT_NAME)
+        data["lost_status"] = get_status_or_error(models.LOST_EVENT_NAME)
         if delta_chicks < 0:
             raise forms.ValidationError(_("Missing chicks need to be removed manually"))
         elif delta_chicks > self.initial["eggs"]:
@@ -154,6 +144,8 @@ class NestCheckUser(forms.Form):
 
 
 class NewBandForm(forms.Form):
+    """Form to assign a band to an existing bird, optionally updating sex and plumage"""
+
     banding_date = forms.DateField()
     band_color = forms.ModelChoiceField(queryset=Color.objects.all(), required=False)
     band_number = forms.IntegerField(min_value=1)
@@ -164,15 +156,9 @@ class NewBandForm(forms.Form):
 
     def clean(self):
         data = super().clean()
-        try:
-            data["band_status"] = Status.objects.get(name=models.BANDED_EVENT_NAME)
-        except ObjectDoesNotExist as err:
-            raise forms.ValidationError(
-                _("No %(name)s status type - add one in admin"),
-                params={"name": models.BANDED_EVENT_NAME},
-            ) from err
+        data["band_status"] = get_status_or_error(models.BANDED_EVENT_NAME)
         if Animal.objects.filter(
-            band_color=data["band_color"], band_number=data["band_number"]
+            band_color=data.get("band_color"), band_number=data["band_number"]
         ).exists():
             raise forms.ValidationError(
                 _(
@@ -185,6 +171,8 @@ class NewBandForm(forms.Form):
 
 
 class ReservationForm(forms.Form):
+    """Form to create or clear a reservation"""
+
     date = forms.DateField()
     description = forms.CharField(widget=forms.Textarea, required=False)
     entered_by = forms.ModelChoiceField(
@@ -193,17 +181,13 @@ class ReservationForm(forms.Form):
 
     def clean(self):
         data = super().clean()
-        try:
-            data["status"] = Status.objects.get(name=models.RESERVATION_EVENT_NAME)
-        except ObjectDoesNotExist as err:
-            raise forms.ValidationError(
-                _("No %(name)s status type - add one in admin"),
-                params={"name": models.RESERVATION_EVENT_NAME},
-            ) from err
+        data["status"] = get_status_or_error(models.RESERVATION_EVENT_NAME)
         return data
 
 
 class SexForm(forms.Form):
+    """Form to update an existing bird's sex"""
+
     date = forms.DateField()
     sex = forms.ChoiceField(choices=Animal.Sex.choices, required=True)
     description = forms.CharField(widget=forms.Textarea, required=False)
@@ -211,13 +195,7 @@ class SexForm(forms.Form):
 
     def clean(self):
         data = super().clean()
-        try:
-            data["status"] = Status.objects.get(name=models.NOTE_EVENT_NAME)
-        except ObjectDoesNotExist as err:
-            raise forms.ValidationError(
-                _("No %(name)s status type - add one in admin"),
-                params={"name": models.NOTE_EVENT_NAME},
-            ) from err
+        data["status"] = get_status_or_error(models.NOTE_EVENT_NAME)
         return data
 
 
@@ -241,19 +219,15 @@ class NewAnimalForm(forms.Form):
 
     def clean(self):
         data = super().clean()
-        try:
-            _status = Status.objects.get(name=models.BANDED_EVENT_NAME)
-        except ObjectDoesNotExist as err:
-            raise forms.ValidationError(
-                _("No %(name)s status type - add one in admin"),
-                params={"name": models.BIRTH_EVENT_NAME},
-            ) from err
-        if "acq_status" in data and data["acq_status"].name == "hatched":
-            if data["dam"] is None or data["sire"] is None:
+        _status = get_status_or_error(models.BANDED_EVENT_NAME)
+        if "acq_status" in data and data["acq_status"].name == models.BIRTH_EVENT_NAME:
+            dam = data.get("dam")
+            sire = data.get("sire")
+            if dam is None or sire is None:
                 raise forms.ValidationError(_("Parents required for hatched birds"))
-            if data["dam"].species != data["sire"].species:
+            if dam.species != sire.species:
                 raise forms.ValidationError(_("Parents must be the same species"))
-            data["species"] = data["dam"].species
+            data["species"] = dam.species
         else:
             if data["species"] is None:
                 raise forms.ValidationError(
@@ -262,7 +236,7 @@ class NewAnimalForm(forms.Form):
             data["dam"] = None
             data["sire"] = None
         if Animal.objects.filter(
-            band_color=data["band_color"], band_number=data["band_number"]
+            band_color=data.get("band_color"), band_number=data["band_number"]
         ).exists():
             raise forms.ValidationError(
                 _(
