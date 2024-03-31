@@ -961,6 +961,7 @@ class PairingModelTests(TestCase):
         )
         self.assertFalse(pairing.active())
         sire_events = self.sire.event_set.all()
+        # one event because we didn't supply a location on creation
         self.assertEqual(sire_events.count(), 1)
         self.assertEqual(sire_events.first().date, date)
         dam_events = self.dam.event_set.all()

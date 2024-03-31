@@ -90,7 +90,7 @@ def animal_list(request):
 
 @require_http_methods(["GET"])
 def pairing_list(request):
-    qs = Pairing.objects.with_related().with_progeny_stats()
+    qs = Pairing.objects.with_related().with_progeny_stats().order_by("-began")
     f = PairingFilter(request.GET, queryset=qs)
     paginator = Paginator(f.qs, 25)
     page_number = request.GET.get("page")
