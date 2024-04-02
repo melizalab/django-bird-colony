@@ -615,9 +615,15 @@ def new_event_entry(request, uuid: str):
     if request.method == "POST":
         form = EventForm(request.POST)
         if form.is_valid():
-            event = form.save(commit=False)
-            event.animal = animal
-            event.save()
+            data = form.cleaned_data
+            event = Event.objects.create(
+                animal=animal,
+                date=data["date"],
+                status=data["status"],
+                entered_by=data["entered_by"],
+                location=data["location"],
+                description=data["description"],
+            )
             return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
     else:
         form = EventForm()

@@ -959,7 +959,7 @@ class NestCheck(models.Model):
 
 
 class SampleType(models.Model):
-    """Defines a type of biological sample"""
+    """Doefines a type of biological sample"""
 
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=16, unique=True)

@@ -31,13 +31,12 @@ def get_status_or_error(name: str):
         ) from err
 
 
-class EventForm(forms.ModelForm):
+class EventForm(forms.Form):
     date = forms.DateField()
+    status = forms.ModelChoiceField(queryset=Status.objects.all())
+    location = forms.ModelChoiceField(queryset=Location.objects.all(), required=False)
+    description = forms.CharField(widget=forms.Textarea, required=False)
     entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
-
-    class Meta:
-        model = Event
-        fields = ["date", "status", "location", "description", "entered_by"]
 
 
 class SampleForm(forms.ModelForm):
@@ -231,7 +230,7 @@ class NewAnimalForm(forms.Form):
                 raise forms.ValidationError(_("Parents must be the same species"))
             data["species"] = dam.species
         else:
-            if data["species"] is None:
+            if data.get("species") is None:
                 raise forms.ValidationError(
                     _("Species required for non-hatch acquisition")
                 )
