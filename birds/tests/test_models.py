@@ -87,6 +87,11 @@ class AnimalModelTests(TestCase):
         self.assertIs(annotated_bird.acquired_on, None)
         self.assertIs(annotated_bird.died_on, None)
         self.assertIs(annotated_bird.first_event_on, None)
+        annotated_bird = Animal.objects.with_dates(random_date).get(pk=bird.pk)
+        self.assertIs(annotated_bird.born_on, None)
+        self.assertIs(annotated_bird.acquired_on, None)
+        self.assertIs(annotated_bird.died_on, None)
+        self.assertIs(annotated_bird.first_event_on, None)
 
     def test_status_of_hatched_bird(self):
         species = Species.objects.get(pk=1)
@@ -293,6 +298,65 @@ class AnimalModelTests(TestCase):
             egg, Animal.objects.existed_on(laid_on - datetime.timedelta(days=1))
         )
 
+    def test_with_dates_as_of_date(self):
+        species = Species.objects.get(pk=1)
+        bird = Animal.objects.create(species=species)
+        status = models.get_birth_event_type()
+        age = datetime.timedelta(days=5)
+        today = datetime.date.today()
+        birthday = today - age
+        user = models.get_sentinel_user()
+        laid_on = today - datetime.timedelta(days=10)
+        event_laid = Event.objects.create(
+            animal=bird,
+            status=models.get_unborn_creation_event_type(),
+            date=laid_on,
+            entered_by=user,
+        )
+        event_hatched = Event.objects.create(
+            animal=bird,
+            status=models.get_birth_event_type(),
+            date=birthday,
+            entered_by=user,
+        )
+        event_died = Event.objects.create(
+            animal=bird,
+            status=models.get_death_event_type(),
+            date=today,
+            entered_by=user,
+        )
+        annotated_bird = Animal.objects.with_dates().get(pk=bird.pk)
+        self.assertEqual(annotated_bird.first_event_on, laid_on)
+        self.assertEqual(annotated_bird.born_on, birthday)
+        self.assertEqual(annotated_bird.acquired_on, birthday)
+        self.assertEqual(annotated_bird.died_on, today)
+        self.assertEqual(annotated_bird.age, age)
+
+        annotated_bird = Animal.objects.with_dates(birthday).get(pk=bird.pk)
+        self.assertEqual(annotated_bird.first_event_on, laid_on)
+        self.assertEqual(annotated_bird.born_on, birthday)
+        self.assertEqual(annotated_bird.acquired_on, birthday)
+        self.assertIs(annotated_bird.died_on, None)
+        self.assertEqual(annotated_bird.age, datetime.timedelta(days=0))
+
+        annotated_bird = Animal.objects.with_dates(
+            birthday - datetime.timedelta(days=1)
+        ).get(pk=bird.pk)
+        self.assertEqual(annotated_bird.first_event_on, laid_on)
+        self.assertIs(annotated_bird.born_on, None)
+        self.assertIs(annotated_bird.acquired_on, None)
+        self.assertIs(annotated_bird.died_on, None)
+        self.assertIs(annotated_bird.age, None)
+
+        annotated_bird = Animal.objects.with_dates(
+            laid_on - datetime.timedelta(days=1)
+        ).get(pk=bird.pk)
+        self.assertIs(annotated_bird.first_event_on, None)
+        self.assertIs(annotated_bird.born_on, None)
+        self.assertIs(annotated_bird.acquired_on, None)
+        self.assertIs(annotated_bird.died_on, None)
+        self.assertIs(annotated_bird.age, None)
+
     def test_age_grouping(self):
         species = Species.objects.get(pk=1)
         status = models.get_birth_event_type()
@@ -308,22 +372,46 @@ class AnimalModelTests(TestCase):
             )
             abird = Animal.objects.with_dates().get(pk=bird.pk)
             self.assertEqual(abird.age_group(), age_group.name)
-            self.assertEqual(abird.age_group(birthday), youngest_group.name)
-            self.assertIs(abird.age_group(birthday - datetime.timedelta(days=1)), None)
+            abird = Animal.objects.with_dates(birthday).get(pk=bird.pk)
+            self.assertEqual(abird.age_group(), youngest_group.name)
+            abird = Animal.objects.with_dates(
+                birthday - datetime.timedelta(days=1)
+            ).get(pk=bird.pk)
+            self.assertIs(abird.age_group(), None)
 
     def test_age_grouping_of_egg(self):
         species = Species.objects.get(pk=1)
         status = models.get_unborn_creation_event_type()
         user = models.get_sentinel_user()
-        laid_on = datetime.date.today() - datetime.timedelta(days=7)
+        today = datetime.date.today()
+        laid_on = today - datetime.timedelta(days=7)
         egg = Animal.objects.create(species=species)
-        event = Event.objects.create(
+        _event = Event.objects.create(
             animal=egg, status=status, date=laid_on, entered_by=user
         )
         aegg = Animal.objects.with_dates().get(pk=egg.pk)
         self.assertEqual(aegg.age_group(), models.UNBORN_ANIMAL_NAME)
-        self.assertEqual(aegg.age_group(laid_on), models.UNBORN_ANIMAL_NAME)
-        self.assertIs(aegg.age_group(laid_on - datetime.timedelta(days=1)), None)
+        aegg = Animal.objects.with_dates(laid_on).get(pk=egg.pk)
+        self.assertEqual(aegg.age_group(), models.UNBORN_ANIMAL_NAME)
+        aegg = Animal.objects.with_dates(laid_on - datetime.timedelta(days=1)).get(
+            pk=egg.pk
+        )
+        self.assertIs(aegg.age_group(), None)
+        # Adding a hatch event
+        _event = Event.objects.create(
+            animal=egg,
+            status=models.get_birth_event_type(),
+            date=today,
+            entered_by=user,
+        )
+        aegg = Animal.objects.with_dates().get(pk=egg.pk)
+        self.assertEqual(aegg.age_group(), "hatchling")
+        aegg = Animal.objects.with_dates(laid_on).get(pk=egg.pk)
+        self.assertEqual(aegg.age_group(), models.UNBORN_ANIMAL_NAME)
+        aegg = Animal.objects.with_dates(today - datetime.timedelta(days=1)).get(
+            pk=egg.pk
+        )
+        self.assertIs(aegg.age_group(), models.UNBORN_ANIMAL_NAME)
 
     def test_bird_locations(self):
         species = Species.objects.get(pk=1)
@@ -1019,14 +1107,21 @@ class LocationModelTests(TestCase):
     def test_location_birds_on_date(self):
         location_1 = Location.objects.get(pk=2)
         location_2 = Location.objects.get(pk=1)
-        self.assertFalse(location_1.birds().exists())
-        self.assertFalse(location_2.birds().exists())
+        self.assertFalse(
+            location_1.birds().exists(),
+            "no birds should exist in location at start of test",
+        )
+        self.assertFalse(
+            location_2.birds().exists(),
+            "no birds should exist in location at start of test",
+        )
 
         species = Species.objects.get(pk=1)
         user = models.get_sentinel_user()
         status = Status.objects.get(name="moved")
         today = datetime.date.today()
         last_week = today - datetime.timedelta(days=7)
+        # bird starts in location 1 one week ago
         bird = Animal.objects.create_with_event(
             species,
             date=last_week,
@@ -1034,6 +1129,7 @@ class LocationModelTests(TestCase):
             entered_by=user,
             location=location_1,
         )
+        # bird moves to location 2 yesterday
         yesterday = today - datetime.timedelta(days=1)
         _event = Event.objects.create(
             animal=bird,
@@ -1043,9 +1139,82 @@ class LocationModelTests(TestCase):
             location=location_2,
         )
 
-        self.assertFalse(location_1.birds().exists())
-        self.assertCountEqual(location_2.birds(), [bird])
-        self.assertFalse(location_1.birds(on_date=yesterday).exists())
-        self.assertCountEqual(location_2.birds(on_date=yesterday), [bird])
-        self.assertCountEqual(location_1.birds(on_date=last_week), [bird])
-        self.assertFalse(location_2.birds(on_date=last_week).exists())
+        self.assertFalse(
+            location_1.birds().exists(), "bird should not be in location 1 today"
+        )
+        self.assertCountEqual(
+            location_2.birds(), [bird], "bird should be in location 2 today"
+        )
+        self.assertFalse(
+            location_1.birds(on_date=yesterday).exists(),
+            "bird should not be in location 1 yesterday",
+        )
+        self.assertCountEqual(
+            location_2.birds(on_date=yesterday),
+            [bird],
+            "bird should be in location 2 yesterday",
+        )
+        self.assertCountEqual(
+            location_1.birds(on_date=last_week),
+            [bird],
+            "bird should be in location 1 last week",
+        )
+        self.assertFalse(
+            location_2.birds(on_date=last_week).exists(),
+            "bird should not be in location 2 last week",
+        )
+
+    def test_location_birds_on_date_with_events(self):
+        location_1 = Location.objects.get(pk=2)
+        self.assertFalse(
+            location_1.birds().exists(),
+            "no birds should exist in location at start of test",
+        )
+        species = Species.objects.get(pk=1)
+        user = models.get_sentinel_user()
+        today = datetime.date.today()
+        last_week = today - datetime.timedelta(days=7)
+        # bird starts in location 1 as an egg
+        bird = Animal.objects.create_with_event(
+            species,
+            date=last_week,
+            status=models.get_unborn_creation_event_type(),
+            entered_by=user,
+            location=location_1,
+        )
+        # then it hatches yesterday
+        yesterday = today - datetime.timedelta(days=1)
+        _event = Event.objects.create(
+            animal=bird,
+            date=yesterday,
+            status=models.get_birth_event_type(),
+            entered_by=user,
+            location=location_1,
+        )
+        self.assertTrue(
+            location_1.birds().exists(), "bird should be in location 1 today"
+        )
+        self.assertTrue(
+            location_1.birds(yesterday).exists(),
+            "bird should be in location 1 yesterday",
+        )
+        self.assertTrue(
+            location_1.birds(last_week).exists(),
+            "bird should be in location 1 one week ago",
+        )
+        # check that age group calculations still work as expected
+        self.assertEqual(
+            location_1.birds(last_week).with_dates(last_week).first().age_group(),
+            models.UNBORN_ANIMAL_NAME,
+            f"bird age group should be '{models.UNBORN_ANIMAL_NAME}' after laid event",
+        )
+        self.assertEqual(
+            location_1.birds(yesterday).with_dates(yesterday).first().age_group(),
+            "hatchling",
+            "bird age group should be 'hatchling' after hatch event",
+        )
+        self.assertEqual(
+            location_1.birds().with_dates().first().age_group(),
+            "hatchling",
+            "bird age group should be 'hatchling' on today",
+        )

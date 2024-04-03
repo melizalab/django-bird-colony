@@ -22,7 +22,9 @@ from birds.models import (
 User = get_user_model()
 
 
-class AnimalViewTest(TestCase):
+class BaseColonyTest(TestCase):
+    """Base class for tests that need a pre-populated colony"""
+
     fixtures = ["bird_colony_starter_kit"]
 
     @classmethod
@@ -103,6 +105,8 @@ class AnimalViewTest(TestCase):
                 sex=Animal.Sex.UNKNOWN_SEX,
             )
 
+
+class AnimalViewTests(BaseColonyTest):
     def test_list_view_url_exists_at_desired_location(self):
         response = self.client.get("/birds/animals/")
         self.assertEqual(response.status_code, 200)
@@ -187,7 +191,131 @@ class AnimalViewTest(TestCase):
         self.assertEqual(len(response.context["pairing_list"]), 1)
 
 
-class NewAnimalFormViewTestCase(TestCase):
+class EventSummaryTests(TestCase):
+    fixtures = ["bird_colony_starter_kit"]
+
+    @classmethod
+    def setUpTestData(cls):
+        today = datetime.date.today()
+        start_of_this_month = datetime.date(today.year, today.month, 1)
+        end_of_last_month = start_of_this_month - datetime.timedelta(days=1)
+        start_of_last_month = datetime.date(
+            end_of_last_month.year, end_of_last_month.month, 1
+        )
+        laid_status = models.get_unborn_creation_event_type()
+        hatch_status = models.get_birth_event_type()
+        user = models.get_sentinel_user()
+        location = Location.objects.get(pk=1)
+        cls.species = Species.objects.get(pk=1)
+        birthday = datetime.date.today() - datetime.timedelta(days=365)
+        cls.sire = Animal.objects.create_with_event(
+            species=cls.species,
+            status=hatch_status,
+            date=birthday,
+            entered_by=user,
+            location=location,
+            sex=Animal.Sex.MALE,
+            band_number=1,
+        )
+        cls.dam = Animal.objects.create_with_event(
+            species=cls.species,
+            status=hatch_status,
+            date=birthday,
+            entered_by=user,
+            location=location,
+            sex=Animal.Sex.FEMALE,
+            band_number=2,
+        )
+        # move the parents in at the start of last month
+        pairing = Pairing.objects.create_with_events(
+            sire=cls.sire,
+            dam=cls.dam,
+            began=start_of_last_month,
+            purpose="pairing",
+            entered_by=user,
+            location=location,
+        )
+        # add some eggs last month
+        for i in range(4):
+            _child = Animal.objects.create_from_parents(
+                sire=cls.sire,
+                dam=cls.dam,
+                date=end_of_last_month - datetime.timedelta(days=i),
+                status=laid_status,
+                entered_by=user,
+                location=location,
+                description="behold the egg",
+                sex=Animal.Sex.UNKNOWN_SEX,
+                band_number=10 + i,
+            )
+        # make the eggs hatch this month
+        for child in cls.sire.children.all():
+            Event.objects.create(
+                animal=child,
+                status=hatch_status,
+                date=start_of_this_month,
+                entered_by=user,
+            )
+
+    def test_event_summary_url_exists_at_desired_location(self):
+        today = datetime.date.today()
+        response = self.client.get(f"/birds/summary/events/{today.year}/{today.month}/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_event_summary_404_at_nonsense_dates(self):
+        today = datetime.date.today()
+        response = self.client.get(f"/birds/summary/events/{today.year}/13/")
+        self.assertEqual(response.status_code, 404)
+        response = self.client.get(f"/birds/summary/events/{today.year}/0/")
+        self.assertEqual(response.status_code, 404)
+
+    def test_event_summary_previous_month(self):
+        today = datetime.date.today()
+        start_of_this_month = datetime.date(today.year, today.month, 1)
+        end_of_last_month = start_of_this_month - datetime.timedelta(days=1)
+        response = self.client.get(
+            reverse(
+                "birds:event_summary",
+                args=[end_of_last_month.year, end_of_last_month.month],
+            )
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertCountEqual(
+            list(response.context["event_totals"]),
+            [
+                {"status__name": "moved", "count": 2},
+                {"status__name": "laid", "count": 4},
+            ],
+        )
+        self.assertEqual(len(response.context["bird_counts"]), 1)
+        zf_counts = response.context["bird_counts"][0]
+        self.assertEqual(zf_counts[0], self.species.common_name)
+        self.assertListEqual(zf_counts[1], [("adult", {"M": 1, "F": 1})])
+
+    def test_event_summary_current_month(self):
+        today = datetime.date.today()
+        response = self.client.get(
+            reverse(
+                "birds:event_summary",
+                args=[today.year, today.month],
+            )
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertCountEqual(
+            list(response.context["event_totals"]),
+            [
+                {"status__name": "hatched", "count": 4},
+            ],
+        )
+        self.assertEqual(len(response.context["bird_counts"]), 1)
+        zf_counts = response.context["bird_counts"][0]
+        self.assertEqual(zf_counts[0], self.species.common_name)
+        self.assertListEqual(
+            zf_counts[1], [("adult", {"M": 1, "F": 1}), ("hatchling", {"U": 4})]
+        )
+
+
+class NewAnimalFormViewTests(TestCase):
     fixtures = ["bird_colony_starter_kit"]
 
     def setUp(self):
@@ -279,7 +407,7 @@ class NewAnimalFormViewTestCase(TestCase):
         self.assertRedirects(response, reverse("birds:animal", args=[animal.uuid]))
 
 
-class NewBandFormViewTest(TestCase):
+class NewBandFormViewTests(TestCase):
     fixtures = ["bird_colony_starter_kit"]
 
     def setUp(self):
@@ -320,7 +448,7 @@ class NewBandFormViewTest(TestCase):
         self.assertEqual(animal.event_set.count(), 1)
 
 
-class NewEventFormViewTest(TestCase):
+class NewEventFormViewTests(TestCase):
     fixtures = ["bird_colony_starter_kit"]
 
     def setUp(self):
@@ -370,7 +498,7 @@ class NewEventFormViewTest(TestCase):
         self.assertFalse(self.animal.alive())
 
 
-class PairingFormViewTest(TestCase):
+class PairingFormViewTests(TestCase):
     fixtures = ["bird_colony_starter_kit"]
 
     @classmethod
@@ -500,8 +628,3 @@ class PairingFormViewTest(TestCase):
         )
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, reverse("birds:pairing", args=[new_pairing.pk]))
-
-
-# TODO: add sample to an existing bird using sample entry form
-# Assert that sample is in the database and linked to the bird
-# Assert that

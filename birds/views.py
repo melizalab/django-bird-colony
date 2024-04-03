@@ -11,7 +11,7 @@ from django.core.paginator import Paginator
 from django.db.models import F
 from django.db.utils import IntegrityError
 from django.forms import ValidationError, formset_factory
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, HttpResponseBadRequest, Http404
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils import dateparse
@@ -701,7 +701,10 @@ def index(request):
 
 @require_http_methods(["GET"])
 def event_summary(request, year: int, month: int):
-    date = datetime.date(year=year, month=month, day=1)
+    try:
+        date = datetime.date(year=year, month=month, day=1)
+    except ValueError as err:
+        raise Http404("No such year/ month") from err
     event_counts = Event.objects.in_month(date).count_by_status()
     today = datetime.date.today()
     if date.year == today.year and date.month == today.month:
@@ -711,14 +714,14 @@ def event_summary(request, year: int, month: int):
             year=year, month=month, day=calendar.monthrange(year, month)[1]
         )
     birds = (
-        Animal.objects.with_dates()
+        Animal.objects.with_dates(refdate)
         .prefetch_related("species__age_set")
         .alive_on(refdate)
         .order_by("species", "born_on")
     )
     counter = defaultdict(lambda: defaultdict(Counter))
     for bird in birds:
-        age_group = bird.age_group(refdate)
+        age_group = bird.age_group()
         counter[bird.species.common_name][age_group][bird.sex] += 1
     # template engine really wants plain dicts
     counts = [

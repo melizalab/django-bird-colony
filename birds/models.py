@@ -233,20 +233,29 @@ class AnimalQuerySet(models.QuerySet):
             )
         )
 
-    def with_dates(self):
+    def with_dates(self, on_date: Optional[datetime.date] = None):
         """Annotate the birds with important dates (born, died, etc)
 
-        Warning: use this before filtering birds on related events, as the annotations
-        depend on having all the events.
+        Warning: use this before filtering birds on related events (e.g.
+        with alive(), hatched(), or existed_on()), as the annotations depend on having
+        all the events.
+
         """
+        if on_date is not None:
+            q_date = Q(event__date__lte=on_date)
+        else:
+            q_date = Q()
+            on_date = datetime.date.today()
         return self.annotate(
-            first_event_on=Min("event__date"),
-            born_on=Min("event__date", filter=Q(event__status__name="hatched")),
-            died_on=Max("event__date", filter=Q(event__status__removes=True)),
-            acquired_on=Min("event__date", filter=Q(event__status__adds=True)),
+            first_event_on=Min("event__date", filter=q_date),
+            born_on=Min(
+                "event__date", filter=Q(event__status__name="hatched") & q_date
+            ),
+            died_on=Max("event__date", filter=Q(event__status__removes=True) & q_date),
+            acquired_on=Min("event__date", filter=Q(event__status__adds=True) & q_date),
             age=Case(
                 When(born_on__isnull=True, then=None),
-                When(died_on__isnull=True, then=TruncDay(Now()) - F("born_on")),
+                When(died_on__isnull=True, then=on_date - F("born_on")),
                 default=F("died_on") - F("born_on"),
             ),
         )
@@ -473,8 +482,8 @@ class Animal(models.Model):
         )
         return (is_alive["added"] or 0) > (is_alive["removed"] or 0)
 
-    def age_group(self, date: Optional[datetime.date] = None):
-        """Returns the age group of the animal (as of date) by joining on the Age model.
+    def age_group(self):
+        """Returns the age group of the animal by joining on the Age model.
 
         Classified as an adult if there was a non-hatch acquisition event.
         Otherwise, an egg if there was at least one non-acquisition event.
@@ -482,19 +491,19 @@ class Animal(models.Model):
         table (this can only happen if there is not an object with min_age = 0).
 
         This method can only be used if the object was retrieved using the
-        with_dates() annotation.
+        with_dates() annotation. If the age group as of a specific date is
+        desired, supply this to with_dates().
 
         """
-        refdate = date or datetime.date.today()
-        if self.born_on is None:
+        if self.age is None:
             if self.acquired_on is not None:
                 return ADULT_ANIMAL_NAME
-            elif self.first_event_on is not None and self.first_event_on <= refdate:
+            elif self.first_event_on is not None:
                 return UNBORN_ANIMAL_NAME
             else:
                 return None
         else:
-            age_days = (refdate - self.born_on).days
+            age_days = self.age.days
             # for multiple animals, it's faster to do this lookup in python if
             # age_set is prefetched
             groups = sorted(

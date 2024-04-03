@@ -21,6 +21,7 @@ def find_first(iterable, predicate):
             return item
 
 
+# old version of this function
 def tabulate_locations(since, until):
     """Determines which animals are in which nests by date.
 
@@ -79,6 +80,8 @@ def tabulate_nests(since: date, until: date):
     Consider the other option if it becomes too slow.
 
     """
+    if since > until:
+        raise ValueError("until must be after since")
     n_days = (until - since).days + 1
     dates = [since + timedelta(days=x) for x in range(n_days)]
     data = []
@@ -90,16 +93,17 @@ def tabulate_nests(since: date, until: date):
             birds = (
                 nest.birds(date)
                 .existed_on(date)
-                .with_dates()
+                .with_dates(date)
                 .select_related("species", "band_color")
                 .prefetch_related("species__age_set")
+                .order_by("band_color", "band_number")
             )
             for bird in birds:
-                age_group = bird.age_group(date)
+                age_group = bird.age_group()
                 by_group[age_group].append(bird)
                 if age_group is not None and age_group != ADULT_ANIMAL_NAME:
                     counts[age_group] += 1
-            days.append({"animals": by_group, "counts": counts})
+            days.append({"animals": dict(by_group), "counts": dict(counts)})
         data.append({"location": nest, "days": days})
     return dates, data
 
