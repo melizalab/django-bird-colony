@@ -6,6 +6,7 @@ import datetime
 from django.urls import reverse
 from django.test import TestCase
 from django.contrib.auth import get_user_model
+from django.utils.timezone import make_aware
 
 from birds import views, models
 from birds.models import (
@@ -15,6 +16,7 @@ from birds.models import (
     Color,
     Status,
     Location,
+    NestCheck,
     Pairing,
     Plumage,
 )
@@ -32,7 +34,6 @@ class BaseColonyTest(TestCase):
         birthday = datetime.date.today() - datetime.timedelta(days=365)
         status = models.get_birth_event_type()
         user = models.get_sentinel_user()
-        location = Location.objects.get(pk=1)
         species = Species.objects.get(pk=1)
         band_color = Color.objects.get(pk=1)
         cls.sire = Animal.objects.create_with_event(
@@ -40,7 +41,7 @@ class BaseColonyTest(TestCase):
             status=status,
             date=birthday,
             entered_by=user,
-            location=location,
+            location=Location.objects.get(pk=1),
             sex=Animal.Sex.MALE,
             band_color=band_color,
             band_number=1,
@@ -50,25 +51,26 @@ class BaseColonyTest(TestCase):
             status=status,
             date=birthday,
             entered_by=user,
-            location=location,
+            location=Location.objects.get(pk=1),
             sex=Animal.Sex.FEMALE,
             band_color=band_color,
             band_number=2,
         )
         cls.n_children = 10
         cls.n_eggs = 5
+        cls.nest = Location.objects.filter(nest=True).first()
         pairing = Pairing.objects.create_with_events(
             sire=cls.sire,
             dam=cls.dam,
             began=birthday + datetime.timedelta(days=80),
             purpose="old pairing",
             entered_by=user,
-            location=location,
+            location=cls.nest,
         )
         pairing.close(
             ended=birthday + datetime.timedelta(days=120),
             entered_by=user,
-            location=location,
+            location=Location.objects.get(pk=1),
             comment="ended old pairing",
         )
         for i in range(cls.n_children):
@@ -78,7 +80,7 @@ class BaseColonyTest(TestCase):
                 date=birthday + datetime.timedelta(days=90 + i),
                 status=status,
                 entered_by=user,
-                location=location,
+                location=cls.nest,
                 description="for unto us a child is born",
                 sex=Animal.Sex.UNKNOWN_SEX,
                 band_color=band_color,
@@ -90,7 +92,7 @@ class BaseColonyTest(TestCase):
             began=datetime.date.today() - datetime.timedelta(days=20),
             purpose="new pairing",
             entered_by=user,
-            location=location,
+            location=cls.nest,
         )
         status = models.get_unborn_creation_event_type()
         for i in range(cls.n_eggs):
@@ -100,7 +102,7 @@ class BaseColonyTest(TestCase):
                 date=datetime.date.today() - datetime.timedelta(days=i),
                 status=status,
                 entered_by=user,
-                location=location,
+                location=cls.nest,
                 description=f"egg {i} laid",
                 sex=Animal.Sex.UNKNOWN_SEX,
             )
@@ -191,11 +193,53 @@ class AnimalViewTests(BaseColonyTest):
         self.assertEqual(len(response.context["pairing_list"]), 1)
 
 
+class NestReportTests(BaseColonyTest):
+    def test_nest_report_url_exists_at_desired_location(self):
+        response = self.client.get(f"/birds/summary/nests/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_nest_report_default_dates(self):
+        today = datetime.date.today()
+        response = self.client.get(reverse("birds:nest-summary"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["since"], today - datetime.timedelta(days=4))
+        self.assertEqual(response.context["until"], today)
+        dates = response.context["dates"]
+        self.assertEqual(len(dates), 5)
+        self.assertEqual(dates[0], today - datetime.timedelta(days=4))
+        self.assertEqual(dates[-1], today)
+
+    def test_nest_check_list(self):
+        nest_check = NestCheck.objects.create(
+            entered_by=models.get_sentinel_user(),
+            datetime=make_aware(datetime.datetime.now()),
+            comments="much nesting",
+        )
+        response = self.client.get(reverse("birds:nest-summary"))
+        self.assertEqual(response.status_code, 200)
+        self.assertCountEqual(response.context["nest_checks"], [nest_check])
+
+    def test_nest_report_bird_counts(self):
+        today = datetime.date.today()
+        response = self.client.get(reverse("birds:nest-summary"))
+        nest_data = response.context["nest_data"][0]
+        self.assertEqual(nest_data["location"], self.nest)
+        eggs = self.sire.children.with_dates().unhatched().order_by("first_event_on")
+        for i, day in enumerate(nest_data["days"]):
+            # the adults include the parents and all the chicks from the
+            # previous pairing
+            self.assertEqual(len(day["animals"]["adult"]), 2 + self.n_children)
+            self.assertCountEqual(day["animals"]["egg"], eggs[: i + 1])
+            self.assertEqual(day["counts"]["egg"], i + 1)
+
+
 class EventSummaryTests(TestCase):
     fixtures = ["bird_colony_starter_kit"]
 
     @classmethod
     def setUpTestData(cls):
+        # can't use BaseColonyTest because we need to make sure the events land
+        # in specific months
         today = datetime.date.today()
         start_of_this_month = datetime.date(today.year, today.month, 1)
         end_of_last_month = start_of_this_month - datetime.timedelta(days=1)
