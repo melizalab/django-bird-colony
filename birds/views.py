@@ -285,7 +285,7 @@ def nest_check(request):
     for nest in nest_data:
         today_counts = nest["days"][-1]["counts"]
         total_count = sum(today_counts.values())
-        eggs = today_counts["egg"]
+        eggs = today_counts.get("egg", 0)
         initial.append(
             {"location": nest["location"], "eggs": eggs, "chicks": total_count - eggs}
         )

@@ -3,6 +3,7 @@
 import datetime
 
 from django.test import TestCase
+from django.forms import formset_factory
 
 from birds import models
 from birds.models import Animal, Location, Plumage, Color, Status, Species, Pairing
@@ -408,6 +409,87 @@ class NewPairingFormTest(TestCase):
         self.assertFalse(form.is_valid())
 
 
-# TODO: this one is pretty hairy
-# class NestCheckFormTest(TestCase):
-#     fixtures = ["bird_colony_starter_kit"]
+class NestCheckFormTest(TestCase):
+    fixtures = ["bird_colony_starter_kit"]
+
+    @classmethod
+    def setUpTestData(cls):
+        birthday = datetime.date.today() - datetime.timedelta(days=365)
+        status = models.get_birth_event_type()
+        user = models.get_sentinel_user()
+        location = Location.objects.get(pk=1)
+        species = Species.objects.get(pk=1)
+        cls.sire = Animal.objects.create_with_event(
+            species=species,
+            status=status,
+            date=birthday,
+            entered_by=user,
+            location=location,
+            sex=Animal.Sex.MALE,
+            band_number=1,
+        )
+        cls.dam = Animal.objects.create_with_event(
+            species=species,
+            status=status,
+            date=birthday,
+            entered_by=user,
+            location=location,
+            sex=Animal.Sex.FEMALE,
+            band_number=2,
+        )
+        cls.nest = Location.objects.filter(nest=True).first()
+        _ = Pairing.objects.create_with_events(
+            sire=cls.sire,
+            dam=cls.dam,
+            began=datetime.date.today() - datetime.timedelta(days=1),
+            purpose="testing",
+            entered_by=user,
+            location=cls.nest,
+        )
+
+    def test_nest_check_add_egg(self):
+        form = NestCheckForm({"location": self.nest, "eggs": 1, "chicks": 0})
+        self.assertTrue(form.is_valid())
+
+    def test_nest_check_hatch_egg(self):
+        initial = {"location": self.nest, "eggs": 1, "chicks": 0}
+        form = NestCheckForm(
+            {"location": self.nest, "eggs": 0, "chicks": 1}, initial=initial
+        )
+        self.assertTrue(form.is_valid())
+
+    def test_nest_check_lose_egg(self):
+        initial = {"location": self.nest, "eggs": 1, "chicks": 0}
+        form = NestCheckForm(
+            {"location": self.nest, "eggs": 0, "chicks": 0}, initial=initial
+        )
+        self.assertTrue(form.is_valid())
+
+    def test_nest_check_cannot_hatch_without_egg(self):
+        initial = {"location": self.nest, "eggs": 1, "chicks": 0}
+        form = NestCheckForm(
+            {"location": self.nest, "eggs": 0, "chicks": 2}, initial=initial
+        )
+        self.assertFalse(form.is_valid())
+
+    def test_nest_check_cannot_lose_chick(self):
+        initial = {"location": self.nest, "eggs": 0, "chicks": 1}
+        form = NestCheckForm(
+            {"location": self.nest, "eggs": 0, "chicks": 0}, initial=initial
+        )
+        self.assertFalse(form.is_valid())
+
+    def test_nest_check_formset(self):
+        initial = [{"location": self.nest, "eggs": 0, "chicks": 1}]
+        NestCheckFormSet = formset_factory(NestCheckForm, extra=0)
+        formset = NestCheckFormSet(
+            {
+                "form-TOTAL_FORMS": 1,
+                "form-INITIAL_FORMS": 1,
+                "form-0-location": self.nest,
+                "form-0-eggs": 1,
+                "form-0-chicks": 1,
+            },
+            initial=initial,
+        )
+        self.assertTrue(formset.is_valid())

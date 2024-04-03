@@ -121,15 +121,16 @@ class NestCheckForm(forms.Form):
 
     def clean(self):
         data = super().clean()
-        _location_name = self.initial["location"].name
-        delta_chicks = data["chicks"] - self.initial["chicks"]
-        _delta_eggs = data["eggs"] - self.initial["eggs"] + delta_chicks
+        initial_chicks = self.initial.get("chicks", 0)
+        initial_eggs = self.initial.get("eggs", 0)
+        delta_chicks = data["chicks"] - initial_chicks
+        _delta_eggs = data["eggs"] - initial_eggs + delta_chicks
         data["hatch_status"] = get_status_or_error(models.BIRTH_EVENT_NAME)
         data["laid_status"] = get_status_or_error(models.UNBORN_CREATION_EVENT_NAME)
         data["lost_status"] = get_status_or_error(models.LOST_EVENT_NAME)
         if delta_chicks < 0:
             raise forms.ValidationError(_("Missing chicks need to be removed manually"))
-        elif delta_chicks > self.initial["eggs"]:
+        elif delta_chicks > initial_eggs:
             raise forms.ValidationError(
                 _("Not enough eggs to make %(chicks)d new chick%(plural)s"),
                 params={"chicks": delta_chicks, "plural": pluralize(delta_chicks)},

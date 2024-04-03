@@ -672,3 +672,94 @@ class PairingFormViewTests(TestCase):
         )
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, reverse("birds:pairing", args=[new_pairing.pk]))
+
+
+class NestCheckFormViewTests(TestCase):
+    fixtures = ["bird_colony_starter_kit"]
+
+    @classmethod
+    def setUpTestData(cls):
+        birthday = datetime.date.today() - datetime.timedelta(days=365)
+        status = models.get_birth_event_type()
+        user = models.get_sentinel_user()
+        location = Location.objects.get(pk=1)
+        species = Species.objects.get(pk=1)
+        cls.sire = Animal.objects.create_with_event(
+            species=species,
+            status=status,
+            date=birthday,
+            entered_by=user,
+            location=location,
+            sex=Animal.Sex.MALE,
+            band_number=1,
+        )
+        cls.dam = Animal.objects.create_with_event(
+            species=species,
+            status=status,
+            date=birthday,
+            entered_by=user,
+            location=location,
+            sex=Animal.Sex.FEMALE,
+            band_number=2,
+        )
+        cls.nest = Location.objects.filter(nest=True).first()
+        _ = Pairing.objects.create_with_events(
+            sire=cls.sire,
+            dam=cls.dam,
+            began=datetime.date.today() - datetime.timedelta(days=1),
+            purpose="testing",
+            entered_by=user,
+            location=cls.nest,
+        )
+
+    def setUp(self):
+        # Create a user
+        self.test_user1 = User.objects.create_user(
+            username="testuser1", password="1X<ISRUkw+tuK"
+        )
+        self.test_user1.save()
+
+    def test_redirect_if_not_logged_in(self):
+        response = self.client.get(reverse("birds:nest-check"))
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith("/accounts/login/"))
+
+    def test_initial_empty_nest(self):
+        login = self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.get(reverse("birds:nest-check"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["nest_formset"]), 1)
+        form = response.context["nest_formset"][0]
+        self.assertDictEqual(
+            form.initial, {"location": self.nest, "eggs": 0, "chicks": 0}
+        )
+
+    def test_initial_nest_with_egg_and_chick(self):
+        today = datetime.date.today()
+        user = models.get_sentinel_user()
+        status_laid = models.get_unborn_creation_event_type()
+        status_hatched = models.get_birth_event_type()
+        child_1 = Animal.objects.create_from_parents(
+            sire=self.sire,
+            dam=self.dam,
+            date=today,
+            status=status_hatched,
+            entered_by=user,
+            location=self.nest,
+        )
+        child_2 = Animal.objects.create_from_parents(
+            sire=self.sire,
+            dam=self.dam,
+            date=today,
+            status=status_laid,
+            entered_by=user,
+            location=self.nest,
+        )
+        login = self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.get(reverse("birds:nest-check"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["nest_formset"]), 1)
+        form = response.context["nest_formset"][0]
+        self.assertDictEqual(
+            form.initial, {"location": self.nest, "eggs": 1, "chicks": 1}
+        )
