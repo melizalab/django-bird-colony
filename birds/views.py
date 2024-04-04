@@ -303,42 +303,6 @@ def nest_check(request):
                 if not nest_form.has_changed():
                     changes[location].append({"status": None})
                     continue
-                # most of the validation logic to keep users from removing any
-                # animals is in the form; but we do checks against current
-                # occupants here
-                delta_chicks = updated["chicks"] - initial["chicks"]
-                delta_eggs = updated["eggs"] - initial["eggs"] + delta_chicks
-                if delta_eggs > 0:
-                    adults = nest["days"][-1]["animals"]["adult"]
-                    if len(adults) > 2:
-                        nest_form.add_error(
-                            None, ValidationError("unable to add egg - too many adults")
-                        )
-                    else:
-                        try:
-                            sire = next(
-                                (
-                                    animal
-                                    for animal in adults
-                                    if animal.sex == Animal.Sex.MALE
-                                )
-                            )
-                        except StopIteration:
-                            nest_form.add_error(
-                                None, ValidationError("unable to add egg - no sire")
-                            )
-                        try:
-                            dam = next(
-                                (
-                                    animal
-                                    for animal in adults
-                                    if animal.sex == Animal.Sex.FEMALE
-                                )
-                            )
-                        except StopIteration:
-                            nest_form.add_error(
-                                None, ValidationError("unable to add egg - no dam")
-                            )
                 # return user to initial view if there are errors
                 if not nest_form.is_valid():
                     return render(
@@ -352,15 +316,15 @@ def nest_check(request):
                         },
                     )
                 eggs = nest["days"][-1]["animals"]["egg"]
-                for _ in range(delta_chicks):
+                for _ in range(updated["delta_chicks"]):
                     hatch = dict(
                         animal=eggs.pop(),
                         status=updated["hatch_status"],
                         location=location,
                     )
                     changes[location].append(hatch)
-                if delta_eggs < 0:
-                    for _ in range(-delta_eggs):
+                if updated["delta_eggs"] < 0:
+                    for _ in range(-updated["delta_eggs"]):
                         lost = dict(
                             animal=eggs.pop(),
                             status=updated["lost_status"],
@@ -368,11 +332,11 @@ def nest_check(request):
                         )
                         changes[location].append(lost)
                 else:
-                    for _ in range(delta_eggs):
+                    for _ in range(updated["delta_eggs"]):
                         egg = dict(
                             status=updated["laid_status"],
-                            sire=sire,
-                            dam=dam,
+                            sire=updated["sire"],
+                            dam=updated["dam"],
                             location=location,
                         )
                         changes[location].append(egg)
@@ -387,29 +351,21 @@ def nest_check(request):
                             updated["hatch_status"],
                             updated["lost_status"],
                         ):
-                            event = Event(
-                                date=datetime.now().date(), entered_by=user, **item
+                            event = Event.objects.create(
+                                date=datetime.date.today(), entered_by=user, **item
                             )
-                            event.save()
                         elif item["status"] == updated["laid_status"]:
-                            animal = Animal(
-                                species=item["sire"].species, sex=Animal.UNKNOWN_SEX
-                            )
-                            animal.save()
-                            animal.parents.set([item["sire"], item["dam"]])
-                            animal.save()
-                            event = Event(
-                                animal=animal,
-                                date=datetime.now().date(),
-                                entered_by=user,
+                            animal = Animal.objects.create_from_parents(
+                                sire=item["sire"],
+                                dam=item["dam"],
+                                date=datetime.date.today(),
                                 status=item["status"],
+                                entered_by=user,
                                 location=item["location"],
                             )
-                            event.save()
-                check = NestCheck(
+                check = NestCheck.objects.create(
                     entered_by=user, comments=user_form.cleaned_data["comments"]
                 )
-                check.save()
                 return HttpResponseRedirect(reverse("birds:nest-summary"))
             else:
                 return render(

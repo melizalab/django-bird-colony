@@ -447,9 +447,24 @@ class NestCheckFormTest(TestCase):
             location=cls.nest,
         )
 
+    def test_nest_check_no_change(self):
+        initial = {"location": self.nest, "eggs": 1, "chicks": 1}
+        form = NestCheckForm(
+            {"location": self.nest, "eggs": 1, "chicks": 1}, initial=initial
+        )
+        self.assertTrue(form.is_valid())
+        self.assertDictContainsSubset(
+            {"delta_eggs": 0, "delta_chicks": 0},
+            form.cleaned_data,
+        )
+
     def test_nest_check_add_egg(self):
         form = NestCheckForm({"location": self.nest, "eggs": 1, "chicks": 0})
         self.assertTrue(form.is_valid())
+        self.assertDictContainsSubset(
+            {"delta_eggs": 1, "delta_chicks": 0},
+            form.cleaned_data,
+        )
 
     def test_nest_check_hatch_egg(self):
         initial = {"location": self.nest, "eggs": 1, "chicks": 0}
@@ -457,6 +472,11 @@ class NestCheckFormTest(TestCase):
             {"location": self.nest, "eggs": 0, "chicks": 1}, initial=initial
         )
         self.assertTrue(form.is_valid())
+        self.assertDictContainsSubset(
+            # delta_eggs is only negative if the egg was lost
+            {"delta_eggs": 0, "delta_chicks": 1},
+            form.cleaned_data,
+        )
 
     def test_nest_check_lose_egg(self):
         initial = {"location": self.nest, "eggs": 1, "chicks": 0}
@@ -464,6 +484,10 @@ class NestCheckFormTest(TestCase):
             {"location": self.nest, "eggs": 0, "chicks": 0}, initial=initial
         )
         self.assertTrue(form.is_valid())
+        self.assertDictContainsSubset(
+            {"delta_eggs": -1, "delta_chicks": 0},
+            form.cleaned_data,
+        )
 
     def test_nest_check_cannot_hatch_without_egg(self):
         initial = {"location": self.nest, "eggs": 1, "chicks": 0}
@@ -477,6 +501,54 @@ class NestCheckFormTest(TestCase):
         form = NestCheckForm(
             {"location": self.nest, "eggs": 0, "chicks": 0}, initial=initial
         )
+        self.assertFalse(form.is_valid())
+
+    def test_nest_check_cannot_add_egg_with_too_many_males(self):
+        birthday = datetime.date.today() - datetime.timedelta(days=365)
+        extra_male = Animal.objects.create_with_event(
+            species=Species.objects.get(pk=1),
+            status=models.get_birth_event_type(),
+            date=birthday,
+            entered_by=models.get_sentinel_user(),
+            location=self.nest,
+            sex=Animal.Sex.MALE,
+        )
+        form = NestCheckForm({"location": self.nest, "eggs": 1, "chicks": 0})
+        self.assertFalse(form.is_valid())
+
+    def test_nest_check_cannot_add_egg_without_a_male(self):
+        _ = models.Event.objects.create(
+            animal=self.sire,
+            date=datetime.date.today(),
+            status=Status.objects.get(name="moved"),
+            location=Location.objects.get(pk=1),
+            entered_by=models.get_sentinel_user(),
+        )
+        form = NestCheckForm({"location": self.nest, "eggs": 1, "chicks": 0})
+        self.assertFalse(form.is_valid())
+
+    def test_nest_check_cannot_add_egg_with_too_many_females(self):
+        birthday = datetime.date.today() - datetime.timedelta(days=365)
+        extra_male = Animal.objects.create_with_event(
+            species=Species.objects.get(pk=1),
+            status=models.get_birth_event_type(),
+            date=birthday,
+            entered_by=models.get_sentinel_user(),
+            location=self.nest,
+            sex=Animal.Sex.FEMALE,
+        )
+        form = NestCheckForm({"location": self.nest, "eggs": 1, "chicks": 0})
+        self.assertFalse(form.is_valid())
+
+    def test_nest_check_cannot_add_egg_without_a_female(self):
+        _ = models.Event.objects.create(
+            animal=self.dam,
+            date=datetime.date.today(),
+            status=Status.objects.get(name="moved"),
+            location=Location.objects.get(pk=1),
+            entered_by=models.get_sentinel_user(),
+        )
+        form = NestCheckForm({"location": self.nest, "eggs": 1, "chicks": 0})
         self.assertFalse(form.is_valid())
 
     def test_nest_check_formset(self):
