@@ -2,6 +2,7 @@
 # -*- mode: python -*-
 import uuid
 import datetime
+import warnings
 
 from django.urls import reverse
 from django.test import TestCase
@@ -21,6 +22,7 @@ from birds.models import (
     Plumage,
 )
 
+warnings.filterwarnings("error")
 User = get_user_model()
 
 
@@ -763,3 +765,129 @@ class NestCheckFormViewTests(TestCase):
         self.assertDictEqual(
             form.initial, {"location": self.nest, "eggs": 1, "chicks": 1}
         )
+
+    def test_error_returns_original_form(self):
+        data = {
+            "nests-TOTAL_FORMS": 1,
+            "nests-INITIAL_FORMS": 1,
+            "nests-0-location": self.nest.pk,
+            "nests-0-eggs": 0,
+            "nests-0-chicks": 1,
+        }
+        login = self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.post(reverse("birds:nest-check"), data)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "birds/nest_check.html")
+
+    def test_form_with_no_changes(self):
+        data = {
+            "nests-TOTAL_FORMS": 1,
+            "nests-INITIAL_FORMS": 1,
+            "nests-0-location": self.nest.pk,
+            "nests-0-eggs": 0,
+            "nests-0-chicks": 0,
+        }
+        login = self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.post(reverse("birds:nest-check"), data)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "birds/nest_check_confirm.html")
+        self.assertDictEqual(
+            response.context["changes"],
+            {self.nest: [{"status": None}]},
+        )
+
+    def test_add_egg_with_form(self):
+        status_laid = models.get_unborn_creation_event_type()
+        data = {
+            "nests-TOTAL_FORMS": 1,
+            "nests-INITIAL_FORMS": 1,
+            "nests-0-location": self.nest.pk,
+            "nests-0-eggs": 1,
+            "nests-0-chicks": 0,
+        }
+        login = self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.post(reverse("birds:nest-check"), data)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "birds/nest_check_confirm.html")
+        self.assertDictEqual(
+            response.context["changes"],
+            {
+                self.nest: [
+                    {
+                        "status": status_laid,
+                        "sire": self.sire,
+                        "dam": self.dam,
+                        "location": self.nest,
+                    }
+                ]
+            },
+        )
+        # submit the form with confirmation
+        user_data = {
+            "user-entered_by": models.get_sentinel_user().pk,
+            "user-confirmed": "on",
+        }
+        response = self.client.post(reverse("birds:nest-check"), data | user_data)
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("birds:nest-summary"))
+        eggs = self.sire.children.with_dates().unhatched()
+        self.assertEqual(eggs.count(), 1)
+        egg = eggs.first()
+        self.assertEqual(egg.sire(), self.sire)
+        self.assertEqual(egg.dam(), self.dam)
+        self.assertEqual(egg.first_event_on, datetime.date.today())
+        self.assertEqual(egg.age_group(), "egg")
+        nest_checks = NestCheck.objects.all()
+        self.assertEqual(nest_checks.count(), 1)
+
+    def test_hatch_egg_with_form(self):
+        user = models.get_sentinel_user()
+        status_laid = models.get_unborn_creation_event_type()
+        status_hatched = models.get_birth_event_type()
+        child_1 = Animal.objects.create_from_parents(
+            sire=self.sire,
+            dam=self.dam,
+            date=datetime.date.today() - datetime.timedelta(days=1),
+            status=status_laid,
+            entered_by=user,
+            location=self.nest,
+        )
+        data = {
+            "nests-TOTAL_FORMS": 1,
+            "nests-INITIAL_FORMS": 1,
+            "nests-0-location": self.nest.pk,
+            "nests-0-eggs": 0,
+            "nests-0-chicks": 1,
+        }
+        login = self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.post(reverse("birds:nest-check"), data)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "birds/nest_check_confirm.html")
+        self.assertDictEqual(
+            response.context["changes"],
+            {
+                self.nest: [
+                    {
+                        "status": status_hatched,
+                        "animal": child_1,
+                        "location": self.nest,
+                    }
+                ]
+            },
+        )
+        # submit the form with confirmation
+        user_data = {
+            "user-entered_by": models.get_sentinel_user().pk,
+            "user-confirmed": "on",
+        }
+        response = self.client.post(reverse("birds:nest-check"), data | user_data)
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("birds:nest-summary"))
+        children = self.sire.children.with_dates().alive()
+        self.assertEqual(children.count(), 1)
+        child = children.first()
+        self.assertEqual(child, child_1)
+        self.assertEqual(child.born_on, datetime.date.today())
+        self.assertEqual(child.age_group(), "hatchling")
+        nest_checks = NestCheck.objects.all()
+        self.assertEqual(nest_checks.count(), 1)

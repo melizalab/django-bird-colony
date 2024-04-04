@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
 import datetime
+import warnings
 
 from django.urls import reverse
 from rest_framework import status
@@ -17,6 +18,8 @@ from birds.models import (
     Pairing,
     Plumage,
 )
+
+warnings.filterwarnings("error")
 
 
 class ApiViewTests(APITestCase):
@@ -57,8 +60,10 @@ class ApiViewTests(APITestCase):
         for child in self.children:
             response = self.client.get(reverse("birds:animal_api", args=[child.uuid]))
             self.assertEqual(response.status_code, status.HTTP_200_OK)
-            self.assertDictContainsSubset(
-                {
+            self.assertDictEqual(
+                response.data,
+                response.data
+                | {
                     "uuid": str(child.uuid),
                     "species": self.species.common_name,
                     "sex": Animal.Sex.MALE,
@@ -68,13 +73,14 @@ class ApiViewTests(APITestCase):
                     "last_location": self.location.name,
                     "alive": True,
                 },
-                response.data,
             )
         for parent in (self.sire, self.dam):
             response = self.client.get(reverse("birds:animal_api", args=[parent.uuid]))
             self.assertEqual(response.status_code, status.HTTP_200_OK)
-            self.assertDictContainsSubset(
-                {
+            self.assertDictEqual(
+                response.data,
+                response.data
+                | {
                     "uuid": str(parent.uuid),
                     "species": self.species.common_name,
                     "sex": parent.sex,
@@ -84,7 +90,6 @@ class ApiViewTests(APITestCase):
                     "last_location": None,
                     "alive": False,
                 },
-                response.data,
             )
 
     def test_bird_children_list_view(self):
@@ -112,13 +117,14 @@ class ApiViewTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
         for ret in response.data:
-            self.assertDictContainsSubset(
-                {
+            self.assertDictEqual(
+                ret,
+                ret
+                | {
                     "date": str(self.birthday),
                     "status": self.event_type.name,
                     "location": self.location.name,
                 },
-                ret,
             )
 
     def test_pedigree_view(self):

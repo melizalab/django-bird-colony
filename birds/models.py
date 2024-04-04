@@ -960,7 +960,7 @@ class NestCheck(models.Model):
     entered_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET(get_sentinel_user)
     )
-    datetime = models.DateTimeField(default=datetime.datetime.now)
+    datetime = models.DateTimeField()
     comments = models.TextField(blank=True)
 
     def __str__(self):

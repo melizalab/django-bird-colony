@@ -15,6 +15,7 @@ from django.http import HttpResponseRedirect, HttpResponseBadRequest, Http404
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils import dateparse
+from django.utils.timezone import make_aware
 from django.utils.translation import gettext_lazy as _
 from django.views import generic
 from django.views.decorators.http import require_http_methods
@@ -315,7 +316,10 @@ def nest_check(request):
                             "nest_formset": nest_formset,
                         },
                     )
-                eggs = nest["days"][-1]["animals"]["egg"]
+                try:
+                    eggs = nest["days"][-1]["animals"]["egg"]
+                except KeyError:
+                    eggs = []
                 for _ in range(updated["delta_chicks"]):
                     hatch = dict(
                         animal=eggs.pop(),
@@ -364,7 +368,9 @@ def nest_check(request):
                                 location=item["location"],
                             )
                 check = NestCheck.objects.create(
-                    entered_by=user, comments=user_form.cleaned_data["comments"]
+                    entered_by=user,
+                    comments=user_form.cleaned_data["comments"],
+                    datetime=make_aware(datetime.datetime.now()),
                 )
                 return HttpResponseRedirect(reverse("birds:nest-summary"))
             else:

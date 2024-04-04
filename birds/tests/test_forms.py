@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
 import datetime
+import warnings
 
 from django.test import TestCase
 from django.forms import formset_factory
@@ -15,6 +16,8 @@ from birds.forms import (
     NestCheckForm,
     NewPairingForm,
 )
+
+warnings.filterwarnings("error")
 
 
 class SexFormTest(TestCase):
@@ -453,17 +456,15 @@ class NestCheckFormTest(TestCase):
             {"location": self.nest, "eggs": 1, "chicks": 1}, initial=initial
         )
         self.assertTrue(form.is_valid())
-        self.assertDictContainsSubset(
-            {"delta_eggs": 0, "delta_chicks": 0},
-            form.cleaned_data,
+        self.assertDictEqual(
+            form.cleaned_data, form.cleaned_data | {"delta_eggs": 0, "delta_chicks": 0}
         )
 
     def test_nest_check_add_egg(self):
         form = NestCheckForm({"location": self.nest, "eggs": 1, "chicks": 0})
         self.assertTrue(form.is_valid())
-        self.assertDictContainsSubset(
-            {"delta_eggs": 1, "delta_chicks": 0},
-            form.cleaned_data,
+        self.assertDictEqual(
+            form.cleaned_data, form.cleaned_data | {"delta_eggs": 1, "delta_chicks": 0}
         )
 
     def test_nest_check_hatch_egg(self):
@@ -472,10 +473,9 @@ class NestCheckFormTest(TestCase):
             {"location": self.nest, "eggs": 0, "chicks": 1}, initial=initial
         )
         self.assertTrue(form.is_valid())
-        self.assertDictContainsSubset(
-            # delta_eggs is only negative if the egg was lost
-            {"delta_eggs": 0, "delta_chicks": 1},
-            form.cleaned_data,
+        # delta_eggs is only negative if the egg was lost
+        self.assertDictEqual(
+            form.cleaned_data, form.cleaned_data | {"delta_eggs": 0, "delta_chicks": 1}
         )
 
     def test_nest_check_lose_egg(self):
@@ -484,9 +484,8 @@ class NestCheckFormTest(TestCase):
             {"location": self.nest, "eggs": 0, "chicks": 0}, initial=initial
         )
         self.assertTrue(form.is_valid())
-        self.assertDictContainsSubset(
-            {"delta_eggs": -1, "delta_chicks": 0},
-            form.cleaned_data,
+        self.assertDictEqual(
+            form.cleaned_data, form.cleaned_data | {"delta_eggs": -1, "delta_chicks": 0}
         )
 
     def test_nest_check_cannot_hatch_without_egg(self):
