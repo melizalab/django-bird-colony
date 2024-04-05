@@ -428,14 +428,10 @@ class Animal(models.Model):
     def sire(self):
         # find the male parent in python to avoid hitting the database again if
         # parents were prefetched
-        for parent in self.parents.all():
-            if parent.sex == Animal.Sex.MALE:
-                return parent
+        return next((p for p in self.parents.all() if p.sex == Animal.Sex.MALE), None)
 
     def dam(self):
-        for parent in self.parents.all():
-            if parent.sex == Animal.Sex.FEMALE:
-                return parent
+        return next((p for p in self.parents.all() if p.sex == Animal.Sex.FEMALE), None)
 
     def sexed(self):
         return self.sex != Animal.Sex.UNKNOWN_SEX
@@ -449,14 +445,14 @@ class Animal(models.Model):
         """
         return self.event_set.filter(status__adds=True).last()
 
-    def age(self, date: Optional[datetime.date] = None):
+    def age(self, on_date: Optional[datetime.date] = None):
         """Returns age (as of date).
 
         Age is days since birthdate if alive, age at death if dead, or None if
         unknown. This method is masked if with_dates() is used on the queryset.
 
         """
-        refdate = date or datetime.date.today()
+        refdate = on_date or datetime.date.today()
         events = self.event_set.filter(date__lte=refdate).aggregate(
             born_on=Min("date", filter=Q(status=get_birth_event_type())),
             died_on=Max("date", filter=Q(status__removes=True)),
@@ -468,12 +464,12 @@ class Animal(models.Model):
         else:
             return events["died_on"] - events["born_on"]
 
-    def alive(self, date: Optional[datetime.date] = None):
+    def alive(self, on_date: Optional[datetime.date] = None):
         """Returns true if the bird is alive (as of date).
 
         This method is masked if with_status() is used on the queryset.
         """
-        refdate = date or datetime.date.today()
+        refdate = on_date or datetime.date.today()
         is_alive = self.event_set.filter(date__lte=refdate).aggregate(
             added=Sum(Cast("status__adds", models.IntegerField())),
             removed=Sum(Cast("status__removes", models.IntegerField())),
@@ -536,13 +532,13 @@ class Animal(models.Model):
         except ObjectDoesNotExist:
             return None
 
-    def last_location(self, date: Optional[datetime.date] = None):
-        """Returns the location recorded in the most recent event before date
+    def last_location(self, on_date: Optional[datetime.date] = None):
+        """Returns the location recorded in the most recent event before `on_date`
         (today if not specified). This method will be masked if with_location()
         is used on the queryset.
 
         """
-        refdate = date or datetime.date.today()
+        refdate = on_date or datetime.date.today()
         try:
             return (
                 self.event_set.select_related("location")
@@ -693,7 +689,7 @@ class Event(models.Model):
         return "%s on %s" % (self.status, self.date)
 
     def age(self):
-        """Age of the anmial at the time of the event, or None if birthday not known"""
+        """Age of the animal at the time of the event, or None if birthday not known"""
         events = self.animal.event_set.filter(status=get_birth_event_type())
         if events:
             evt_birth = events.earliest()

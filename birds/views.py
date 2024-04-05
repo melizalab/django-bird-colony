@@ -69,6 +69,20 @@ class LargeResultsSetPagination(LinkHeaderPagination):
 
 
 @require_http_methods(["GET"])
+def index(request):
+    today = datetime.date.today()
+    return render(
+        request,
+        "birds/index.html",
+        {
+            "today": today,
+            "lastmonth": today.replace(day=1) - datetime.timedelta(days=1),
+        },
+    )
+
+
+# Animals
+@require_http_methods(["GET"])
 def animal_list(request):
     qs = (
         Animal.objects.with_annotations()
@@ -86,6 +100,223 @@ def animal_list(request):
     )
 
 
+@require_http_methods(["GET"])
+def animal_view(request, uuid: str):
+    qs = Animal.objects.with_annotations()
+    animal = get_object_or_404(qs, uuid=uuid)
+    kids = (
+        animal.children.with_annotations()
+        .with_related()
+        .order_by("-alive", F("age").desc(nulls_last=True))
+    )
+    events = animal.event_set.with_related().order_by("-date", "-created")
+    samples = animal.sample_set.order_by("-date")
+    pairings = animal.pairings().with_related().with_progeny_stats().order_by("-began")
+    return render(
+        request,
+        "birds/animal.html",
+        {
+            "animal": animal,
+            "animal_list": kids,
+            "event_list": events,
+            "sample_list": samples,
+            "pairing_list": pairings,
+        },
+    )
+
+
+@require_http_methods(["GET"])
+def animal_genealogy(request, uuid: str):
+    animal = get_object_or_404(Animal.objects.with_dates(), pk=uuid)
+    generations = (1, 2, 3, 4)
+    ancestors = [
+        Animal.objects.ancestors_of(animal, generation=gen).with_annotations()
+        for gen in generations
+    ]
+    descendents = [
+        Animal.objects.descendents_of(animal, generation=gen)
+        .with_annotations()
+        .hatched()
+        .order_by("-alive", "-age")
+        for gen in generations
+    ]
+    # have to manually filter here because alive() will call with_status()
+    living = [qs.filter(alive__gt=0) for qs in descendents]
+    return render(
+        request,
+        "birds/genealogy.html",
+        {
+            "animal": animal,
+            "ancestors": ancestors,
+            "descendents": descendents,
+            "living": living,
+        },
+    )
+
+
+@require_http_methods(["GET", "POST"])
+def new_animal_entry(request):
+    if request.method == "POST":
+        form = NewAnimalForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            if data["sire"] is not None and data["dam"] is not None:
+                animal = Animal.objects.create_from_parents(
+                    sire=data["sire"],
+                    dam=data["dam"],
+                    date=data["acq_date"],
+                    status=data["acq_status"],
+                    description=data["comments"],
+                    location=data["location"],
+                    entered_by=data["user"],
+                )
+            else:
+                animal = Animal.objects.create_with_event(
+                    species=data["species"],
+                    date=data["acq_date"],
+                    status=data["acq_status"],
+                    description=data["comments"],
+                    location=data["location"],
+                    entered_by=data["user"],
+                )
+            animal.update_band(
+                band_number=data["band_number"],
+                band_color=data["band_color"],
+                date=data["banding_date"],
+                location=data["location"],
+                entered_by=data["user"],
+                sex=data["sex"],
+                plumage=data["plumage"],
+            )
+            return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
+    else:
+        form = NewAnimalForm()
+        form.initial["user"] = request.user
+
+    return render(request, "birds/animal_entry.html", {"form": form})
+
+
+@require_http_methods(["GET", "POST"])
+def new_band_entry(request, uuid: str):
+    animal = get_object_or_404(Animal, pk=uuid)
+    if request.method == "POST":
+        form = NewBandForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            animal.update_band(
+                band_number=data["band_number"],
+                date=data["banding_date"],
+                entered_by=data["user"],
+                band_color=data["band_color"],
+                sex=data["sex"],
+                plumage=data["plumage"],
+                location=data["location"],
+            )
+            return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
+    else:
+        form = NewBandForm()
+        form.initial["user"] = request.user
+        form.initial["sex"] = animal.sex
+
+    return render(request, "birds/band_entry.html", {"animal": animal, "form": form})
+
+
+@require_http_methods(["GET", "POST"])
+def update_sex(request, uuid: str):
+    animal = get_object_or_404(Animal, pk=uuid)
+    if request.method == "POST":
+        form = SexForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            animal.update_sex(
+                date=data["date"],
+                entered_by=data["entered_by"],
+                sex=data["sex"],
+                description=data["description"],
+            )
+            return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
+    else:
+        form = SexForm()
+        form.initial["entered_by"] = request.user
+        form.initial["sex"] = animal.sex
+
+    return render(request, "birds/sex_entry.html", {"animal": animal, "form": form})
+
+
+@require_http_methods(["GET", "POST"])
+def reservation_entry(request, uuid: str):
+    animal = get_object_or_404(Animal, pk=uuid)
+    if request.method == "POST":
+        form = ReservationForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            if data["entered_by"] is None:
+                user = request.user
+                animal.reserved_by = None
+                descr = f"reservation released: {data['description']}"
+            else:
+                user = animal.reserved_by = data["entered_by"]
+                descr = f"reservation created: {data['description']}"
+            animal.save()
+            Event.objects.create(
+                animal=animal,
+                date=data["date"],
+                status=data["status"],
+                entered_by=user,
+                description=descr,
+            )
+            return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
+    else:
+        form = ReservationForm()
+        if animal.reserved_by is None:
+            form.initial["entered_by"] = request.user
+    return render(
+        request, "birds/reservation_entry.html", {"animal": animal, "form": form}
+    )
+
+
+# Events
+@require_http_methods(["GET"])
+def event_list(request, animal: Optional[str] = None):
+    qs = Event.objects.with_related().order_by("-date", "-created")
+    if animal is not None:
+        animal = get_object_or_404(Animal, uuid=animal)
+        qs = qs.filter(animal=animal)
+    f = EventFilter(request.GET, queryset=qs)
+    paginator = Paginator(f.qs, 25)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+    return render(
+        request,
+        "birds/event_list.html",
+        {"filter": f, "page_obj": page_obj, "event_list": page_obj.object_list},
+    )
+
+
+@require_http_methods(["GET", "POST"])
+def new_event_entry(request, uuid: str):
+    animal = get_object_or_404(Animal, pk=uuid)
+    if request.method == "POST":
+        form = EventForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            Event.objects.create(
+                animal=animal,
+                date=data["date"],
+                status=data["status"],
+                entered_by=data["entered_by"],
+                location=data["location"],
+                description=data["description"],
+            )
+            return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
+    else:
+        form = EventForm()
+        form.initial["entered_by"] = request.user
+
+    return render(request, "birds/event_entry.html", {"form": form, "animal": animal})
+
+
+# Pairings
 @require_http_methods(["GET"])
 def pairing_list(request):
     qs = Pairing.objects.with_related().with_progeny_stats().order_by("-began")
@@ -203,6 +434,66 @@ def close_pairing(request, pk: int):
     )
 
 
+# Samples
+@require_http_methods(["GET"])
+def sample_type_list(request):
+    qs = SampleType.objects.all()
+    return render(request, "birds/sample_type_list.html", {"sampletype_list": qs})
+
+
+@require_http_methods(["GET"])
+def sample_list(request, animal: Optional[str] = None):
+    qs = Sample.objects.select_related(
+        "type",
+        "location",
+        "collected_by",
+        "animal",
+        "animal__species",
+        "animal__band_color",
+    ).order_by("-date")
+    if animal is not None:
+        animal = get_object_or_404(Animal, uuid=animal)
+        qs = qs.filter(animal=animal)
+    f = SampleFilter(request.GET, queryset=qs)
+    paginator = Paginator(f.qs, 25)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+    return render(
+        request,
+        "birds/sample_list.html",
+        {"filter": f, "page_obj": page_obj, "sample_list": page_obj.object_list},
+    )
+
+
+@require_http_methods(["GET"])
+def sample_view(request, uuid: str):
+    sample = get_object_or_404(Sample, uuid=uuid)
+    return render(
+        request,
+        "birds/sample.html",
+        {"sample": sample},
+    )
+
+
+@require_http_methods(["GET", "POST"])
+def new_sample_entry(request, uuid: str):
+    animal = get_object_or_404(Animal, pk=uuid)
+    if request.method == "POST":
+        form = SampleForm(request.POST)
+        if form.is_valid():
+            sample = form.save(commit=False)
+            sample.animal = animal
+            sample.save()
+            return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
+    else:
+        form = SampleForm()
+        form.fields["source"].queryset = Sample.objects.filter(animal=animal)
+        form.initial["collected_by"] = request.user
+
+    return render(request, "birds/sample_entry.html", {"form": form, "animal": animal})
+
+
+# Summary views
 @require_http_methods(["GET"])
 def location_summary(request):
     # do this with a single query and then group by location
@@ -399,266 +690,6 @@ def nest_check(request):
 
 
 @require_http_methods(["GET"])
-def event_list(request, animal: Optional[str] = None):
-    qs = Event.objects.with_related().order_by("-date", "-created")
-    if animal is not None:
-        animal = get_object_or_404(Animal, uuid=animal)
-        qs = qs.filter(animal=animal)
-    f = EventFilter(request.GET, queryset=qs)
-    paginator = Paginator(f.qs, 25)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
-    return render(
-        request,
-        "birds/event_list.html",
-        {"filter": f, "page_obj": page_obj, "event_list": page_obj.object_list},
-    )
-
-
-@require_http_methods(["GET"])
-def animal_view(request, uuid: str):
-    qs = Animal.objects.with_annotations()
-    animal = get_object_or_404(qs, uuid=uuid)
-    kids = (
-        animal.children.with_annotations()
-        .with_related()
-        .order_by("-alive", F("age").desc(nulls_last=True))
-    )
-    events = animal.event_set.with_related().order_by("-date", "-created")
-    samples = animal.sample_set.order_by("-date")
-    pairings = animal.pairings().with_related().with_progeny_stats().order_by("-began")
-    return render(
-        request,
-        "birds/animal.html",
-        {
-            "animal": animal,
-            "animal_list": kids,
-            "event_list": events,
-            "sample_list": samples,
-            "pairing_list": pairings,
-        },
-    )
-
-
-@require_http_methods(["GET"])
-def animal_genealogy(request, uuid: str):
-    animal = get_object_or_404(Animal.objects.with_dates(), pk=uuid)
-    generations = (1, 2, 3, 4)
-    ancestors = [
-        Animal.objects.ancestors_of(animal, generation=gen).with_annotations()
-        for gen in generations
-    ]
-    descendents = [
-        Animal.objects.descendents_of(animal, generation=gen)
-        .with_annotations()
-        .hatched()
-        .order_by("-alive", "-age")
-        for gen in generations
-    ]
-    # have to manually filter here because alive() will call with_status()
-    living = [qs.filter(alive__gt=0) for qs in descendents]
-    return render(
-        request,
-        "birds/genealogy.html",
-        {
-            "animal": animal,
-            "ancestors": ancestors,
-            "descendents": descendents,
-            "living": living,
-        },
-    )
-
-
-class GenealogyView(generic.DetailView):
-    model = Animal
-    template_name = "birds/genealogy.html"
-    slug_field = "uuid"
-    slug_url_kwarg = "uuid"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        animal = context["animal"]
-        # could probably speed these up by prefetching related
-        context["ancestors"] = [
-            animal.parents.all(),
-            Animal.objects.filter(children__children=animal),
-            Animal.objects.filter(children__children__children=animal),
-            Animal.objects.filter(children__children__children__children=animal),
-        ]
-        context["descendents"] = [
-            animal.children.filter(event__status__adds=True).order_by("-alive"),
-            Animal.objects.filter(
-                parents__parents=animal, event__status__adds=True
-            ).order_by("-alive"),
-            Animal.objects.filter(
-                parents__parents__parents=animal, event__status__adds=True
-            ).order_by("-alive"),
-            Animal.objects.filter(
-                parents__parents__parents__parents=animal, event__status__adds=True
-            ).order_by("-alive"),
-        ]
-        context["living"] = [qs.filter(alive=True) for qs in context["descendents"]]
-        return context
-
-
-@require_http_methods(["GET", "POST"])
-def new_animal_entry(request):
-    if request.method == "POST":
-        form = NewAnimalForm(request.POST)
-        if form.is_valid():
-            data = form.cleaned_data
-            if data["sire"] is not None and data["dam"] is not None:
-                animal = Animal.objects.create_from_parents(
-                    sire=data["sire"],
-                    dam=data["dam"],
-                    date=data["acq_date"],
-                    status=data["acq_status"],
-                    description=data["comments"],
-                    location=data["location"],
-                    entered_by=data["user"],
-                )
-            else:
-                animal = Animal.objects.create_with_event(
-                    species=data["species"],
-                    date=data["acq_date"],
-                    status=data["acq_status"],
-                    description=data["comments"],
-                    location=data["location"],
-                    entered_by=data["user"],
-                )
-            animal.update_band(
-                band_number=data["band_number"],
-                band_color=data["band_color"],
-                date=data["banding_date"],
-                location=data["location"],
-                entered_by=data["user"],
-                sex=data["sex"],
-                plumage=data["plumage"],
-            )
-            return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
-    else:
-        form = NewAnimalForm()
-        form.initial["user"] = request.user
-
-    return render(request, "birds/animal_entry.html", {"form": form})
-
-
-@require_http_methods(["GET", "POST"])
-def new_band_entry(request, uuid: str):
-    animal = get_object_or_404(Animal, pk=uuid)
-    if request.method == "POST":
-        form = NewBandForm(request.POST)
-        if form.is_valid():
-            data = form.cleaned_data
-            animal.update_band(
-                band_number=data["band_number"],
-                date=data["banding_date"],
-                entered_by=data["user"],
-                band_color=data["band_color"],
-                sex=data["sex"],
-                plumage=data["plumage"],
-                location=data["location"],
-            )
-            return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
-    else:
-        form = NewBandForm()
-        form.initial["user"] = request.user
-        form.initial["sex"] = animal.sex
-
-    return render(request, "birds/band_entry.html", {"animal": animal, "form": form})
-
-
-@require_http_methods(["GET", "POST"])
-def new_event_entry(request, uuid: str):
-    animal = get_object_or_404(Animal, pk=uuid)
-    if request.method == "POST":
-        form = EventForm(request.POST)
-        if form.is_valid():
-            data = form.cleaned_data
-            Event.objects.create(
-                animal=animal,
-                date=data["date"],
-                status=data["status"],
-                entered_by=data["entered_by"],
-                location=data["location"],
-                description=data["description"],
-            )
-            return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
-    else:
-        form = EventForm()
-        form.initial["entered_by"] = request.user
-
-    return render(request, "birds/event_entry.html", {"form": form, "animal": animal})
-
-
-@require_http_methods(["GET", "POST"])
-def reservation_entry(request, uuid: str):
-    animal = get_object_or_404(Animal, pk=uuid)
-    if request.method == "POST":
-        form = ReservationForm(request.POST)
-        if form.is_valid():
-            data = form.cleaned_data
-            if data["entered_by"] is None:
-                user = request.user
-                animal.reserved_by = None
-                descr = f"reservation released: {data['description']}"
-            else:
-                user = animal.reserved_by = data["entered_by"]
-                descr = f"reservation created: {data['description']}"
-            animal.save()
-            Event.objects.create(
-                animal=animal,
-                date=data["date"],
-                status=data["status"],
-                entered_by=user,
-                description=descr,
-            )
-            return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
-    else:
-        form = ReservationForm()
-        if animal.reserved_by is None:
-            form.initial["entered_by"] = request.user
-    return render(
-        request, "birds/reservation_entry.html", {"animal": animal, "form": form}
-    )
-
-
-@require_http_methods(["GET", "POST"])
-def update_sex(request, uuid: str):
-    animal = get_object_or_404(Animal, pk=uuid)
-    if request.method == "POST":
-        form = SexForm(request.POST)
-        if form.is_valid():
-            data = form.cleaned_data
-            animal.update_sex(
-                date=data["date"],
-                entered_by=data["entered_by"],
-                sex=data["sex"],
-                description=data["description"],
-            )
-            return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
-    else:
-        form = SexForm()
-        form.initial["entered_by"] = request.user
-        form.initial["sex"] = animal.sex
-
-    return render(request, "birds/sex_entry.html", {"animal": animal, "form": form})
-
-
-@require_http_methods(["GET"])
-def index(request):
-    today = datetime.date.today()
-    return render(
-        request,
-        "birds/index.html",
-        {
-            "today": today,
-            "lastmonth": today.replace(day=1) - datetime.timedelta(days=1),
-        },
-    )
-
-
-@require_http_methods(["GET"])
 def event_summary(request, year: int, month: int):
     try:
         date = datetime.date(year=year, month=month, day=1)
@@ -700,64 +731,6 @@ def event_summary(request, year: int, month: int):
             "bird_counts": counts,
         },
     )
-
-
-@require_http_methods(["GET"])
-def sample_type_list(request):
-    qs = SampleType.objects.all()
-    return render(request, "birds/sample_type_list.html", {"sampletype_list": qs})
-
-
-@require_http_methods(["GET"])
-def sample_list(request, animal: Optional[str] = None):
-    qs = Sample.objects.select_related(
-        "type",
-        "location",
-        "collected_by",
-        "animal",
-        "animal__species",
-        "animal__band_color",
-    ).order_by("-date")
-    if animal is not None:
-        animal = get_object_or_404(Animal, uuid=animal)
-        qs = qs.filter(animal=animal)
-    f = SampleFilter(request.GET, queryset=qs)
-    paginator = Paginator(f.qs, 25)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
-    return render(
-        request,
-        "birds/sample_list.html",
-        {"filter": f, "page_obj": page_obj, "sample_list": page_obj.object_list},
-    )
-
-
-@require_http_methods(["GET"])
-def sample_view(request, uuid: str):
-    sample = get_object_or_404(Sample, uuid=uuid)
-    return render(
-        request,
-        "birds/sample.html",
-        {"sample": sample},
-    )
-
-
-@require_http_methods(["GET", "POST"])
-def new_sample_entry(request, uuid: str):
-    animal = get_object_or_404(Animal, pk=uuid)
-    if request.method == "POST":
-        form = SampleForm(request.POST)
-        if form.is_valid():
-            sample = form.save(commit=False)
-            sample.animal = animal
-            sample.save()
-            return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
-    else:
-        form = SampleForm()
-        form.fields["source"].queryset = Sample.objects.filter(animal=animal)
-        form.initial["collected_by"] = request.user
-
-    return render(request, "birds/sample_entry.html", {"form": form, "animal": animal})
 
 
 ### API

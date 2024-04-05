@@ -26,14 +26,19 @@ urlpatterns = [
         name="genealogy",
     ),
     re_path(
-        r"^animals/(?P<animal>[a-f0-9\-]{36})/events/$",
-        views.event_list,
-        name="animal_events",
-    ),
-    re_path(
         r"^animals/(?P<uuid>[a-f0-9\-]{36})/events/new/$",
         login_required(views.new_event_entry),
         name="new_event",
+    ),
+    re_path(
+        r"^animals/(?P<uuid>[a-f0-9\-]{36})/set-sex/$",
+        login_required(views.update_sex),
+        name="set_sex",
+    ),
+    re_path(
+        r"^animals/(?P<uuid>[a-f0-9\-]{36})/reserve/$",
+        login_required(views.reservation_entry),
+        name="update_reservation",
     ),
     re_path(
         r"^animals/(?P<animal>[a-f0-9\-]{36})/samples/$",
@@ -51,14 +56,9 @@ urlpatterns = [
         name="new_band",
     ),
     re_path(
-        r"^animals/(?P<uuid>[a-f0-9\-]{36})/set-sex/$",
-        login_required(views.update_sex),
-        name="set_sex",
-    ),
-    re_path(
-        r"^animals/(?P<uuid>[a-f0-9\-]{36})/reserve/$",
-        login_required(views.reservation_entry),
-        name="update_reservation",
+        r"^animals/(?P<animal>[a-f0-9\-]{36})/events/$",
+        views.event_list,
+        name="animal_events",
     ),
     re_path(r"^events/$", views.event_list, name="events"),
     re_path(r"^pairings/$", views.pairing_list, name="pairings"),

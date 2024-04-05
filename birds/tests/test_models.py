@@ -78,7 +78,7 @@ class AnimalModelTests(TestCase):
         self.assertIs(bird.age(), None)
         self.assertIs(bird.alive(), False)
         random_date = datetime.date.today() - datetime.timedelta(days=5)
-        self.assertIs(bird.age(date=random_date), None)
+        self.assertIs(bird.age(on_date=random_date), None)
         self.assertNotIn(bird, Animal.objects.alive())
         self.assertNotIn(bird, Animal.objects.hatched())
         annotated_bird = Animal.objects.with_status().get(pk=bird.pk)
@@ -107,12 +107,12 @@ class AnimalModelTests(TestCase):
         )
         self.assertEqual(bird.acquisition_event(), event)
         self.assertEqual(bird.age(), age)
-        self.assertEqual(bird.age(date=birthday), datetime.timedelta(days=0))
-        self.assertIs(bird.age(date=birthday - datetime.timedelta(days=1)), None)
+        self.assertEqual(bird.age(on_date=birthday), datetime.timedelta(days=0))
+        self.assertIs(bird.age(on_date=birthday - datetime.timedelta(days=1)), None)
 
         self.assertIs(bird.alive(), True)
-        self.assertIs(bird.alive(date=birthday), True)
-        self.assertIs(bird.alive(date=birthday - datetime.timedelta(days=1)), False)
+        self.assertIs(bird.alive(on_date=birthday), True)
+        self.assertIs(bird.alive(on_date=birthday - datetime.timedelta(days=1)), False)
         self.assertIs(bird.expected_hatch(), None)
 
         annotated_bird = Animal.objects.with_status().get(pk=bird.pk)
@@ -150,10 +150,10 @@ class AnimalModelTests(TestCase):
 
         self.assertEqual(bird.acquisition_event(), event)
         self.assertIs(bird.age(), None)
-        self.assertIs(bird.age(date=acq_on), None)
+        self.assertIs(bird.age(on_date=acq_on), None)
         self.assertIs(bird.alive(), True)
-        self.assertIs(bird.alive(date=acq_on), True)
-        self.assertIs(bird.alive(date=acq_on - datetime.timedelta(days=1)), False)
+        self.assertIs(bird.alive(on_date=acq_on), True)
+        self.assertIs(bird.alive(on_date=acq_on - datetime.timedelta(days=1)), False)
         self.assertIs(bird.expected_hatch(), None)
 
         annotated_bird = Animal.objects.with_status().get(pk=bird.pk)
@@ -199,11 +199,11 @@ class AnimalModelTests(TestCase):
 
         self.assertEqual(bird.acquisition_event(), event_born)
         self.assertIs(bird.alive(), False)
-        self.assertIs(bird.alive(date=died_on - datetime.timedelta(days=1)), True)
-        self.assertIs(bird.alive(date=born_on - datetime.timedelta(days=1)), False)
+        self.assertIs(bird.alive(on_date=died_on - datetime.timedelta(days=1)), True)
+        self.assertIs(bird.alive(on_date=born_on - datetime.timedelta(days=1)), False)
 
         self.assertEqual(bird.age(), died_on - born_on)
-        self.assertEqual(bird.age(date=died_on), died_on - born_on)
+        self.assertEqual(bird.age(on_date=died_on), died_on - born_on)
         self.assertIs(bird.expected_hatch(), None)
 
         annotated_bird = Animal.objects.with_status().get(pk=bird.pk)
@@ -443,9 +443,9 @@ class AnimalModelTests(TestCase):
         )
         self.assertIs(bird.alive(), True)
         self.assertEqual(bird.last_location(), location_2)
-        self.assertEqual(bird.last_location(date=birthday), location_1)
+        self.assertEqual(bird.last_location(on_date=birthday), location_1)
         self.assertIs(
-            bird.last_location(date=birthday - datetime.timedelta(days=1)), None
+            bird.last_location(on_date=birthday - datetime.timedelta(days=1)), None
         )
 
     def test_updating_sex(self):
