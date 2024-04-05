@@ -1,19 +1,16 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
 from django import forms
-from django.template.defaultfilters import pluralize
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
+from django.template.defaultfilters import pluralize
 from django.utils.translation import gettext_lazy as _
 
 from birds import models
 from birds.models import (
     Animal,
     Color,
-    Event,
     Location,
-    Pairing,
-    Parent,
     Plumage,
     Sample,
     Species,

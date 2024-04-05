@@ -23,10 +23,9 @@ from django.db.models import (
     Q,
     Subquery,
     Sum,
-    Value,
     When,
 )
-from django.db.models.functions import Greatest, Now, Cast, TruncDay, Trunc
+from django.db.models.functions import Cast, Greatest, Now, Trunc, TruncDay
 from django.db.models.lookups import GreaterThan
 from django.urls import reverse
 from django.utils.functional import cached_property
@@ -131,7 +130,6 @@ class Location(models.Model):
 
     def birds(self, on_date: Optional[datetime.date] = None):
         """Returns an AnimalQuerySet with all the birds in this location"""
-        refdate = on_date or datetime.date.today()
         return (
             Animal.objects.with_status()
             .with_location(on_date=on_date)
@@ -526,7 +524,7 @@ class Animal(models.Model):
         if days is None:
             return None
         try:
-            q = self.event_set.filter(status=get_birth_event_type()).get()
+            self.event_set.filter(status=get_birth_event_type()).get()
             return None
         except ObjectDoesNotExist:
             pass
@@ -827,7 +825,7 @@ class Pairing(models.Model):
     objects = PairingManager.from_queryset(PairingQuerySet)()
 
     def __str__(self):
-        return "♂{} × ♀{} ({} — {})".format(
+        return "♂{} × ♀{} ({} — {})".format(  # noqa: RUF001
             self.sire, self.dam, self.began, self.ended or ""
         )
 

@@ -2,16 +2,15 @@
 # -*- mode: python -*-
 import calendar
 import datetime
+from collections import Counter, defaultdict
 from itertools import groupby
 from typing import Optional
-from collections import Counter, defaultdict
 
-from django.core.exceptions import ObjectDoesNotExist
 from django.core.paginator import Paginator
 from django.db.models import F
 from django.db.utils import IntegrityError
 from django.forms import ValidationError, formset_factory
-from django.http import HttpResponseRedirect, HttpResponseBadRequest, Http404
+from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils import dateparse
@@ -19,12 +18,19 @@ from django.utils.timezone import make_aware
 from django.utils.translation import gettext_lazy as _
 from django.views import generic
 from django.views.decorators.http import require_http_methods
+from django_filters.rest_framework import DjangoFilterBackend
 from drf_link_header_pagination import LinkHeaderPagination
 from rest_framework import generics
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from birds import __version__, api_version
+from birds.filters import (
+    AnimalFilter,
+    EventFilter,
+    PairingFilter,
+    SampleFilter,
+)
 from birds.forms import (
     EndPairingForm,
     EventForm,
@@ -39,30 +45,21 @@ from birds.forms import (
 )
 from birds.models import (
     ADULT_ANIMAL_NAME,
-    Age,
     Animal,
     Event,
     NestCheck,
     Pairing,
     Sample,
     SampleType,
-    Status,
 )
 from birds.serializers import (
     AnimalDetailSerializer,
     AnimalPedigreeSerializer,
-    PedigreeRequestSerializer,
     AnimalSerializer,
     EventSerializer,
+    PedigreeRequestSerializer,
 )
-from birds.filters import (
-    AnimalFilter,
-    EventFilter,
-    SampleFilter,
-    PairingFilter,
-    DjangoFilterBackend,
-)
-from birds.tools import tabulate_locations, tabulate_nests
+from birds.tools import tabulate_nests
 
 
 class LargeResultsSetPagination(LinkHeaderPagination):
@@ -187,7 +184,7 @@ def close_pairing(request, pk: int):
                     comment=data["comment"],
                 )
                 return HttpResponseRedirect(reverse("birds:pairing", args=(pk,)))
-            except IntegrityError as err:
+            except IntegrityError:
                 form.add_error(
                     None,
                     ValidationError(
@@ -355,11 +352,11 @@ def nest_check(request):
                             updated["hatch_status"],
                             updated["lost_status"],
                         ):
-                            event = Event.objects.create(
+                            Event.objects.create(
                                 date=datetime.date.today(), entered_by=user, **item
                             )
                         elif item["status"] == updated["laid_status"]:
-                            animal = Animal.objects.create_from_parents(
+                            Animal.objects.create_from_parents(
                                 sire=item["sire"],
                                 dam=item["dam"],
                                 date=datetime.date.today(),
@@ -367,7 +364,7 @@ def nest_check(request):
                                 entered_by=user,
                                 location=item["location"],
                             )
-                check = NestCheck.objects.create(
+                NestCheck.objects.create(
                     entered_by=user,
                     comments=user_form.cleaned_data["comments"],
                     datetime=make_aware(datetime.datetime.now()),
@@ -578,7 +575,7 @@ def new_event_entry(request, uuid: str):
         form = EventForm(request.POST)
         if form.is_valid():
             data = form.cleaned_data
-            event = Event.objects.create(
+            Event.objects.create(
                 animal=animal,
                 date=data["date"],
                 status=data["status"],
@@ -609,7 +606,7 @@ def reservation_entry(request, uuid: str):
                 user = animal.reserved_by = data["entered_by"]
                 descr = f"reservation created: {data['description']}"
             animal.save()
-            evt = Event.objects.create(
+            Event.objects.create(
                 animal=animal,
                 date=data["date"],
                 status=data["status"],

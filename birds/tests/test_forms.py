@@ -3,19 +3,19 @@
 import datetime
 import warnings
 
-from django.test import TestCase
 from django.forms import formset_factory
+from django.test import TestCase
 
 from birds import models
-from birds.models import Animal, Location, Plumage, Color, Status, Species, Pairing
 from birds.forms import (
+    NestCheckForm,
+    NewAnimalForm,
     NewBandForm,
+    NewPairingForm,
     ReservationForm,
     SexForm,
-    NewAnimalForm,
-    NestCheckForm,
-    NewPairingForm,
 )
+from birds.models import Animal, Color, Location, Pairing, Plumage, Species, Status
 
 warnings.filterwarnings("error")
 
@@ -47,7 +47,6 @@ class ReservationFormTest(TestCase):
 
     def test_without_user(self):
         _ = Status.objects.get_or_create(name=models.RESERVATION_EVENT_NAME)
-        user = models.get_sentinel_user()
         form = ReservationForm({"date": datetime.date.today()})
         self.assertTrue(form.is_valid())
 
@@ -504,7 +503,7 @@ class NestCheckFormTest(TestCase):
 
     def test_nest_check_cannot_add_egg_with_too_many_males(self):
         birthday = datetime.date.today() - datetime.timedelta(days=365)
-        extra_male = Animal.objects.create_with_event(
+        Animal.objects.create_with_event(
             species=Species.objects.get(pk=1),
             status=models.get_birth_event_type(),
             date=birthday,
@@ -528,7 +527,7 @@ class NestCheckFormTest(TestCase):
 
     def test_nest_check_cannot_add_egg_with_too_many_females(self):
         birthday = datetime.date.today() - datetime.timedelta(days=365)
-        extra_male = Animal.objects.create_with_event(
+        Animal.objects.create_with_event(
             species=Species.objects.get(pk=1),
             status=models.get_birth_event_type(),
             date=birthday,

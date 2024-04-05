@@ -1,25 +1,24 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
-import uuid
 import datetime
+import uuid
 import warnings
 
-from django.urls import reverse
-from django.test import TestCase
 from django.contrib.auth import get_user_model
+from django.test import TestCase
+from django.urls import reverse
 from django.utils.timezone import make_aware
 
-from birds import views, models
+from birds import models
 from birds.models import (
     Animal,
-    Species,
-    Event,
     Color,
-    Status,
+    Event,
     Location,
     NestCheck,
     Pairing,
-    Plumage,
+    Species,
+    Status,
 )
 
 warnings.filterwarnings("error")
@@ -169,7 +168,7 @@ class AnimalViewTests(BaseColonyTest):
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
 
-    def test_parent_detail_view_contains_all_related_objects(self):
+    def test_animal_event_view_contains_all_related_objects(self):
         response = self.client.get(
             reverse("birds:animal_events", args=[self.sire.uuid])
         )
@@ -197,7 +196,7 @@ class AnimalViewTests(BaseColonyTest):
 
 class NestReportTests(BaseColonyTest):
     def test_nest_report_url_exists_at_desired_location(self):
-        response = self.client.get(f"/birds/summary/nests/")
+        response = self.client.get("/birds/summary/nests/")
         self.assertEqual(response.status_code, 200)
 
     def test_nest_report_default_dates(self):
@@ -222,7 +221,7 @@ class NestReportTests(BaseColonyTest):
         self.assertCountEqual(response.context["nest_checks"], [nest_check])
 
     def test_nest_report_bird_counts(self):
-        today = datetime.date.today()
+        datetime.date.today()
         response = self.client.get(reverse("birds:nest-summary"))
         nest_data = response.context["nest_data"][0]
         self.assertEqual(nest_data["location"], self.nest)
@@ -273,7 +272,7 @@ class EventSummaryTests(TestCase):
             band_number=2,
         )
         # move the parents in at the start of last month
-        pairing = Pairing.objects.create_with_events(
+        Pairing.objects.create_with_events(
             sire=cls.sire,
             dam=cls.dam,
             began=start_of_last_month,
@@ -377,14 +376,14 @@ class NewAnimalFormViewTests(TestCase):
         self.assertTrue(response.url.startswith("/accounts/login/"))
 
     def test_initial_values_and_options(self):
-        login = self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
         response = self.client.get(reverse("birds:new_animal"))
         self.assertEqual(response.status_code, 200)
         # TODO only status types that add should be given as options
-        status_adds = Status.objects.filter(adds=True)
+        Status.objects.filter(adds=True)
 
     def test_transfer_creates_bird_and_events(self):
-        login = self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
         status = Status.objects.get(name="transferred in")
         species = Species.objects.get(pk=1)
         location = Location.objects.get(pk=1)
@@ -430,7 +429,7 @@ class NewAnimalFormViewTests(TestCase):
             sex=Animal.Sex.FEMALE,
             band_number=2,
         )
-        login = self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
         response = self.client.post(
             reverse("birds:new_animal"),
             {
@@ -472,12 +471,12 @@ class NewBandFormViewTests(TestCase):
         self.assertTrue(response.url.startswith("/accounts/login/"))
 
     def test_initial_values_and_options(self):
-        login = self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
         response = self.client.get(reverse("birds:new_band", args=[self.animal.uuid]))
         self.assertEqual(response.status_code, 200)
 
     def test_update_band(self):
-        login = self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
         response = self.client.post(
             reverse("birds:new_band", args=[self.animal.uuid]),
             {
@@ -520,7 +519,7 @@ class NewEventFormViewTests(TestCase):
         self.assertTrue(response.url.startswith("/accounts/login/"))
 
     def test_initial_values_and_options(self):
-        login = self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
         response = self.client.get(reverse("birds:new_event", args=[self.animal.uuid]))
         self.assertEqual(response.status_code, 200)
 
@@ -528,7 +527,7 @@ class NewEventFormViewTests(TestCase):
         self.assertEqual(self.animal.event_set.count(), 1)
         self.assertTrue(self.animal.alive())
         status = Status.objects.get(name=models.DEATH_EVENT_NAME)
-        login = self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
         response = self.client.post(
             reverse("birds:new_event", args=[self.animal.uuid]),
             {
@@ -606,21 +605,21 @@ class PairingFormViewTests(TestCase):
         self.assertTrue(response.url.startswith("/accounts/login/"))
 
     def test_initial_values_and_options(self):
-        login = self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
         response = self.client.get(reverse("birds:new_pairing"))
         self.assertEqual(response.status_code, 200)
         self.assertNotIn("sire", response.context["form"].initial)
         self.assertNotIn("dam", response.context["form"].initial)
 
     def test_initial_values_from_previous_pairing(self):
-        login = self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
         response = self.client.get(reverse("birds:new_pairing", args=[self.pairing.pk]))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["form"].initial["sire"], self.sire)
         self.assertEqual(response.context["form"].initial["dam"], self.dam)
 
     def test_initial_values_ending_pairing(self):
-        login = self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
         new_pairing = Pairing.objects.create_with_events(
             sire=self.sire,
             dam=self.dam,
@@ -633,7 +632,7 @@ class PairingFormViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_create_pairing(self):
-        login = self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
         location = Location.objects.filter(nest=True).first()
         response = self.client.post(
             reverse("birds:new_pairing"),
@@ -654,7 +653,7 @@ class PairingFormViewTests(TestCase):
         self.assertEqual(self.dam.event_set.count(), 4)
 
     def test_close_pairing(self):
-        login = self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
         new_pairing = Pairing.objects.create_with_events(
             sire=self.sire,
             dam=self.dam,
@@ -727,7 +726,7 @@ class NestCheckFormViewTests(TestCase):
         self.assertTrue(response.url.startswith("/accounts/login/"))
 
     def test_initial_empty_nest(self):
-        login = self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
         response = self.client.get(reverse("birds:nest-check"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context["nest_formset"]), 1)
@@ -741,7 +740,7 @@ class NestCheckFormViewTests(TestCase):
         user = models.get_sentinel_user()
         status_laid = models.get_unborn_creation_event_type()
         status_hatched = models.get_birth_event_type()
-        child_1 = Animal.objects.create_from_parents(
+        Animal.objects.create_from_parents(
             sire=self.sire,
             dam=self.dam,
             date=today,
@@ -749,7 +748,7 @@ class NestCheckFormViewTests(TestCase):
             entered_by=user,
             location=self.nest,
         )
-        child_2 = Animal.objects.create_from_parents(
+        Animal.objects.create_from_parents(
             sire=self.sire,
             dam=self.dam,
             date=today,
@@ -757,7 +756,7 @@ class NestCheckFormViewTests(TestCase):
             entered_by=user,
             location=self.nest,
         )
-        login = self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
         response = self.client.get(reverse("birds:nest-check"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context["nest_formset"]), 1)
@@ -774,7 +773,7 @@ class NestCheckFormViewTests(TestCase):
             "nests-0-eggs": 0,
             "nests-0-chicks": 1,
         }
-        login = self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
         response = self.client.post(reverse("birds:nest-check"), data)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "birds/nest_check.html")
@@ -787,7 +786,7 @@ class NestCheckFormViewTests(TestCase):
             "nests-0-eggs": 0,
             "nests-0-chicks": 0,
         }
-        login = self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
         response = self.client.post(reverse("birds:nest-check"), data)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "birds/nest_check_confirm.html")
@@ -805,7 +804,7 @@ class NestCheckFormViewTests(TestCase):
             "nests-0-eggs": 1,
             "nests-0-chicks": 0,
         }
-        login = self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
         response = self.client.post(reverse("birds:nest-check"), data)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "birds/nest_check_confirm.html")
@@ -859,7 +858,7 @@ class NestCheckFormViewTests(TestCase):
             "nests-0-eggs": 0,
             "nests-0-chicks": 1,
         }
-        login = self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
         response = self.client.post(reverse("birds:nest-check"), data)
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "birds/nest_check_confirm.html")

@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
 from django_filters import rest_framework as filters
-from django_filters.rest_framework import DjangoFilterBackend
-from django_filters.views import FilterView
 
-from birds.models import Animal, Event, Pairing, Sample
+from birds.models import Animal, Event, Sample
 
 
 class AnimalFilter(filters.FilterSet):

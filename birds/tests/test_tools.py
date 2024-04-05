@@ -1,22 +1,17 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
-import uuid
 import datetime
 
-from django.urls import reverse
 from django.test import TestCase
-from django.contrib.auth import get_user_model
 
-from birds import tools, models
+from birds import models, tools
 from birds.models import (
     Animal,
-    Species,
     Event,
-    Color,
-    Status,
     Location,
     Pairing,
-    Plumage,
+    Species,
+    Status,
 )
 
 

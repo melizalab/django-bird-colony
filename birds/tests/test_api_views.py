@@ -7,16 +7,11 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from birds import views, models
+from birds import models
 from birds.models import (
     Animal,
-    Species,
-    Event,
-    Color,
-    Status,
     Location,
-    Pairing,
-    Plumage,
+    Species,
 )
 
 warnings.filterwarnings("error")
@@ -46,7 +41,7 @@ class ApiViewTests(APITestCase):
             )
             for _ in range(2)
         ]
-        self.all_birds = self.children + [self.sire, self.dam]
+        self.all_birds = [*self.children, self.sire, self.dam]
         self.uuids = {str(bird.uuid) for bird in self.all_birds}
         self.n_birds = len(self.children) + 2
 

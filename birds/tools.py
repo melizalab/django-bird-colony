@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
 """ Tools for classifying birds and computing summaries """
+import datetime
 from collections import Counter, defaultdict
-from datetime import timedelta, date
 
 from birds.models import ADULT_ANIMAL_NAME, Animal, Event, Location
 
@@ -51,7 +51,7 @@ def tabulate_locations(since, until):
                 locations[event.location].append(event.animal)
         data[repdate] = locations
         dates.append(repdate)
-        repdate += timedelta(days=1)
+        repdate += datetime.timedelta(days=1)
     # pivot the structure while tabulating by age group to help the template engine
     nest_data = []
     for nest in nests:
@@ -69,7 +69,7 @@ def tabulate_locations(since, until):
     return dates, nest_data
 
 
-def tabulate_nests(since: date, until: date):
+def tabulate_nests(since: datetime.date, until: datetime.date):
     """Determines which animals are in which nests by date.
 
     In principle, it would be best to do this by using the database to generate
@@ -83,7 +83,7 @@ def tabulate_nests(since: date, until: date):
     if since > until:
         raise ValueError("until must be after since")
     n_days = (until - since).days + 1
-    dates = [since + timedelta(days=x) for x in range(n_days)]
+    dates = [since + datetime.timedelta(days=x) for x in range(n_days)]
     data = []
     for nest in Location.objects.filter(nest=True).order_by("name"):
         days = []

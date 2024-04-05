@@ -1,20 +1,21 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
 import datetime
-from django.test import TestCase
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
+
+from django.core.exceptions import ValidationError
 from django.db.utils import IntegrityError
+from django.test import TestCase
 
 from birds import models
 from birds.models import (
     Animal,
-    Species,
-    Event,
     Color,
-    Status,
+    Event,
     Location,
     Pairing,
     Plumage,
+    Species,
+    Status,
 )
 
 
@@ -25,7 +26,7 @@ def make_child(sire, dam, birthday=None, **kwargs):
     if birthday is not None:
         status = models.get_birth_event_type()
         user = models.get_sentinel_user()
-        event = Event.objects.create(
+        Event.objects.create(
             animal=child, status=status, date=birthday, entered_by=user
         )
     return child
@@ -192,7 +193,7 @@ class AnimalModelTests(TestCase):
         status_died = Status.objects.get(name="died")
         self.assertEqual(status_died.removes, 1)
         died_on = datetime.date.today() - datetime.timedelta(days=1)
-        event_died = Event.objects.create(
+        Event.objects.create(
             animal=bird, status=status_died, date=died_on, entered_by=user
         )
 
@@ -240,7 +241,7 @@ class AnimalModelTests(TestCase):
         status_born = models.get_birth_event_type()
         self.assertEqual(status_born.adds, 1)
         born_on = datetime.date.today() - datetime.timedelta(days=10)
-        event_born = Event.objects.create(
+        Event.objects.create(
             animal=bird, status=status_born, date=born_on, entered_by=user
         )
         # it should not matter what order these are called in
@@ -252,7 +253,7 @@ class AnimalModelTests(TestCase):
         status_died = Status.objects.get(name="died")
         self.assertEqual(status_died.removes, 1)
         died_on = datetime.date.today() - datetime.timedelta(days=1)
-        event_died = Event.objects.create(
+        Event.objects.create(
             animal=bird, status=status_died, date=died_on, entered_by=user
         )
         # this does not work because of filter interaction
@@ -269,7 +270,7 @@ class AnimalModelTests(TestCase):
         status_laid = models.get_unborn_creation_event_type()
         self.assertEqual(status_laid.adds, 0)
         laid_on = datetime.date.today() - datetime.timedelta(days=10)
-        event_laid = Event.objects.create(
+        Event.objects.create(
             animal=egg, status=status_laid, date=laid_on, entered_by=user
         )
 
@@ -301,25 +302,25 @@ class AnimalModelTests(TestCase):
     def test_with_dates_as_of_date(self):
         species = Species.objects.get(pk=1)
         bird = Animal.objects.create(species=species)
-        status = models.get_birth_event_type()
+        models.get_birth_event_type()
         age = datetime.timedelta(days=5)
         today = datetime.date.today()
         birthday = today - age
         user = models.get_sentinel_user()
         laid_on = today - datetime.timedelta(days=10)
-        event_laid = Event.objects.create(
+        Event.objects.create(
             animal=bird,
             status=models.get_unborn_creation_event_type(),
             date=laid_on,
             entered_by=user,
         )
-        event_hatched = Event.objects.create(
+        Event.objects.create(
             animal=bird,
             status=models.get_birth_event_type(),
             date=birthday,
             entered_by=user,
         )
-        event_died = Event.objects.create(
+        Event.objects.create(
             animal=bird,
             status=models.get_death_event_type(),
             date=today,
@@ -367,7 +368,7 @@ class AnimalModelTests(TestCase):
             birthday = datetime.date.today() - datetime.timedelta(
                 days=age_group.min_days
             )
-            event = Event.objects.create(
+            Event.objects.create(
                 animal=bird, status=status, date=birthday, entered_by=user
             )
             abird = Animal.objects.with_dates().get(pk=bird.pk)
@@ -421,7 +422,7 @@ class AnimalModelTests(TestCase):
         status_1 = models.get_birth_event_type()
         birthday = datetime.date.today() - datetime.timedelta(days=10)
         location_1 = Location.objects.get(pk=2)
-        event_1 = Event.objects.create(
+        Event.objects.create(
             animal=bird,
             status=status_1,
             date=birthday,
@@ -433,7 +434,7 @@ class AnimalModelTests(TestCase):
         status_2 = Status.objects.get(name="moved")
         date_2 = datetime.date.today() - datetime.timedelta(days=1)
         location_2 = Location.objects.get(pk=1)
-        event_2 = Event.objects.create(
+        Event.objects.create(
             animal=bird,
             status=status_2,
             date=date_2,
@@ -470,7 +471,7 @@ class AnimalModelTests(TestCase):
         self.assertIs(bird.band_color, None)
         self.assertIs(bird.plumage, None)
         user = models.get_sentinel_user()
-        date = datetime.date.today()
+        datetime.date.today()
         color = Color.objects.get(pk=1)
         event = bird.update_band(
             band_number=100,
@@ -494,9 +495,9 @@ class AnimalModelTests(TestCase):
             species=species, sex=Animal.Sex.MALE, plumage=plumage
         )
         user = models.get_sentinel_user()
-        date = datetime.date.today()
+        datetime.date.today()
         color = Color.objects.get(pk=1)
-        event = bird.update_band(
+        bird.update_band(
             band_number=100,
             band_color=color,
             date=datetime.date.today(),
@@ -564,7 +565,7 @@ class ParentModelTests(TestCase):
         dam = Animal.objects.create(species=species, sex=Animal.Sex.FEMALE)
         age = datetime.timedelta(days=5)
         birthday = datetime.date.today() - age
-        child = make_child(sire, dam, birthday)
+        make_child(sire, dam, birthday)
         self.assertEqual(sire.children.unhatched().count(), 0)
         self.assertEqual(sire.children.hatched().count(), 1)
         self.assertEqual(sire.children.alive().count(), 1)
@@ -719,7 +720,7 @@ class EventModelTests(TestCase):
             date=datetime.date.today() - datetime.timedelta(days=1),
             entered_by=user,
         )
-        event_1_2 = Event.objects.create(
+        Event.objects.create(
             animal=bird_1,
             status=status,
             date=datetime.date.today() - datetime.timedelta(days=10),
@@ -727,7 +728,7 @@ class EventModelTests(TestCase):
         )
 
         bird_2 = Animal.objects.create(species=species)
-        event_2_1 = Event.objects.create(
+        Event.objects.create(
             animal=bird_2,
             status=status,
             date=datetime.date.today() - datetime.timedelta(days=50),
@@ -760,13 +761,13 @@ class EventModelTests(TestCase):
         status = Status.objects.get(name="note")
         user = models.get_sentinel_user()
         month = datetime.date(2024, 4, 1)
-        event_1 = Event.objects.create(
+        Event.objects.create(
             animal=bird, status=status, date=datetime.date(2024, 3, 1), entered_by=user
         )
         event_2 = Event.objects.create(
             animal=bird, status=status, date=month, entered_by=user
         )
-        event_3 = Event.objects.create(
+        Event.objects.create(
             animal=bird, status=status, date=datetime.date(2024, 5, 1), entered_by=user
         )
         self.assertCountEqual(Event.objects.in_month(month), [event_2])
@@ -833,7 +834,7 @@ class PairingModelTests(TestCase):
 
     def test_pairing_invalid_dates(self):
         with self.assertRaises(IntegrityError):
-            pairing = Pairing.objects.create(
+            Pairing.objects.create(
                 sire=self.sire,
                 dam=self.dam,
                 began=datetime.date.today(),
@@ -883,7 +884,7 @@ class PairingModelTests(TestCase):
         egg = Animal.objects.create(species=self.sire.species)
         egg.parents.set([self.sire, self.dam])
         laid_on = datetime.date.today() - datetime.timedelta(days=11)
-        event_laid = Event.objects.create(
+        Event.objects.create(
             animal=egg, status=status_laid, date=laid_on, entered_by=user
         )
         self.assertEqual(pairing.eggs().count(), 0)
@@ -893,7 +894,7 @@ class PairingModelTests(TestCase):
         egg = Animal.objects.create(species=self.sire.species)
         egg.parents.set([self.sire, self.dam])
         laid_on = datetime.date.today() - datetime.timedelta(days=1)
-        event_laid = Event.objects.create(
+        Event.objects.create(
             animal=egg, status=status_laid, date=laid_on, entered_by=user
         )
         self.assertCountEqual(pairing.eggs(), [egg])
@@ -902,7 +903,7 @@ class PairingModelTests(TestCase):
         egg = Animal.objects.create(species=self.sire.species)
         egg.parents.set([self.sire, self.dam])
         laid_on = datetime.date.today() + datetime.timedelta(days=1)
-        event_laid = Event.objects.create(
+        Event.objects.create(
             animal=egg, status=status_laid, date=laid_on, entered_by=user
         )
         self.assertEqual(pairing.eggs().count(), 1)
@@ -960,7 +961,7 @@ class PairingModelTests(TestCase):
         )
         user = models.get_sentinel_user()
         status = Status.objects.get(name="moved")
-        event_before = Event.objects.create(
+        Event.objects.create(
             animal=self.sire,
             status=status,
             date=datetime.date.today() - datetime.timedelta(days=20),
@@ -976,7 +977,7 @@ class PairingModelTests(TestCase):
         )
         self.assertCountEqual(pairing.related_events(), [event_during])
 
-        event_after = Event.objects.create(
+        Event.objects.create(
             animal=self.sire,
             status=status,
             date=datetime.date.today(),
