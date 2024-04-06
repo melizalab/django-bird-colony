@@ -75,7 +75,7 @@ class TabulateNestTest(TestCase):
         _ = Pairing.objects.create_with_events(
             sire=self.sire,
             dam=self.dam,
-            began=since + datetime.timedelta(days=1),
+            began_on=since + datetime.timedelta(days=1),
             purpose="testing",
             entered_by=user,
             location=self.nest,

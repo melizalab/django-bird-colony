@@ -111,7 +111,9 @@ def animal_view(request, uuid: str):
     )
     events = animal.event_set.with_related().order_by("-date", "-created")
     samples = animal.sample_set.order_by("-date")
-    pairings = animal.pairings().with_related().with_progeny_stats().order_by("-began")
+    pairings = (
+        animal.pairings().with_related().with_progeny_stats().order_by("-began_on")
+    )
     return render(
         request,
         "birds/animal.html",
@@ -319,7 +321,7 @@ def new_event_entry(request, uuid: str):
 # Pairings
 @require_http_methods(["GET"])
 def pairing_list(request):
-    qs = Pairing.objects.with_related().with_progeny_stats().order_by("-began")
+    qs = Pairing.objects.with_related().with_progeny_stats().order_by("-began_on")
     f = PairingFilter(request.GET, queryset=qs)
     paginator = Paginator(f.qs, 25)
     page_number = request.GET.get("page")
@@ -370,14 +372,14 @@ def new_pairing_entry(request, pk: Optional[int] = None):
                 pair = Pairing.objects.create(
                     sire=data["sire"],
                     dam=data["dam"],
-                    began=data["began"],
+                    began_on=data["began_on"],
                     purpose=data["purpose"],
                 )
             else:
                 pair = Pairing.objects.create_with_events(
                     sire=data["sire"],
                     dam=data["dam"],
-                    began=data["began"],
+                    began_on=data["began_on"],
                     purpose=data["purpose"],
                     location=data["location"],
                     entered_by=data["entered_by"],
@@ -409,7 +411,7 @@ def close_pairing(request, pk: int):
             # some dirty validation logic to catch errors thrown by the model
             try:
                 pairing.close(
-                    ended=data["ended"],
+                    ended_on=data["ended_on"],
                     entered_by=data["entered_by"],
                     location=data["location"],
                     comment=data["comment"],
@@ -420,7 +422,7 @@ def close_pairing(request, pk: int):
                     None,
                     ValidationError(
                         _("Ending date must be after beginning (%(value)s)"),
-                        params={"value": pairing.began},
+                        params={"value": pairing.began_on},
                     ),
                 )
             except ValueError as err:

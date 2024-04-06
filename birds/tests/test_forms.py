@@ -301,7 +301,7 @@ class NewPairingFormTest(TestCase):
                 "sire": self.sire,
                 "dam": self.dam,
                 "entered_by": self.user,
-                "began": datetime.date.today(),
+                "began_on": datetime.date.today(),
             }
         )
         self.assertTrue(form.is_valid())
@@ -312,7 +312,7 @@ class NewPairingFormTest(TestCase):
                 "sire": self.dam,
                 "dam": self.sire,
                 "entered_by": self.user,
-                "began": datetime.date.today(),
+                "began_on": datetime.date.today(),
             }
         )
         self.assertFalse(form.is_valid())
@@ -324,7 +324,7 @@ class NewPairingFormTest(TestCase):
                 "sire": dead_sire,
                 "dam": self.dam,
                 "entered_by": self.user,
-                "began": datetime.date.today(),
+                "began_on": datetime.date.today(),
             }
         )
         self.assertFalse(form.is_valid())
@@ -334,7 +334,7 @@ class NewPairingFormTest(TestCase):
                 "sire": self.sire,
                 "dam": dead_dam,
                 "entered_by": self.user,
-                "began": datetime.date.today(),
+                "began_on": datetime.date.today(),
             }
         )
         self.assertFalse(form.is_valid())
@@ -354,7 +354,7 @@ class NewPairingFormTest(TestCase):
                 "sire": invalid_sire,
                 "dam": self.dam,
                 "entered_by": self.user,
-                "began": datetime.date.today(),
+                "began_on": datetime.date.today(),
             }
         )
         self.assertFalse(form.is_valid())
@@ -372,7 +372,7 @@ class NewPairingFormTest(TestCase):
                 "sire": self.sire,
                 "dam": invalid_dam,
                 "entered_by": self.user,
-                "began": datetime.date.today(),
+                "began_on": datetime.date.today(),
             }
         )
         self.assertFalse(form.is_valid())
@@ -381,14 +381,14 @@ class NewPairingFormTest(TestCase):
         _pairing = Pairing.objects.create(
             sire=self.sire,
             dam=self.dam,
-            began=datetime.date.today() - datetime.timedelta(days=10),
+            began_on=datetime.date.today() - datetime.timedelta(days=10),
         )
         form = NewPairingForm(
             {
                 "sire": self.dam,
                 "dam": self.sire,
                 "entered_by": self.user,
-                "began": datetime.date.today(),
+                "began_on": datetime.date.today(),
             }
         )
         self.assertFalse(form.is_valid())
@@ -397,15 +397,15 @@ class NewPairingFormTest(TestCase):
         _pairing = Pairing.objects.create(
             sire=self.sire,
             dam=self.dam,
-            began=datetime.date.today() - datetime.timedelta(days=50),
-            ended=datetime.date.today() - datetime.timedelta(days=5),
+            began_on=datetime.date.today() - datetime.timedelta(days=50),
+            ended_on=datetime.date.today() - datetime.timedelta(days=5),
         )
         form = NewPairingForm(
             {
                 "sire": self.dam,
                 "dam": self.sire,
                 "entered_by": self.user,
-                "began": datetime.date.today() - datetime.timedelta(days=10),
+                "began_on": datetime.date.today() - datetime.timedelta(days=10),
             }
         )
         self.assertFalse(form.is_valid())
@@ -443,7 +443,7 @@ class NestCheckFormTest(TestCase):
         _ = Pairing.objects.create_with_events(
             sire=cls.sire,
             dam=cls.dam,
-            began=datetime.date.today() - datetime.timedelta(days=1),
+            began_on=datetime.date.today() - datetime.timedelta(days=1),
             purpose="testing",
             entered_by=user,
             location=cls.nest,

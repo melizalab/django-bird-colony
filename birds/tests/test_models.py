@@ -810,7 +810,7 @@ class PairingModelTests(TestCase):
         pairing = Pairing.objects.create_with_events(
             sire=self.sire,
             dam=self.dam,
-            began=date,
+            began_on=date,
             purpose="testing",
             entered_by=user,
             location=location,
@@ -827,7 +827,7 @@ class PairingModelTests(TestCase):
         pairing = Pairing(
             sire=self.dam,
             dam=self.sire,
-            began=datetime.date.today(),
+            began_on=datetime.date.today(),
         )
         with self.assertRaises(ValidationError):
             pairing.full_clean()
@@ -837,16 +837,16 @@ class PairingModelTests(TestCase):
             Pairing.objects.create(
                 sire=self.sire,
                 dam=self.dam,
-                began=datetime.date.today(),
-                ended=datetime.date.today() - datetime.timedelta(days=5),
+                began_on=datetime.date.today(),
+                ended_on=datetime.date.today() - datetime.timedelta(days=5),
             )
 
     def test_bird_pairing_lists(self):
         pairing_1 = Pairing.objects.create(
             sire=self.sire,
             dam=self.dam,
-            began=datetime.date.today() - datetime.timedelta(days=100),
-            ended=datetime.date.today() - datetime.timedelta(days=70),
+            began_on=datetime.date.today() - datetime.timedelta(days=100),
+            ended_on=datetime.date.today() - datetime.timedelta(days=70),
         )
         other_bird = Animal.objects.create(
             species=Species.objects.get(pk=1), sex=Animal.Sex.FEMALE
@@ -854,11 +854,11 @@ class PairingModelTests(TestCase):
         pairing_2 = Pairing.objects.create(
             sire=self.sire,
             dam=other_bird,
-            began=datetime.date.today() - datetime.timedelta(days=50),
-            ended=datetime.date.today() - datetime.timedelta(days=20),
+            began_on=datetime.date.today() - datetime.timedelta(days=50),
+            ended_on=datetime.date.today() - datetime.timedelta(days=20),
         )
         pairing_3 = Pairing.objects.create(
-            sire=self.sire, dam=self.dam, began=datetime.date.today()
+            sire=self.sire, dam=self.dam, began_on=datetime.date.today()
         )
         self.assertFalse(pairing_1.active())
         self.assertFalse(pairing_2.active())
@@ -873,8 +873,8 @@ class PairingModelTests(TestCase):
         pairing = Pairing.objects.create(
             sire=self.sire,
             dam=self.dam,
-            began=datetime.date.today() - datetime.timedelta(days=10),
-            ended=datetime.date.today(),
+            began_on=datetime.date.today() - datetime.timedelta(days=10),
+            ended_on=datetime.date.today(),
         )
         self.assertEqual(pairing.eggs().count(), 0)
         user = models.get_sentinel_user()
@@ -917,8 +917,8 @@ class PairingModelTests(TestCase):
         pairing = Pairing.objects.create(
             sire=self.sire,
             dam=self.dam,
-            began=datetime.date.today() - datetime.timedelta(days=10),
-            ended=datetime.date.today(),
+            began_on=datetime.date.today() - datetime.timedelta(days=10),
+            ended_on=datetime.date.today(),
         )
         chick_1 = make_child(
             self.sire, self.dam, datetime.date.today() - datetime.timedelta(days=5)
@@ -944,8 +944,8 @@ class PairingModelTests(TestCase):
         pairing = Pairing.objects.create(
             sire=self.sire,
             dam=self.dam,
-            began=datetime.date.today() - datetime.timedelta(days=10),
-            ended=datetime.date.today(),
+            began_on=datetime.date.today() - datetime.timedelta(days=10),
+            ended_on=datetime.date.today(),
         )
         chick_1 = make_child(
             self.sire, self.dam, datetime.date.today() - datetime.timedelta(days=5)
@@ -956,8 +956,8 @@ class PairingModelTests(TestCase):
         pairing = Pairing.objects.create(
             sire=self.sire,
             dam=self.dam,
-            began=datetime.date.today() - datetime.timedelta(days=10),
-            ended=datetime.date.today() - datetime.timedelta(days=5),
+            began_on=datetime.date.today() - datetime.timedelta(days=10),
+            ended_on=datetime.date.today() - datetime.timedelta(days=5),
         )
         user = models.get_sentinel_user()
         status = Status.objects.get(name="moved")
@@ -989,7 +989,7 @@ class PairingModelTests(TestCase):
         pairing = Pairing.objects.create(
             sire=self.sire,
             dam=self.dam,
-            began=datetime.date.today() - datetime.timedelta(days=10),
+            began_on=datetime.date.today() - datetime.timedelta(days=10),
         )
         self.assertIn(pairing, Pairing.objects.active())
         annotated_pairing = Pairing.objects.with_location().get(pk=pairing.pk)
@@ -1037,13 +1037,13 @@ class PairingModelTests(TestCase):
         pairing = Pairing.objects.create(
             sire=self.sire,
             dam=self.dam,
-            began=datetime.date.today() - datetime.timedelta(days=10),
+            began_on=datetime.date.today() - datetime.timedelta(days=10),
         )
         user = models.get_sentinel_user()
         location = Location.objects.get(pk=1)
         date = datetime.date.today()
         pairing.close(
-            ended=date,
+            ended_on=date,
             entered_by=user,
             location=location,
             comment="test comment",
@@ -1058,7 +1058,7 @@ class PairingModelTests(TestCase):
         self.assertEqual(dam_events.first().date, date)
         with self.assertRaises(ValueError):
             pairing.close(
-                ended=date,
+                ended_on=date,
                 entered_by=user,
                 location=location,
             )
@@ -1067,12 +1067,12 @@ class PairingModelTests(TestCase):
         pairing = Pairing.objects.create(
             sire=self.sire,
             dam=self.dam,
-            began=datetime.date.today() - datetime.timedelta(days=10),
+            began_on=datetime.date.today() - datetime.timedelta(days=10),
         )
         user = models.get_sentinel_user()
         date = datetime.date.today()
         pairing.close(
-            ended=date,
+            ended_on=date,
             entered_by=user,
         )
         self.assertFalse(pairing.active())
@@ -1082,7 +1082,7 @@ class PairingModelTests(TestCase):
         self.assertEqual(dam_events.count(), 0)
         with self.assertRaises(ValueError):
             pairing.close(
-                ended=date,
+                ended_on=date,
                 entered_by=user,
             )
 

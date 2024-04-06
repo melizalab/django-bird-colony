@@ -46,7 +46,7 @@ class NewPairingForm(forms.Form):
     qs = Animal.objects.with_dates().alive()
     sire = forms.ModelChoiceField(queryset=qs.filter(sex=Animal.Sex.MALE))
     dam = forms.ModelChoiceField(queryset=qs.filter(sex=Animal.Sex.FEMALE))
-    began = forms.DateField()
+    began_on = forms.DateField()
     purpose = forms.CharField(widget=forms.Textarea, required=False)
     entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
     location = forms.ModelChoiceField(
@@ -64,15 +64,15 @@ class NewPairingForm(forms.Form):
             raise forms.ValidationError(_("Sire is not an adult"))
         if not sire.alive:
             raise forms.ValidationError(_("Sire is not alive"))
-        if sire.pairings().filter(ended__isnull=True).count():
+        if sire.pairings().filter(ended_on__isnull=True).count():
             raise forms.ValidationError(_("Sire is already in an active pairing"))
         sire_overlaps = sire.pairings().filter(
-            began__lte=data["began"], ended__gte=data["began"]
+            began_on__lte=data["began_on"], ended_on__gte=data["began_on"]
         )
         if sire_overlaps.count() > 0:
             raise forms.ValidationError(
                 _(
-                    "Start date %(began)s overlaps with an existing pairing for sire: %(prev)s"
+                    "Start date %(began_on)s overlaps with an existing pairing for sire: %(prev)s"
                 ),
                 code="invalid",
                 params=data | {"prev": sire_overlaps.first()},
@@ -86,15 +86,15 @@ class NewPairingForm(forms.Form):
             raise forms.ValidationError(_("Dam is not an adult"))
         if not dam.alive:
             raise forms.ValidationError(_("Dam is not alive"))
-        if dam.pairings().filter(ended__isnull=True).count():
+        if dam.pairings().filter(ended_on__isnull=True).count():
             raise forms.ValidationError(_("Dam is in an active pairing"))
         dam_overlaps = dam.pairings().filter(
-            began__lte=data["began"], ended__gte=data["began"]
+            began_on__lte=data["began_on"], ended_on__gte=data["began_on"]
         )
         if dam_overlaps.count() > 0:
             raise forms.ValidationError(
                 _(
-                    "Start date %(began)s overlaps with an existing pairing for dam: %(prev)s"
+                    "Start date %(began_on)s overlaps with an existing pairing for dam: %(prev)s"
                 ),
                 code="invalid",
                 params=data | {"prev": dam_overlaps.first()},
@@ -103,7 +103,7 @@ class NewPairingForm(forms.Form):
 
 
 class EndPairingForm(forms.Form):
-    ended = forms.DateField(required=True)
+    ended_on = forms.DateField(required=True)
     location = forms.ModelChoiceField(queryset=Location.objects.all(), required=False)
     entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
     comment = forms.CharField(widget=forms.Textarea, required=False)

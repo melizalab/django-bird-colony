@@ -12,7 +12,7 @@
 <dl class="dl-horizontal">
   <dt>sire</dt><dd><a href="{{ pairing.sire.get_absolute_url }}">{{ pairing.sire.name }}</a></dd>
   <dt>dam</dt><dd><a href="{{ pairing.dam.get_absolute_url }}">{{ pairing.dam.name }}</a></dd>
-  <dt>began</dt><dd>{{ pairing.began }}</dd>
+  <dt>began</dt><dd>{{ pairing.began_on }}</dd>
   <dt>ended</dt><dd>{{ pairing.ended|default_if_none:"(still active)" }}</dd>
   <dt>purpose</dt><dd>{{ pairing.purpose|default_if_none:"" }}</dd>
   <dt>last location</dt><dd> {{ pairing.last_location|default_if_none:"" }}</dd>
@@ -78,7 +78,7 @@
   <tbody>
     {% for pairing in pairing_list %}
     <tr>
-          <td><a href="{% url 'birds:pairing' pairing.id %}">{{ pairing.began }} — {{ pairing.ended|default_if_none:"" }}</a></td>
+          <td><a href="{% url 'birds:pairing' pairing.id %}">{{ pairing.dates_str }}</a></td>
           <td>{{ pairing.purpose }}</td>
           <td>{{ pairing.n_eggs }}</td>
           <td>{{ pairing.n_progeny }}</td>

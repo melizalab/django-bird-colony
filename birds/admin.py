@@ -58,10 +58,10 @@ class SampleAdmin(admin.ModelAdmin):
 
 
 class PairingAdmin(admin.ModelAdmin):
-    date_hierarchy = "began"
-    fields = ("sire", "dam", "began", "purpose", "ended", "comment")
-    list_display = ("sire", "dam", "began", "purpose", "ended", "comment")
-    list_filter = ("sire", "dam", "began", "ended", "purpose")
+    date_hierarchy = "began_on"
+    fields = ("sire", "dam", "began_on", "purpose", "ended_on", "comment")
+    list_display = ("sire", "dam", "began_on", "purpose", "ended_on", "comment")
+    list_filter = ("sire", "dam", "began_on", "ended_on", "purpose")
     search_fields = ("comment",)
 
 

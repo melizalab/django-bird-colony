@@ -239,11 +239,9 @@ class AnimalQuerySet(models.QuerySet):
         all the events.
 
         """
-        if on_date is not None:
-            q_date = Q(event__date__lte=on_date)
-        else:
-            q_date = Q()
+        if on_date is None:
             on_date = datetime.date.today()
+        q_date = Q(event__date__lte=on_date)
         return self.annotate(
             first_event_on=Min("event__date", filter=q_date),
             born_on=Min(
@@ -572,8 +570,8 @@ class Animal(models.Model):
                 sire=self.sire(),
                 dam=self.dam(),
             )
-            .exclude(began__gte=events["born_on"])
-            .exclude(ended__lte=events["born_on"])
+            .exclude(began_on__gte=events["born_on"])
+            .exclude(ended_on__lte=events["born_on"])
             .first()
         )
 
@@ -711,7 +709,7 @@ class PairingManager(models.Manager):
         *,
         sire: Animal,
         dam: Animal,
-        began: datetime.date,
+        began_on: datetime.date,
         purpose: str,
         entered_by: settings.AUTH_USER_MODEL,
         location: Location,
@@ -719,11 +717,11 @@ class PairingManager(models.Manager):
         """Create a new pairing and add events to the sire and dam"""
         status = Status.objects.get(name=MOVED_EVENT_NAME)
         pairing = self.create(
-            sire=sire, dam=dam, began=began, ended=None, purpose=purpose
+            sire=sire, dam=dam, began_on=began_on, ended_on=None, purpose=purpose
         )
         _sire_event = Event.objects.create(
             animal=sire,
-            date=began,
+            date=began_on,
             status=status,
             location=location,
             entered_by=entered_by,
@@ -731,7 +729,7 @@ class PairingManager(models.Manager):
         )
         _dam_event = Event.objects.create(
             animal=dam,
-            date=began,
+            date=began_on,
             status=status,
             location=location,
             entered_by=entered_by,
@@ -743,7 +741,7 @@ class PairingManager(models.Manager):
 class PairingQuerySet(models.QuerySet):
     def active(self):
         # TODO add on_date support?
-        return self.filter(ended__isnull=True)
+        return self.filter(ended_on__isnull=True)
 
     def with_related(self):
         return self.select_related(
@@ -756,10 +754,10 @@ class PairingQuerySet(models.QuerySet):
         )
 
     def with_progeny_stats(self):
-        qq_before_ended = Q(sire__children__event__date__lte=F("ended")) | Q(
-            ended__isnull=True
+        qq_before_ended = Q(sire__children__event__date__lte=F("ended_on")) | Q(
+            ended_on__isnull=True
         )
-        qq_after_began = Q(sire__children__event__date__gte=F("began"))
+        qq_after_began = Q(sire__children__event__date__gte=F("began_on"))
         return self.annotate(
             n_progeny=Count(
                 "sire__children",
@@ -782,7 +780,7 @@ class PairingQuerySet(models.QuerySet):
             last_location=Subquery(
                 Event.objects.filter(
                     Q(location__isnull=False),
-                    Q(date__gte=OuterRef("began")),
+                    Q(date__gte=OuterRef("began_on")),
                     (Q(animal=OuterRef("sire")) | Q(animal=OuterRef("dam"))),
                 )
                 .order_by("-date", "-created")
@@ -805,8 +803,10 @@ class Pairing(models.Model):
         related_name="+",
         limit_choices_to={"sex": Animal.Sex.FEMALE},
     )
-    began = models.DateField(help_text="date the animals were paired")
-    ended = models.DateField(null=True, blank=True, help_text="date the pairing ended")
+    began_on = models.DateField(help_text="date the animals were paired")
+    ended_on = models.DateField(
+        null=True, blank=True, help_text="date the pairing ended"
+    )
     created = models.DateTimeField(auto_now_add=True)
     purpose = models.CharField(
         max_length=64,
@@ -821,24 +821,27 @@ class Pairing(models.Model):
     objects = PairingManager.from_queryset(PairingQuerySet)()
 
     def __str__(self):
-        return "♂{} × ♀{} ({} — {})".format(  # noqa: RUF001
-            self.sire, self.dam, self.began, self.ended or ""
+        return "♂{} × ♀{} ({})".format(  # noqa: RUF001
+            self.sire, self.dam, self.dates_str()
         )
+
+    def dates_str(self):
+        return "{} — {}".format(self.began_on, self.ended_on or "")
 
     def get_absolute_url(self):
         return reverse("birds:pairing", kwargs={"pk": self.id})
 
     def active(self):
-        return self.ended is None
+        return self.ended_on is None
 
     def oldest_living_progeny_age(self):
         # this is slow, but I'm not sure how to do it any faster
         params = {
             "event__status__name": BIRTH_EVENT_NAME,
-            "event__date__gte": self.began,
+            "event__date__gte": self.began_on,
         }
-        if self.ended:
-            params["event__date__lte"] = self.ended
+        if self.ended_on is not None:
+            params["event__date__lte"] = self.ended_on
         qs = self.sire.children.with_dates().filter(**params)
         # ages = [a.age_days() for a in qs if a.alive]
         # return max(ages, default=None)
@@ -859,20 +862,20 @@ class Pairing(models.Model):
             # because eggs were not entered prior to ~2021. Using the cached ids
             # seems to slow this down so I'm keeping the name lookup.
             "event__status__name__in": (UNBORN_CREATION_EVENT_NAME, BIRTH_EVENT_NAME),
-            "event__date__gte": self.began,
+            "event__date__gte": self.began_on,
         }
-        if self.ended:
-            params["event__date__lte"] = self.ended
+        if self.ended_on is not None:
+            params["event__date__lte"] = self.ended_on
         return self.sire.children.with_status().filter(**params)
 
     def related_events(self):
         """Queryset with all events for the pair and their progeny during the pairing"""
         qs = Event.objects.filter(
             Q(animal__in=self.eggs()) | Q(animal__in=(self.sire, self.dam)),
-            date__gte=self.began,
+            date__gte=self.began_on,
         )
-        if self.ended:
-            qs = qs.filter(date__lte=self.ended)
+        if self.ended_on is not None:
+            qs = qs.filter(date__lte=self.ended_on)
         return qs.order_by("date")
 
     def last_location(self):
@@ -880,10 +883,10 @@ class Pairing(models.Model):
         masked by the with_location() annotation on the queryset."""
         qs = Event.objects.filter(
             animal__in=(self.sire, self.dam),
-            date__gte=self.began,
+            date__gte=self.began_on,
         )
-        if self.ended:
-            qs = qs.filter(date__lte=self.ended)
+        if self.ended_on is not None:
+            qs = qs.filter(date__lte=self.ended_on)
         try:
             return qs.exclude(location__isnull=True).latest().location
         except (AttributeError, Event.DoesNotExist):
@@ -895,7 +898,7 @@ class Pairing(models.Model):
 
     def close(
         self,
-        ended: datetime.date,
+        ended_on: datetime.date,
         entered_by: settings.AUTH_USER_MODEL,
         *,
         location: Optional[Location] = None,
@@ -910,14 +913,14 @@ class Pairing(models.Model):
         """
         if not self.active():
             raise ValueError("Pairing is already closed")
-        self.ended = ended
+        self.ended_on = ended_on
         self.comment = comment or ""
-        self.save()  # will throw integrity error if ended <= began
+        self.save()  # will throw integrity error if ended_on <= began_on
         status = Status.objects.get(name=MOVED_EVENT_NAME)
         if location is not None:
             Event.objects.create(
                 animal=self.sire,
-                date=ended,
+                date=ended_on,
                 status=status,
                 entered_by=entered_by,
                 location=location,
@@ -925,7 +928,7 @@ class Pairing(models.Model):
             )
             Event.objects.create(
                 animal=self.dam,
-                date=ended,
+                date=ended_on,
                 status=status,
                 entered_by=entered_by,
                 location=location,
@@ -940,11 +943,11 @@ class Pairing(models.Model):
             raise ValidationError(_("Dam must be a female"))
 
     class Meta:
-        ordering = ["-began", "-ended"]
+        ordering = ["-began_on", "-ended_on"]
         constraints = [
             CheckConstraint(
-                check=Q(ended__isnull=True) | Q(ended__gt=F("began")),
-                name="ended_gt_began",
+                check=Q(ended_on__isnull=True) | Q(ended_on__gt=F("began_on")),
+                name="ended_on_gt_began_on",
             )
         ]
 

@@ -63,13 +63,13 @@ class BaseColonyTest(TestCase):
         pairing = Pairing.objects.create_with_events(
             sire=cls.sire,
             dam=cls.dam,
-            began=birthday + datetime.timedelta(days=80),
+            began_on=birthday + datetime.timedelta(days=80),
             purpose="old pairing",
             entered_by=user,
             location=cls.nest,
         )
         pairing.close(
-            ended=birthday + datetime.timedelta(days=120),
+            ended_on=birthday + datetime.timedelta(days=120),
             entered_by=user,
             location=Location.objects.get(pk=1),
             comment="ended old pairing",
@@ -90,7 +90,7 @@ class BaseColonyTest(TestCase):
         _pairing = Pairing.objects.create_with_events(
             sire=cls.sire,
             dam=cls.dam,
-            began=datetime.date.today() - datetime.timedelta(days=20),
+            began_on=datetime.date.today() - datetime.timedelta(days=20),
             purpose="new pairing",
             entered_by=user,
             location=cls.nest,
@@ -275,7 +275,7 @@ class EventSummaryTests(TestCase):
         Pairing.objects.create_with_events(
             sire=cls.sire,
             dam=cls.dam,
-            began=start_of_last_month,
+            began_on=start_of_last_month,
             purpose="pairing",
             entered_by=user,
             location=location,
@@ -577,13 +577,13 @@ class PairingFormViewTests(TestCase):
         cls.pairing = Pairing.objects.create_with_events(
             sire=cls.sire,
             dam=cls.dam,
-            began=birthday + datetime.timedelta(days=80),
+            began_on=birthday + datetime.timedelta(days=80),
             purpose="old pairing",
             entered_by=user,
             location=location,
         )
         cls.pairing.close(
-            ended=birthday + datetime.timedelta(days=120),
+            ended_on=birthday + datetime.timedelta(days=120),
             entered_by=user,
             location=location,
             comment="ended old pairing",
@@ -623,7 +623,7 @@ class PairingFormViewTests(TestCase):
         new_pairing = Pairing.objects.create_with_events(
             sire=self.sire,
             dam=self.dam,
-            began=datetime.date.today() - datetime.timedelta(days=10),
+            began_on=datetime.date.today() - datetime.timedelta(days=10),
             purpose="new pairing",
             entered_by=self.test_user1,
             location=Location.objects.get(pk=1),
@@ -639,7 +639,7 @@ class PairingFormViewTests(TestCase):
             {
                 "sire": self.sire.pk,
                 "dam": self.dam.pk,
-                "began": datetime.date.today(),
+                "began_on": datetime.date.today(),
                 "purpose": "evil",
                 "entered_by": self.test_user1.pk,
                 "location": location.pk,
@@ -657,7 +657,7 @@ class PairingFormViewTests(TestCase):
         new_pairing = Pairing.objects.create_with_events(
             sire=self.sire,
             dam=self.dam,
-            began=datetime.date.today() - datetime.timedelta(days=10),
+            began_on=datetime.date.today() - datetime.timedelta(days=10),
             purpose="new pairing",
             entered_by=self.test_user1,
             location=Location.objects.get(pk=1),
@@ -665,7 +665,7 @@ class PairingFormViewTests(TestCase):
         response = self.client.post(
             reverse("birds:end_pairing", args=[new_pairing.pk]),
             {
-                "ended": datetime.date.today(),
+                "ended_on": datetime.date.today(),
                 "location": 1,
                 "entered_by": self.test_user1.pk,
                 "comment": "testing",
@@ -707,7 +707,7 @@ class NestCheckFormViewTests(TestCase):
         _ = Pairing.objects.create_with_events(
             sire=cls.sire,
             dam=cls.dam,
-            began=datetime.date.today() - datetime.timedelta(days=1),
+            began_on=datetime.date.today() - datetime.timedelta(days=1),
             purpose="testing",
             entered_by=user,
             location=cls.nest,

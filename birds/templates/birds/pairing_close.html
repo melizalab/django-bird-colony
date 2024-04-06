@@ -36,7 +36,7 @@
       {% if form.non_field_errors %}
       <div class="alert alert-danger">{{ form.non_field_errors }}</div>
       {% endif %}
-      {{ form.began.as_hidden }}
+      {{ form.began_on.as_hidden }}
 
       <div class="form-group {% if form.ended.errors %}has-error{% endif %}">
         <label for="id_ended" class="col-sm-2 control-label">Ending date * </label>
