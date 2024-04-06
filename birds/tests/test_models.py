@@ -880,33 +880,42 @@ class PairingModelTests(TestCase):
         user = models.get_sentinel_user()
         status_laid = models.get_unborn_creation_event_type()
 
-        # this egg was laid before the pairing began, so should not be in the list
         egg = Animal.objects.create(species=self.sire.species)
         egg.parents.set([self.sire, self.dam])
         laid_on = datetime.date.today() - datetime.timedelta(days=11)
         Event.objects.create(
             animal=egg, status=status_laid, date=laid_on, entered_by=user
         )
-        self.assertEqual(pairing.eggs().count(), 0)
+        self.assertEqual(
+            pairing.eggs().count(),
+            0,
+            "egg laid before pairing is incorrectly associated with the pairing",
+        )
         self.assertNotIn(egg, pairing.eggs())
 
-        # this egg was laid after the pairing began, so should be in the list
         egg = Animal.objects.create(species=self.sire.species)
         egg.parents.set([self.sire, self.dam])
         laid_on = datetime.date.today() - datetime.timedelta(days=1)
         Event.objects.create(
             animal=egg, status=status_laid, date=laid_on, entered_by=user
         )
-        self.assertCountEqual(pairing.eggs(), [egg])
+        self.assertCountEqual(
+            pairing.eggs(),
+            [egg],
+            "egg laid during the pairing is not associated with it",
+        )
 
-        # this egg was laid after the pairing ended, so should not be in the list
         egg = Animal.objects.create(species=self.sire.species)
         egg.parents.set([self.sire, self.dam])
         laid_on = datetime.date.today() + datetime.timedelta(days=1)
         Event.objects.create(
             animal=egg, status=status_laid, date=laid_on, entered_by=user
         )
-        self.assertEqual(pairing.eggs().count(), 1)
+        self.assertEqual(
+            pairing.eggs().count(),
+            1,
+            "egg laid after the pairing is incorrectly associated with the pairing",
+        )
         self.assertNotIn(egg, pairing.eggs())
 
         # check that the annotation counts eggs correctly
@@ -967,7 +976,7 @@ class PairingModelTests(TestCase):
             date=datetime.date.today() - datetime.timedelta(days=20),
             entered_by=user,
         )
-        self.assertEqual(pairing.related_events().count(), 0)
+        self.assertEqual(pairing.events().count(), 0)
 
         event_during = Event.objects.create(
             animal=self.sire,
@@ -975,7 +984,7 @@ class PairingModelTests(TestCase):
             date=datetime.date.today() - datetime.timedelta(days=6),
             entered_by=user,
         )
-        self.assertCountEqual(pairing.related_events(), [event_during])
+        self.assertCountEqual(pairing.events(), [event_during])
 
         Event.objects.create(
             animal=self.sire,
@@ -983,7 +992,7 @@ class PairingModelTests(TestCase):
             date=datetime.date.today(),
             entered_by=user,
         )
-        self.assertCountEqual(pairing.related_events(), [event_during])
+        self.assertCountEqual(pairing.events(), [event_during])
 
     def test_last_location(self):
         pairing = Pairing.objects.create(

@@ -350,7 +350,7 @@ def pairing_view(request, pk):
     pair = get_object_or_404(qs, pk=pk)
     eggs = pair.eggs().with_annotations().with_related().order_by("-alive", "-created")
     pairings = pair.other_pairings().with_progeny_stats()
-    events = pair.related_events().with_related()
+    events = pair.events().with_related()
     return render(
         request,
         "birds/pairing.html",

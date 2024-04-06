@@ -821,12 +821,9 @@ class Pairing(models.Model):
     objects = PairingManager.from_queryset(PairingQuerySet)()
 
     def __str__(self):
-        return "♂{} × ♀{} ({})".format(  # noqa: RUF001
-            self.sire, self.dam, self.dates_str()
+        return "♂{} × ♀{} ({} - {})".format(  # noqa: RUF001
+            self.sire, self.dam, self.began_on, self.ended_on or ""
         )
-
-    def dates_str(self):
-        return "{} — {}".format(self.began_on, self.ended_on or "")
 
     def get_absolute_url(self):
         return reverse("birds:pairing", kwargs={"pk": self.id})
@@ -868,7 +865,7 @@ class Pairing(models.Model):
             params["event__date__lte"] = self.ended_on
         return self.sire.children.with_status().filter(**params)
 
-    def related_events(self):
+    def events(self):
         """Queryset with all events for the pair and their progeny during the pairing"""
         qs = Event.objects.filter(
             Q(animal__in=self.eggs()) | Q(animal__in=(self.sire, self.dam)),
@@ -878,15 +875,26 @@ class Pairing(models.Model):
             qs = qs.filter(date__lte=self.ended_on)
         return qs.order_by("date")
 
-    def last_location(self):
-        """Returns the most recent location in the pairing. This method is
-        masked by the with_location() annotation on the queryset."""
+    def last_location(self, on_date: Optional[datetime.date] = None):
+        """Returns the location recorded in the most recent event for the sire
+        or dam. For an inactive pair, only events between the beginning and
+        ending are considered. For an active pair, only dates between the
+        beginning and `on_date` (or today if not specified) are considered.
+        Returns None if no events match these criteria. This method will be
+        masked if with_location() is used on the queryset.
+
+        """
+        if self.ended_on is not None:
+            end_date = self.ended_on
+        elif on_date is None:
+            end_date = datetime.date.today()
+        else:
+            end_date = on_date
         qs = Event.objects.filter(
             animal__in=(self.sire, self.dam),
             date__gte=self.began_on,
+            date__lte=end_date,
         )
-        if self.ended_on is not None:
-            qs = qs.filter(date__lte=self.ended_on)
         try:
             return qs.exclude(location__isnull=True).latest().location
         except (AttributeError, Event.DoesNotExist):

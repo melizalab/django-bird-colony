@@ -78,7 +78,7 @@
   <tbody>
     {% for pairing in pairing_list %}
     <tr>
-          <td><a href="{% url 'birds:pairing' pairing.id %}">{{ pairing.dates_str }}</a></td>
+          <td><a href="{% url 'birds:pairing' pairing.id %}">{{ pairing.began_on }} — {{ pairing.ended|default_if_none:"" }}</a></td>
           <td>{{ pairing.purpose }}</td>
           <td>{{ pairing.n_eggs }}</td>
           <td>{{ pairing.n_progeny }}</td>
