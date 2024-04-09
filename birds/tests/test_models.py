@@ -823,7 +823,7 @@ class PairingModelTests(TestCase):
         self.assertEqual(dam_events.count(), 1)
         self.assertEqual(dam_events.first().date, date)
 
-    def test_pairing_invalid_sexes(self):
+    def test_create_pairing_with_invalid_sexes(self):
         pairing = Pairing(
             sire=self.dam,
             dam=self.sire,
@@ -832,7 +832,7 @@ class PairingModelTests(TestCase):
         with self.assertRaises(ValidationError):
             pairing.full_clean()
 
-    def test_pairing_invalid_dates(self):
+    def test_create_pairing_with_invalid_dates(self):
         with self.assertRaises(IntegrityError):
             Pairing.objects.create(
                 sire=self.sire,
@@ -840,6 +840,85 @@ class PairingModelTests(TestCase):
                 began_on=datetime.date.today(),
                 ended_on=datetime.date.today() - datetime.timedelta(days=5),
             )
+
+    def test_pairing_active_on_date(self):
+        # the date logic for whether a pair is active is a little different from
+        # some of the other statuses.
+        today = datetime.date.today()
+        pairing_began_on = today - datetime.timedelta(days=10)
+        pairing_ended_on = today - datetime.timedelta(days=2)
+        pairing = Pairing.objects.create(
+            sire=self.sire, dam=self.dam, began_on=pairing_began_on
+        )
+        self.assertFalse(
+            pairing.active(on_date=pairing_began_on - datetime.timedelta(days=1)),
+            "unclosed pairing is inactive before it began",
+        )
+        self.assertNotIn(
+            pairing,
+            Pairing.objects.active(
+                on_date=pairing_began_on - datetime.timedelta(days=1)
+            ),
+            "unclosed pairing is inactive before it began",
+        )
+        self.assertTrue(
+            pairing.active(on_date=pairing_began_on),
+            "unclosed pairing is active on the day it began",
+        )
+        self.assertIn(
+            pairing,
+            Pairing.objects.active(on_date=pairing_began_on),
+            "unclosed pairing is active on the day it began",
+        )
+        self.assertTrue(
+            pairing.active(on_date=pairing_ended_on),
+            "unclosed pairing is active after it began",
+        )
+        self.assertIn(
+            pairing,
+            Pairing.objects.active(on_date=pairing_began_on),
+            "unclosed pairing is active after it began",
+        )
+        pairing.ended_on = pairing_ended_on
+        pairing.save()
+        self.assertFalse(
+            pairing.active(on_date=pairing_began_on - datetime.timedelta(days=1)),
+            "closed pairing is inactive before it began",
+        )
+        self.assertNotIn(
+            pairing,
+            Pairing.objects.active(
+                on_date=pairing_began_on - datetime.timedelta(days=1)
+            ),
+            "closed pairing is inactive before it began",
+        )
+        self.assertTrue(
+            pairing.active(on_date=pairing_began_on),
+            "closed pairing is active on the day it began",
+        )
+        self.assertIn(
+            pairing,
+            Pairing.objects.active(on_date=pairing_began_on),
+            "closed pairing is active on the day it began",
+        )
+        self.assertFalse(
+            pairing.active(on_date=pairing_ended_on),
+            "closed pairing is inactive on the day it ended",
+        )
+        self.assertNotIn(
+            pairing,
+            Pairing.objects.active(on_date=pairing_ended_on),
+            "closed pairing is inactive on the day it ended",
+        )
+        self.assertFalse(
+            pairing.active(),
+            "closed pairing is inactive after it ended",
+        )
+        self.assertNotIn(
+            pairing,
+            Pairing.objects.active(),
+            "closed pairing is inactive after it ended",
+        )
 
     def test_bird_pairing_lists(self):
         pairing_1 = Pairing.objects.create(
@@ -949,7 +1028,7 @@ class PairingModelTests(TestCase):
         self.assertEqual(annotated_pairing.n_eggs, 0)
         self.assertEqual(annotated_pairing.n_progeny, 2)
 
-    def test_pairing_lookup(self):
+    def test_animal_birth_pairing(self):
         pairing = Pairing.objects.create(
             sire=self.sire,
             dam=self.dam,
@@ -994,53 +1073,162 @@ class PairingModelTests(TestCase):
         )
         self.assertCountEqual(pairing.events(), [event_during])
 
-    def test_last_location(self):
+    def test_pairing_last_location(self):
+        # create pairing without a location
+        pairing_began_on = datetime.date.today() - datetime.timedelta(days=10)
         pairing = Pairing.objects.create(
             sire=self.sire,
             dam=self.dam,
-            began_on=datetime.date.today() - datetime.timedelta(days=10),
+            began_on=pairing_began_on,
         )
         self.assertIn(pairing, Pairing.objects.active())
+        self.assertIs(
+            pairing.last_location(),
+            None,
+            "pairing without events should have no location",
+        )
+        self.assertIs(
+            pairing.last_location(
+                on_date=datetime.date.today() - datetime.timedelta(days=12)
+            ),
+            None,
+            "pairing without events should have no location before pairing started",
+        )
         annotated_pairing = Pairing.objects.with_location().get(pk=pairing.pk)
-        self.assertIs(pairing.last_location(), None)
-        self.assertIs(annotated_pairing.last_location, None)
+        self.assertIs(
+            annotated_pairing.last_location,
+            None,
+            "pairing without events should have no location",
+        )
 
+        # add an event before the pairing
         user = models.get_sentinel_user()
         status = Status.objects.get(name="moved")
         location = Location.objects.get(pk=1)
         _ = Event.objects.create(
             animal=self.sire,
             status=status,
-            date=datetime.date.today() - datetime.timedelta(days=20),
+            date=pairing_began_on - datetime.timedelta(days=10),
             entered_by=user,
             location=location,
         )
+        self.assertIs(
+            pairing.last_location(),
+            None,
+            "events before the pairing should not affect the location",
+        )
+        self.assertIs(
+            pairing.last_location(
+                on_date=pairing_began_on - datetime.timedelta(days=2)
+            ),
+            None,
+            "events before pairing should not affect location on any date",
+        )
         annotated_pairing = Pairing.objects.with_location().get(pk=pairing.pk)
-        self.assertIs(pairing.last_location(), None)
-        self.assertIs(annotated_pairing.last_location, None)
+        self.assertIs(
+            annotated_pairing.last_location,
+            None,
+            "events before the pairing began should not affect last_location",
+        )
 
-        _ = Event.objects.create(
+        # create an event during the pairing
+        event_1 = Event.objects.create(
             animal=self.sire,
             status=status,
-            date=datetime.date.today() - datetime.timedelta(days=5),
+            date=datetime.date.today() - datetime.timedelta(days=6),
             entered_by=user,
             location=location,
         )
+        self.assertEqual(
+            pairing.last_location(),
+            location,
+            "pairing location should be the location of the most recent event",
+        )
+        self.assertIs(
+            pairing.last_location(on_date=pairing_began_on),
+            None,
+            "pairing location should not include events before the specified date",
+        )
         annotated_pairing = Pairing.objects.with_location().get(pk=pairing.pk)
-        self.assertEqual(pairing.last_location(), location)
-        self.assertEqual(annotated_pairing.last_location, location.name)
+        self.assertEqual(
+            annotated_pairing.last_location,
+            location.name,
+            "pairing location should be the location of the most recent event",
+        )
 
+        # create a move event during the pairing - this time for the dam
         location_2 = Location.objects.get(pk=2)
         _ = Event.objects.create(
-            animal=self.sire,
+            animal=self.dam,
             status=status,
-            date=datetime.date.today() - datetime.timedelta(days=1),
+            date=datetime.date.today() - datetime.timedelta(days=4),
             entered_by=user,
             location=location_2,
         )
+        self.assertEqual(
+            pairing.last_location(),
+            location_2,
+            "pairing location should be the location of the most recent event",
+        )
+        self.assertEqual(
+            pairing.last_location(on_date=event_1.date),
+            event_1.location,
+            "pairing location on date should not include events before the specified date",
+        )
         annotated_pairing = Pairing.objects.with_location().get(pk=pairing.pk)
-        self.assertEqual(pairing.last_location(), location_2)
-        self.assertEqual(annotated_pairing.last_location, location_2.name)
+        self.assertEqual(
+            annotated_pairing.last_location,
+            location_2.name,
+            "pairing location should be the location of the most recent event",
+        )
+
+    def test_pairing_last_location_on_date(self):
+        # very similar to previous test but create all the events first and then
+        # do the tests
+        pairing_began_on = datetime.date.today() - datetime.timedelta(days=10)
+        pairing_ended_on = datetime.date.today() - datetime.timedelta(days=3)
+        user = models.get_sentinel_user()
+        status = Status.objects.get(name="moved")
+        location_1 = Location.objects.get(pk=1)
+        location_2 = Location.objects.get(pk=2)
+        pairing = Pairing.objects.create_with_events(
+            sire=self.sire,
+            dam=self.dam,
+            began_on=pairing_began_on,
+            purpose="testing",
+            entered_by=user,
+            location=location_2,
+        )
+        pairing.close(ended_on=pairing_ended_on, entered_by=user, location=location_1)
+        _ = Event.objects.create(
+            animal=self.dam,
+            status=Status.objects.get(name="moved"),
+            date=datetime.date.today(),
+            entered_by=user,
+            location=location_2,
+        )
+        self.assertIs(
+            pairing.last_location(
+                on_date=pairing_began_on - datetime.timedelta(days=1)
+            ),
+            None,
+            "pairing location before pairing began should be None",
+        )
+        self.assertEqual(
+            pairing.last_location(on_date=pairing_began_on),
+            location_2,
+            "pairing location after pairing began should be last location of sire or dam",
+        )
+        self.assertEqual(
+            pairing.last_location(on_date=pairing_ended_on),
+            location_1,
+            "pairing location when pairing ended should be last location in the pairing interval",
+        )
+        self.assertEqual(
+            pairing.last_location(on_date=pairing_ended_on + datetime.timedelta(1)),
+            location_1,
+            "pairing location after pairing ended should be last location in the pairing interval",
+        )
 
     def test_pairing_close_with_location(self):
         pairing = Pairing.objects.create(
@@ -1060,11 +1248,32 @@ class PairingModelTests(TestCase):
         self.assertFalse(pairing.active())
         sire_events = self.sire.event_set.all()
         # one event because we didn't supply a location on creation
-        self.assertEqual(sire_events.count(), 1)
-        self.assertEqual(sire_events.first().date, date)
+        self.assertEqual(
+            sire_events.count(),
+            1,
+            "sire should have one event from closing the pairing",
+        )
+        self.assertEqual(
+            sire_events.first().date,
+            date,
+            "sire's event date should be the date when the pairing closed",
+        )
+        self.assertEqual(
+            pairing.last_location(),
+            location,
+            "closed pairing's location should be that of the last event in the pairing",
+        )
         dam_events = self.dam.event_set.all()
-        self.assertEqual(dam_events.count(), 1)
-        self.assertEqual(dam_events.first().date, date)
+        self.assertEqual(
+            dam_events.count(),
+            1,
+            "dam should have one event from closing the pairing",
+        )
+        self.assertEqual(
+            dam_events.first().date,
+            date,
+            "dam's event date should be the date when the pairing closed",
+        )
         with self.assertRaises(ValueError):
             pairing.close(
                 ended_on=date,
@@ -1086,9 +1295,17 @@ class PairingModelTests(TestCase):
         )
         self.assertFalse(pairing.active())
         sire_events = self.sire.event_set.all()
-        self.assertEqual(sire_events.count(), 0)
+        self.assertEqual(
+            sire_events.count(),
+            0,
+            "sire should not have any events after closing without a location",
+        )
         dam_events = self.dam.event_set.all()
-        self.assertEqual(dam_events.count(), 0)
+        self.assertEqual(
+            dam_events.count(),
+            0,
+            "dam should not have any events after closing pairing without a location",
+        )
         with self.assertRaises(ValueError):
             pairing.close(
                 ended_on=date,

@@ -739,9 +739,11 @@ class PairingManager(models.Manager):
 
 
 class PairingQuerySet(models.QuerySet):
-    def active(self):
-        # TODO add on_date support?
-        return self.filter(ended_on__isnull=True)
+    def active(self, on_date: Optional[datetime.date] = None):
+        on_date = on_date or datetime.date.today()
+        return self.filter(
+            Q(began_on__lte=on_date), Q(ended_on__isnull=True) | Q(ended_on__gt=on_date)
+        )
 
     def with_related(self):
         return self.select_related(
@@ -774,8 +776,7 @@ class PairingQuerySet(models.QuerySet):
         )
 
     def with_location(self):
-        """Active pairs only, annotated with the most recent location"""
-        # TODO add on_date?
+        """Active pairs only, annotated with the *name* of the most recent location"""
         return self.active().annotate(
             last_location=Subquery(
                 Event.objects.filter(
@@ -828,8 +829,11 @@ class Pairing(models.Model):
     def get_absolute_url(self):
         return reverse("birds:pairing", kwargs={"pk": self.id})
 
-    def active(self):
-        return self.ended_on is None
+    def active(self, on_date: Optional[datetime.date] = None) -> bool:
+        on_date = on_date or datetime.date.today()
+        if on_date < self.began_on:
+            return False
+        return self.ended_on is None or self.ended_on > on_date
 
     def oldest_living_progeny_age(self):
         # this is slow, but I'm not sure how to do it any faster
@@ -884,12 +888,7 @@ class Pairing(models.Model):
         masked if with_location() is used on the queryset.
 
         """
-        if self.ended_on is not None:
-            end_date = self.ended_on
-        elif on_date is None:
-            end_date = datetime.date.today()
-        else:
-            end_date = on_date
+        end_date = on_date or self.ended_on or datetime.date.today()
         qs = Event.objects.filter(
             animal__in=(self.sire, self.dam),
             date__gte=self.began_on,
