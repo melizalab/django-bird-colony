@@ -745,6 +745,11 @@ class PairingQuerySet(models.QuerySet):
             Q(began_on__lte=on_date), Q(ended_on__isnull=True) | Q(ended_on__gt=on_date)
         )
 
+    def active_between(self, since: datetime.date, until: datetime.date):
+        return self.filter(
+            Q(began_on__lte=until), Q(ended_on__isnull=True) | Q(ended_on__gt=since)
+        )
+
     def with_related(self):
         return self.select_related(
             "sire",

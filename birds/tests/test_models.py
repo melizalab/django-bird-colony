@@ -920,6 +920,62 @@ class PairingModelTests(TestCase):
             "closed pairing is inactive after it ended",
         )
 
+    def test_pairing_active_between_dates(self):
+        today = datetime.date.today()
+        pairing_began_on = today - datetime.timedelta(days=10)
+        pairing_ended_on = today - datetime.timedelta(days=2)
+        pairing = Pairing.objects.create(
+            sire=self.sire,
+            dam=self.dam,
+            began_on=pairing_began_on,
+            ended_on=pairing_ended_on,
+        )
+        active_before = Pairing.objects.active_between(
+            pairing_began_on - datetime.timedelta(days=10),
+            pairing_began_on - datetime.timedelta(days=1),
+        )
+        self.assertEqual(
+            active_before.count(),
+            0,
+            "pairing should not be active in a window before the pairing began",
+        )
+        active_around_start = Pairing.objects.active_between(
+            pairing_began_on - datetime.timedelta(days=2),
+            pairing_began_on + datetime.timedelta(days=2),
+        )
+        self.assertIn(
+            pairing,
+            active_around_start,
+            "pairing should be active in a window that includes began_on",
+        )
+        active_within_pairing = Pairing.objects.active_between(
+            pairing_began_on + datetime.timedelta(days=2),
+            pairing_ended_on - datetime.timedelta(days=2),
+        )
+        self.assertIn(
+            pairing,
+            active_within_pairing,
+            "pairing should be active in a window between began_on and ended_on",
+        )
+        active_around_end = Pairing.objects.active_between(
+            pairing_ended_on - datetime.timedelta(days=2),
+            pairing_ended_on + datetime.timedelta(days=2),
+        )
+        self.assertIn(
+            pairing,
+            active_around_end,
+            "pairing should be active in a window between began_on and ended_on",
+        )
+        active_after_end = Pairing.objects.active_between(
+            pairing_ended_on + datetime.timedelta(days=2),
+            pairing_ended_on + datetime.timedelta(days=4),
+        )
+        self.assertEqual(
+            active_after_end.count(),
+            0,
+            "pairing should be not be active in a window after ended_on",
+        )
+
     def test_bird_pairing_lists(self):
         pairing_1 = Pairing.objects.create(
             sire=self.sire,
