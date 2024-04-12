@@ -1,0 +1,56 @@
+{% extends "base_view.html" %}
+{% load date_fmt %}
+
+{% block title %} meliza-lab : breeding report {% endblock %}
+
+{% block content %}
+<h2>Breeding Report</h2>
+<hr/>
+
+<table class="table table-striped">
+  <thead>
+    <th>location</th>
+    <th>pair</th>
+    {% for date in dates %}
+    <th>{{ date|date:"SHORT_DATE_FORMAT" }}</th>
+    {% endfor %}
+  </thead>
+  <tbody>
+    {% for pairing in pairs %}
+    <tr>
+      <td>{{pairing.pair.last_location}}</td>
+      <td>
+	<a href="{% url 'birds:pairing' pairing.pair.id %}">{{ pairing.pair.short_name }}</a>
+      </td>
+      {% for day in pairing.counts %}
+      <td>
+        {{ day|count_summary }}
+      </td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h4>Nest checks</h4>
+
+<table class="table table-striped">
+  <thead>
+    <th>Date</th>
+    <th>User</th>
+    <th>Comments</th>
+  </thead>
+  <tbody>
+    {% for check in checks %}
+    <tr>
+      <td>{{ check.datetime.date }}</td>
+      <td>{{ check.entered_by }}</td>
+      <td>{{ check.comments }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<p><a href="{% url 'birds:nest-check' %}">enter nest check for today</a></p>
+
+{% endblock %}

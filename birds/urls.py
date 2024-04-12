@@ -89,6 +89,7 @@ urlpatterns = [
         name="location-summary",
     ),
     re_path(r"^summary/nests/$", views.nest_report, name="nest-summary"),
+    re_path(r"^summary/pairings/$", views.pairing_report, name="pairing-summary"),
     path(
         "summary/events/<int:year>/<int:month>/",
         views.event_summary,

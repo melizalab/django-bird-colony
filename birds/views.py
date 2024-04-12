@@ -7,7 +7,7 @@ from itertools import groupby
 from typing import Optional
 
 from django.core.paginator import Paginator
-from django.db.models import F
+from django.db.models import F, Q
 from django.db.utils import IntegrityError
 from django.forms import ValidationError, formset_factory
 from django.http import Http404, HttpResponseRedirect
@@ -59,7 +59,7 @@ from birds.serializers import (
     EventSerializer,
     PedigreeRequestSerializer,
 )
-from birds.tools import tabulate_nests
+from birds.tools import tabulate_nests, tabulate_pairs
 
 
 class LargeResultsSetPagination(LinkHeaderPagination):
@@ -518,6 +518,34 @@ def location_summary(request):
         loc_data.append((location, sorted(d.items())))
     return render(
         request, "birds/animal_location_summary.html", {"location_list": loc_data}
+    )
+
+
+@require_http_methods(["GET"])
+def pairing_report(request):
+    default_days = 4
+    try:
+        until = dateparse.parse_date(request.GET["until"])
+    except (ValueError, KeyError):
+        until = None
+    try:
+        since = dateparse.parse_date(request.GET["since"])
+    except (ValueError, KeyError):
+        since = None
+    until = until or datetime.date.today()
+    since = since or (until - datetime.timedelta(days=default_days))
+    dates, pairs = tabulate_pairs(since, until)
+    checks = NestCheck.objects.filter(
+        datetime__date__gte=since, datetime__date__lte=until
+    ).order_by("-datetime")
+    return render(
+        request,
+        "birds/pairing_report.html",
+        {
+            "dates": dates,
+            "pairs": pairs,
+            "checks": checks,
+        },
     )
 
 

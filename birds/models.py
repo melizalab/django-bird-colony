@@ -812,9 +812,10 @@ class Pairing(models.Model):
     objects = PairingManager.from_queryset(PairingQuerySet)()
 
     def __str__(self):
-        return "♂{} × ♀{} ({} - {})".format(  # noqa: RUF001
-            self.sire, self.dam, self.began_on, self.ended_on or ""
-        )
+        return f"{self.short_name()} ({self.began_on} - {self.ended_on})"
+
+    def short_name(self):
+        return f"♂{self.sire} × ♀{self.dam}"  # noqa: RUF001
 
     def get_absolute_url(self):
         return reverse("birds:pairing", kwargs={"pk": self.id})
