@@ -4,7 +4,7 @@
 import datetime
 from collections import Counter, defaultdict
 
-from birds.models import ADULT_ANIMAL_NAME, Animal, Event, Location
+from birds.models import ADULT_ANIMAL_NAME, Animal, Event, Location, Pairing
 
 
 def sort_and_group(qs, key):
@@ -105,6 +105,26 @@ def tabulate_nests(since: datetime.date, until: datetime.date):
                     counts[age_group] += 1
             days.append({"animals": dict(by_group), "counts": dict(counts)})
         data.append({"location": nest, "days": days})
+    return dates, data
+
+
+def tabulate_pairs(since: datetime.date, until: datetime.date):
+    if since > until:
+        raise ValueError("until must be after since")
+    n_days = (until - since).days + 1
+    dates = dates = [since + datetime.timedelta(days=x) for x in range(n_days)]
+    active_pairs = Pairing.objects.active_between(since, until).order_by("-began_on")
+    data = []
+    for pair in active_pairs:
+        location = pair.last_location(on_date=since)
+        days = []
+        for date in dates:
+            counts = Counter()
+            for animal in pair.eggs().with_dates(date).existed_on(date):
+                age_group = animal.age_group()
+                counts[age_group] += 1
+            days.append(counts)
+        data.append({"pair": pair, "counts": days})
     return dates, data
 
 
