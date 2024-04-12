@@ -243,7 +243,9 @@ class AnimalQuerySet(models.QuerySet):
             on_date = datetime.date.today()
         q_date = Q(event__date__lte=on_date)
         return self.annotate(
-            first_event_on=Min("event__date", filter=q_date),
+            first_event_on=Min(
+                "event__date", filter=Q(event__status__removes=False) & q_date
+            ),
             born_on=Min(
                 "event__date", filter=Q(event__status__name="hatched") & q_date
             ),
@@ -317,32 +319,15 @@ class AnimalQuerySet(models.QuerySet):
 
     def alive_on(self, date: datetime.date):
         """Only birds that were alive on date (added and not removed)"""
-        return self.annotate(
-            alive=Greatest(
-                0,
-                Count(
-                    "event",
-                    filter=Q(event__date__lte=date, event__status__adds=True),
-                )
-                - Count(
-                    "event",
-                    filter=Q(event__date__lte=date, event__status__removes=True),
-                ),
-            )
-        ).filter(alive__gt=0)
+        return self.with_dates(date).filter(
+            acquired_on__isnull=False, died_on__isnull=True
+        )
 
     def existed_on(self, date: datetime.date):
         """Only birds that existed on date (created but not removed)"""
-        return self.annotate(
-            noted=Count(
-                "event",
-                filter=Q(event__date__lte=date, event__status__removes=False),
-            ),
-            removed=Count(
-                "event",
-                filter=Q(event__date__lte=date, event__status__removes=True),
-            ),
-        ).filter(noted__gt=0, removed__lte=0)
+        return self.with_dates(date).filter(
+            first_event_on__isnull=False, died_on__isnull=True
+        )
 
     def ancestors_of(self, animal, generation: int = 1):
         """All ancestors of animal at specified generation"""
@@ -862,17 +847,11 @@ class Pairing(models.Model):
 
     def eggs(self):
         """All the eggs laid during this pairing (hatched and unhatched)"""
-        # TODO: restrict to children who match both parents
-        params = {
-            # We have to include hatch events here too for older pairings
-            # because eggs were not entered prior to ~2021. Using the cached ids
-            # seems to slow this down so I'm keeping the name lookup.
-            "event__status__name__in": (UNBORN_CREATION_EVENT_NAME, BIRTH_EVENT_NAME),
-            "event__date__gte": self.began_on,
-        }
+        d_query = Q(first_event_on__gte=self.began_on)
         if self.ended_on is not None:
-            params["event__date__lte"] = self.ended_on
-        return self.sire.children.with_status().filter(**params)
+            d_query &= Q(first_event_on__lte=self.ended_on)
+        qs = Animal.objects.filter(parents=self.sire).filter(parents=self.dam)
+        return qs.with_dates().filter(d_query)
 
     def events(self):
         """Queryset with all events for the pair and their progeny during the pairing"""

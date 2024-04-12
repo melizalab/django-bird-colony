@@ -5,6 +5,7 @@ import datetime
 from django.core.exceptions import ValidationError
 from django.db.utils import IntegrityError
 from django.test import TestCase
+from django.db.models import F, Q
 
 from birds import models
 from birds.models import (
@@ -1005,11 +1006,13 @@ class PairingModelTests(TestCase):
         self.assertCountEqual(pairing_3.other_pairings(), [pairing_1])
 
     def test_pairing_egg_list(self):
+        pairing_began_on = datetime.date.today() - datetime.timedelta(days=10)
+        pairing_ended_on = datetime.date.today()
         pairing = Pairing.objects.create(
             sire=self.sire,
             dam=self.dam,
-            began_on=datetime.date.today() - datetime.timedelta(days=10),
-            ended_on=datetime.date.today(),
+            began_on=pairing_began_on,
+            ended_on=pairing_ended_on,
         )
         self.assertEqual(pairing.eggs().count(), 0)
         user = models.get_sentinel_user()
@@ -1017,7 +1020,7 @@ class PairingModelTests(TestCase):
 
         egg = Animal.objects.create(species=self.sire.species)
         egg.parents.set([self.sire, self.dam])
-        laid_on = datetime.date.today() - datetime.timedelta(days=11)
+        laid_on = pairing_began_on - datetime.timedelta(days=1)
         Event.objects.create(
             animal=egg, status=status_laid, date=laid_on, entered_by=user
         )
@@ -1026,11 +1029,10 @@ class PairingModelTests(TestCase):
             0,
             "egg laid before pairing is incorrectly associated with the pairing",
         )
-        self.assertNotIn(egg, pairing.eggs())
 
         egg = Animal.objects.create(species=self.sire.species)
         egg.parents.set([self.sire, self.dam])
-        laid_on = datetime.date.today() - datetime.timedelta(days=1)
+        laid_on = pairing_ended_on - datetime.timedelta(days=4)
         Event.objects.create(
             animal=egg, status=status_laid, date=laid_on, entered_by=user
         )
@@ -1039,23 +1041,75 @@ class PairingModelTests(TestCase):
             [egg],
             "egg laid during the pairing is not associated with it",
         )
+        self.assertNotIn(
+            egg,
+            pairing.eggs().existed_on(pairing_ended_on - datetime.timedelta(days=5)),
+            "egg laid in pairing does not exist before it was created",
+        )
+        self.assertIn(
+            egg,
+            pairing.eggs().existed_on(pairing_ended_on - datetime.timedelta(days=3)),
+            "egg laid in pairing exists after it was created",
+        )
 
         egg = Animal.objects.create(species=self.sire.species)
         egg.parents.set([self.sire, self.dam])
-        laid_on = datetime.date.today() + datetime.timedelta(days=1)
+        laid_on = pairing_ended_on + datetime.timedelta(days=1)
         Event.objects.create(
             animal=egg, status=status_laid, date=laid_on, entered_by=user
         )
-        self.assertEqual(
-            pairing.eggs().count(),
-            1,
+        self.assertNotIn(
+            egg,
+            pairing.eggs(),
             "egg laid after the pairing is incorrectly associated with the pairing",
         )
-        self.assertNotIn(egg, pairing.eggs())
 
         # check that the annotation counts eggs correctly
         annotated_pairing = Pairing.objects.with_progeny_stats().get(pk=pairing.pk)
         self.assertEqual(annotated_pairing.n_eggs, pairing.eggs().count())
+
+    def test_pairing_progeny_status(self):
+        pairing_began_on = datetime.date.today() - datetime.timedelta(days=10)
+        pairing_ended_on = datetime.date.today()
+        pairing = Pairing.objects.create(
+            sire=self.sire,
+            dam=self.dam,
+            began_on=pairing_began_on,
+            ended_on=pairing_ended_on,
+        )
+        self.assertEqual(pairing.eggs().count(), 0)
+        user = models.get_sentinel_user()
+        egg = Animal.objects.create(species=self.sire.species)
+        egg.parents.set([self.sire, self.dam])
+        laid_on = pairing_ended_on - datetime.timedelta(days=4)
+        Event.objects.create(
+            animal=egg,
+            status=models.get_unborn_creation_event_type(),
+            date=laid_on,
+            entered_by=user,
+        )
+        lost_on = laid_on + datetime.timedelta(days=2)
+        Event.objects.create(
+            animal=egg,
+            status=Status.objects.get(name="lost"),
+            date=lost_on,
+            entered_by=user,
+        )
+        self.assertNotIn(
+            egg,
+            pairing.eggs().existed_on(laid_on - datetime.timedelta(days=1)),
+            "egg laid in pairing does not exist before it was created",
+        )
+        self.assertIn(
+            egg,
+            pairing.eggs().existed_on(laid_on + datetime.timedelta(days=1)),
+            "egg laid in pairing exists after it was created",
+        )
+        self.assertNotIn(
+            egg,
+            pairing.eggs().existed_on(lost_on + datetime.timedelta(days=1)),
+            "egg laid in pairing does not exist after it was lost",
+        )
 
     def test_pairing_progeny_stats(self):
         pairing = Pairing.objects.create(
