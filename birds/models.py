@@ -20,13 +20,12 @@ from django.db.models import (
     Max,
     Min,
     OuterRef,
-    Prefetch,
     Q,
     Subquery,
     Sum,
     When,
 )
-from django.db.models.functions import Cast, Greatest, JSONObject, Now, Trunc, TruncDay
+from django.db.models.functions import Cast, Now, Trunc, TruncDay
 from django.db.models.lookups import GreaterThan
 from django.urls import reverse
 from django.utils.functional import cached_property

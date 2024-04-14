@@ -20,34 +20,42 @@ from birds.models import Animal, Color, Location, Pairing, Plumage, Species, Sta
 warnings.filterwarnings("error")
 
 
+def today() -> datetime.date:
+    return datetime.date.today()
+
+
+def dt_days(days: int) -> datetime.timedelta:
+    return datetime.timedelta(days=days)
+
+
 class SexFormTest(TestCase):
     def test_without_note_status(self):
         user = models.get_sentinel_user()
-        form = SexForm({"date": datetime.date.today(), "sex": "M", "entered_by": user})
+        form = SexForm({"date": today(), "sex": "M", "entered_by": user})
         self.assertFalse(form.is_valid())
 
     def test_with_note_status(self):
         _ = Status.objects.get_or_create(name=models.NOTE_EVENT_NAME)
         user = models.get_sentinel_user()
-        form = SexForm({"date": datetime.date.today(), "sex": "M", "entered_by": user})
+        form = SexForm({"date": today(), "sex": "M", "entered_by": user})
         self.assertTrue(form.is_valid())
 
 
 class ReservationFormTest(TestCase):
     def test_without_reservation_status(self):
         user = models.get_sentinel_user()
-        form = ReservationForm({"date": datetime.date.today(), "entered_by": user})
+        form = ReservationForm({"date": today(), "entered_by": user})
         self.assertFalse(form.is_valid())
 
     def test_with_reservation_status(self):
         _ = Status.objects.get_or_create(name=models.RESERVATION_EVENT_NAME)
         user = models.get_sentinel_user()
-        form = ReservationForm({"date": datetime.date.today(), "entered_by": user})
+        form = ReservationForm({"date": today(), "entered_by": user})
         self.assertTrue(form.is_valid())
 
     def test_without_user(self):
         _ = Status.objects.get_or_create(name=models.RESERVATION_EVENT_NAME)
-        form = ReservationForm({"date": datetime.date.today()})
+        form = ReservationForm({"date": today()})
         self.assertTrue(form.is_valid())
 
 
@@ -72,7 +80,7 @@ class NewBandFormTest(TestCase):
         user = models.get_sentinel_user()
         form = NewBandForm(
             {
-                "banding_date": datetime.date.today(),
+                "banding_date": today(),
                 "band_number": 10,
                 "sex": "M",
                 "user": user,
@@ -85,7 +93,7 @@ class NewBandFormTest(TestCase):
         user = models.get_sentinel_user()
         form = NewBandForm(
             {
-                "banding_date": datetime.date.today(),
+                "banding_date": today(),
                 "band_number": 10,
                 "sex": "M",
                 "user": user,
@@ -98,7 +106,7 @@ class NewBandFormTest(TestCase):
         user = models.get_sentinel_user()
         form = NewBandForm(
             {
-                "banding_date": datetime.date.today(),
+                "banding_date": today(),
                 "band_color": self.color,
                 "band_number": 20,
                 "sex": "M",
@@ -112,7 +120,7 @@ class NewBandFormTest(TestCase):
         user = models.get_sentinel_user()
         form = NewBandForm(
             {
-                "banding_date": datetime.date.today(),
+                "banding_date": today(),
                 "band_color": self.color,
                 "plumage": self.plumage,
                 "location": self.location,
@@ -130,7 +138,7 @@ class NewAnimalFormTest(TestCase):
     @classmethod
     def setUpTestData(cls):
         status = models.get_birth_event_type()
-        birthday = datetime.date.today() - datetime.timedelta(days=365)
+        birthday = today() - dt_days(365)
         cls.user = models.get_sentinel_user()
         cls.location = Location.objects.get(pk=2)
         cls.species = Species.objects.get(pk=1)
@@ -153,13 +161,13 @@ class NewAnimalFormTest(TestCase):
         )
 
     def test_add_by_transfer(self):
-        acq_on = datetime.date.today() - datetime.timedelta(days=10)
+        acq_on = today() - dt_days(10)
         acq_status = Status.objects.get(name="transferred in")
         form = NewAnimalForm(
             {
                 "acq_status": acq_status,
                 "acq_date": acq_on,
-                "banding_date": datetime.date.today(),
+                "banding_date": today(),
                 "sex": "M",
                 "species": self.species,
                 "band_number": 100,
@@ -170,13 +178,13 @@ class NewAnimalFormTest(TestCase):
         self.assertTrue(form.is_valid())
 
     def test_add_by_transfer_requires_species(self):
-        acq_on = datetime.date.today() - datetime.timedelta(days=10)
+        acq_on = today() - dt_days(10)
         acq_status = Status.objects.get(name="transferred in")
         form = NewAnimalForm(
             {
                 "acq_status": acq_status,
                 "acq_date": acq_on,
-                "banding_date": datetime.date.today(),
+                "banding_date": today(),
                 "sex": "M",
                 "band_number": 100,
                 "location": self.location,
@@ -186,13 +194,13 @@ class NewAnimalFormTest(TestCase):
         self.assertFalse(form.is_valid())
 
     def test_add_from_parents(self):
-        acq_on = datetime.date.today() - datetime.timedelta(days=10)
+        acq_on = today() - dt_days(10)
         acq_status = models.get_birth_event_type()
         form = NewAnimalForm(
             {
                 "acq_status": acq_status,
                 "acq_date": acq_on,
-                "banding_date": datetime.date.today(),
+                "banding_date": today(),
                 "sex": "U",
                 "sire": self.sire,
                 "dam": self.dam,
@@ -204,13 +212,13 @@ class NewAnimalFormTest(TestCase):
         self.assertTrue(form.is_valid())
 
     def test_add_from_one_parent(self):
-        acq_on = datetime.date.today() - datetime.timedelta(days=10)
+        acq_on = today() - dt_days(10)
         acq_status = models.get_birth_event_type()
         form = NewAnimalForm(
             {
                 "acq_status": acq_status,
                 "acq_date": acq_on,
-                "banding_date": datetime.date.today(),
+                "banding_date": today(),
                 "sex": "U",
                 "sire": self.sire,
                 "band_number": 100,
@@ -221,7 +229,7 @@ class NewAnimalFormTest(TestCase):
         self.assertFalse(form.is_valid())
 
     def test_add_from_mismatched_parent(self):
-        acq_on = datetime.date.today() - datetime.timedelta(days=10)
+        acq_on = today() - dt_days(10)
         acq_status = models.get_birth_event_type()
         species = Species.objects.create(
             common_name="eurasian magpie", genus="pica", species="pica", code="EUMA"
@@ -229,7 +237,7 @@ class NewAnimalFormTest(TestCase):
         wrong_dam = Animal.objects.create_with_event(
             species=species,
             status=acq_status,
-            date=datetime.date.today() - datetime.timedelta(days=10),
+            date=today() - dt_days(10),
             entered_by=self.user,
             location=self.location,
             sex=Animal.Sex.MALE,
@@ -238,7 +246,7 @@ class NewAnimalFormTest(TestCase):
             {
                 "acq_status": acq_status,
                 "acq_date": acq_on,
-                "banding_date": datetime.date.today(),
+                "banding_date": today(),
                 "sex": "U",
                 "sire": self.sire,
                 "dam": wrong_dam,
@@ -250,13 +258,13 @@ class NewAnimalFormTest(TestCase):
         self.assertFalse(form.is_valid())
 
     def test_band_already_exists(self):
-        acq_on = datetime.date.today() - datetime.timedelta(days=10)
+        acq_on = today() - dt_days(10)
         acq_status = Status.objects.get(name="transferred in")
         form = NewAnimalForm(
             {
                 "acq_status": acq_status,
                 "acq_date": acq_on,
-                "banding_date": datetime.date.today(),
+                "banding_date": today(),
                 "sex": "M",
                 "species": self.species,
                 "band_number": 1,
@@ -272,7 +280,7 @@ class NewPairingFormTest(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        birthday = datetime.date.today() - datetime.timedelta(days=365)
+        birthday = today() - dt_days(365)
         cls.status = models.get_birth_event_type()
         cls.user = models.get_sentinel_user()
         cls.location = Location.objects.get(pk=2)
@@ -301,7 +309,7 @@ class NewPairingFormTest(TestCase):
                 "sire": self.sire,
                 "dam": self.dam,
                 "entered_by": self.user,
-                "began_on": datetime.date.today(),
+                "began_on": today(),
             }
         )
         self.assertTrue(form.is_valid())
@@ -312,7 +320,7 @@ class NewPairingFormTest(TestCase):
                 "sire": self.dam,
                 "dam": self.sire,
                 "entered_by": self.user,
-                "began_on": datetime.date.today(),
+                "began_on": today(),
             }
         )
         self.assertFalse(form.is_valid())
@@ -324,7 +332,7 @@ class NewPairingFormTest(TestCase):
                 "sire": dead_sire,
                 "dam": self.dam,
                 "entered_by": self.user,
-                "began_on": datetime.date.today(),
+                "began_on": today(),
             }
         )
         self.assertFalse(form.is_valid())
@@ -334,7 +342,7 @@ class NewPairingFormTest(TestCase):
                 "sire": self.sire,
                 "dam": dead_dam,
                 "entered_by": self.user,
-                "began_on": datetime.date.today(),
+                "began_on": today(),
             }
         )
         self.assertFalse(form.is_valid())
@@ -343,7 +351,7 @@ class NewPairingFormTest(TestCase):
         invalid_sire = Animal.objects.create_with_event(
             species=self.species,
             status=self.status,
-            date=datetime.date.today() - datetime.timedelta(days=5),
+            date=today() - dt_days(5),
             entered_by=self.user,
             location=self.location,
             sex=Animal.Sex.MALE,
@@ -354,14 +362,14 @@ class NewPairingFormTest(TestCase):
                 "sire": invalid_sire,
                 "dam": self.dam,
                 "entered_by": self.user,
-                "began_on": datetime.date.today(),
+                "began_on": today(),
             }
         )
         self.assertFalse(form.is_valid())
         invalid_dam = Animal.objects.create_with_event(
             species=self.species,
             status=self.status,
-            date=datetime.date.today() - datetime.timedelta(days=5),
+            date=today() - dt_days(5),
             entered_by=self.user,
             location=self.location,
             sex=Animal.Sex.FEMALE,
@@ -372,7 +380,7 @@ class NewPairingFormTest(TestCase):
                 "sire": self.sire,
                 "dam": invalid_dam,
                 "entered_by": self.user,
-                "began_on": datetime.date.today(),
+                "began_on": today(),
             }
         )
         self.assertFalse(form.is_valid())
@@ -381,14 +389,14 @@ class NewPairingFormTest(TestCase):
         _pairing = Pairing.objects.create(
             sire=self.sire,
             dam=self.dam,
-            began_on=datetime.date.today() - datetime.timedelta(days=10),
+            began_on=today() - dt_days(10),
         )
         form = NewPairingForm(
             {
                 "sire": self.dam,
                 "dam": self.sire,
                 "entered_by": self.user,
-                "began_on": datetime.date.today(),
+                "began_on": today(),
             }
         )
         self.assertFalse(form.is_valid())
@@ -397,15 +405,15 @@ class NewPairingFormTest(TestCase):
         _pairing = Pairing.objects.create(
             sire=self.sire,
             dam=self.dam,
-            began_on=datetime.date.today() - datetime.timedelta(days=50),
-            ended_on=datetime.date.today() - datetime.timedelta(days=5),
+            began_on=today() - dt_days(50),
+            ended_on=today() - dt_days(5),
         )
         form = NewPairingForm(
             {
                 "sire": self.dam,
                 "dam": self.sire,
                 "entered_by": self.user,
-                "began_on": datetime.date.today() - datetime.timedelta(days=10),
+                "began_on": today() - dt_days(10),
             }
         )
         self.assertFalse(form.is_valid())
@@ -416,7 +424,7 @@ class NestCheckFormTest(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        birthday = datetime.date.today() - datetime.timedelta(days=365)
+        birthday = today() - dt_days(365)
         status = models.get_birth_event_type()
         user = models.get_sentinel_user()
         location = Location.objects.get(pk=1)
@@ -443,7 +451,7 @@ class NestCheckFormTest(TestCase):
         _ = Pairing.objects.create_with_events(
             sire=cls.sire,
             dam=cls.dam,
-            began_on=datetime.date.today() - datetime.timedelta(days=1),
+            began_on=today() - dt_days(1),
             purpose="testing",
             entered_by=user,
             location=cls.nest,
@@ -502,7 +510,7 @@ class NestCheckFormTest(TestCase):
         self.assertFalse(form.is_valid())
 
     def test_nest_check_cannot_add_egg_with_too_many_males(self):
-        birthday = datetime.date.today() - datetime.timedelta(days=365)
+        birthday = today() - dt_days(365)
         Animal.objects.create_with_event(
             species=Species.objects.get(pk=1),
             status=models.get_birth_event_type(),
@@ -517,7 +525,7 @@ class NestCheckFormTest(TestCase):
     def test_nest_check_cannot_add_egg_without_a_male(self):
         _ = models.Event.objects.create(
             animal=self.sire,
-            date=datetime.date.today(),
+            date=today(),
             status=Status.objects.get(name="moved"),
             location=Location.objects.get(pk=1),
             entered_by=models.get_sentinel_user(),
@@ -526,7 +534,7 @@ class NestCheckFormTest(TestCase):
         self.assertFalse(form.is_valid())
 
     def test_nest_check_cannot_add_egg_with_too_many_females(self):
-        birthday = datetime.date.today() - datetime.timedelta(days=365)
+        birthday = today() - dt_days(365)
         Animal.objects.create_with_event(
             species=Species.objects.get(pk=1),
             status=models.get_birth_event_type(),
@@ -541,7 +549,7 @@ class NestCheckFormTest(TestCase):
     def test_nest_check_cannot_add_egg_without_a_female(self):
         _ = models.Event.objects.create(
             animal=self.dam,
-            date=datetime.date.today(),
+            date=today(),
             status=Status.objects.get(name="moved"),
             location=Location.objects.get(pk=1),
             entered_by=models.get_sentinel_user(),

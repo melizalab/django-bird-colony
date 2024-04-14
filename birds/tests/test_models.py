@@ -5,7 +5,6 @@ import datetime
 from django.core.exceptions import ValidationError
 from django.db.utils import IntegrityError
 from django.test import TestCase
-from django.db.models import F, Q
 
 from birds import models
 from birds.models import (
@@ -33,6 +32,14 @@ def make_child(sire, dam, birthday=None, **kwargs):
     return child
 
 
+def today() -> datetime.date:
+    return datetime.date.today()
+
+
+def dt_days(days: int) -> datetime.timedelta:
+    return datetime.timedelta(days=days)
+
+
 class AnimalModelTests(TestCase):
     fixtures = ["bird_colony_starter_kit"]
 
@@ -40,7 +47,7 @@ class AnimalModelTests(TestCase):
         species = Species.objects.get(pk=1)
         status = models.get_birth_event_type()
         age = datetime.timedelta(days=5)
-        birthday = datetime.date.today() - age
+        birthday = today() - age
         user = models.get_sentinel_user()
         location = Location.objects.get(pk=2)
         bird = Animal.objects.create_with_event(
@@ -78,7 +85,7 @@ class AnimalModelTests(TestCase):
         self.assertIs(bird.acquisition_event(), None)
         self.assertIs(bird.age(), None)
         self.assertIs(bird.alive(), False)
-        random_date = datetime.date.today() - datetime.timedelta(days=5)
+        random_date = today() - datetime.timedelta(days=5)
         self.assertIs(bird.age(on_date=random_date), None)
         self.assertNotIn(bird, Animal.objects.alive())
         self.assertNotIn(bird, Animal.objects.hatched())
@@ -99,8 +106,8 @@ class AnimalModelTests(TestCase):
         species = Species.objects.get(pk=1)
         bird = Animal.objects.create(species=species)
         status = models.get_birth_event_type()
-        age = datetime.timedelta(days=5)
-        birthday = datetime.date.today() - age
+        age = dt_days(5)
+        birthday = today() - age
         user = models.get_sentinel_user()
 
         event = Event.objects.create(
@@ -108,12 +115,12 @@ class AnimalModelTests(TestCase):
         )
         self.assertEqual(bird.acquisition_event(), event)
         self.assertEqual(bird.age(), age)
-        self.assertEqual(bird.age(on_date=birthday), datetime.timedelta(days=0))
-        self.assertIs(bird.age(on_date=birthday - datetime.timedelta(days=1)), None)
+        self.assertEqual(bird.age(on_date=birthday), dt_days(0))
+        self.assertIs(bird.age(on_date=birthday - dt_days(1)), None)
 
         self.assertIs(bird.alive(), True)
         self.assertIs(bird.alive(on_date=birthday), True)
-        self.assertIs(bird.alive(on_date=birthday - datetime.timedelta(days=1)), False)
+        self.assertIs(bird.alive(on_date=birthday - dt_days(1)), False)
         self.assertIs(bird.expected_hatch(), None)
 
         annotated_bird = Animal.objects.with_status().get(pk=bird.pk)
@@ -130,20 +137,16 @@ class AnimalModelTests(TestCase):
         self.assertIn(bird, Animal.objects.hatched())
         self.assertNotIn(bird, Animal.objects.unhatched())
         self.assertIn(bird, Animal.objects.alive_on(birthday))
-        self.assertNotIn(
-            bird, Animal.objects.alive_on(birthday - datetime.timedelta(days=1))
-        )
+        self.assertNotIn(bird, Animal.objects.alive_on(birthday - dt_days(1)))
         self.assertIn(bird, Animal.objects.existed_on(birthday))
-        self.assertNotIn(
-            bird, Animal.objects.existed_on(birthday - datetime.timedelta(days=1))
-        )
+        self.assertNotIn(bird, Animal.objects.existed_on(birthday - dt_days(1)))
 
     def test_status_of_transferred_bird(self):
         species = Species.objects.get(pk=1)
         bird = Animal.objects.create(species=species)
         status = Status.objects.get(name="transferred in")
         self.assertEqual(status.adds, 1)
-        acq_on = datetime.date.today() - datetime.timedelta(days=10)
+        acq_on = today() - dt_days(10)
         user = models.get_sentinel_user()
         event = Event.objects.create(
             animal=bird, status=status, date=acq_on, entered_by=user
@@ -154,7 +157,7 @@ class AnimalModelTests(TestCase):
         self.assertIs(bird.age(on_date=acq_on), None)
         self.assertIs(bird.alive(), True)
         self.assertIs(bird.alive(on_date=acq_on), True)
-        self.assertIs(bird.alive(on_date=acq_on - datetime.timedelta(days=1)), False)
+        self.assertIs(bird.alive(on_date=acq_on - dt_days(1)), False)
         self.assertIs(bird.expected_hatch(), None)
 
         annotated_bird = Animal.objects.with_status().get(pk=bird.pk)
@@ -173,13 +176,9 @@ class AnimalModelTests(TestCase):
         self.assertIn(bird, Animal.objects.unhatched())
         self.assertIn(bird, Animal.objects.unhatched().alive())
         self.assertIn(bird, Animal.objects.alive_on(acq_on))
-        self.assertNotIn(
-            bird, Animal.objects.alive_on(acq_on - datetime.timedelta(days=1))
-        )
+        self.assertNotIn(bird, Animal.objects.alive_on(acq_on - dt_days(1)))
         self.assertIn(bird, Animal.objects.existed_on(acq_on))
-        self.assertNotIn(
-            bird, Animal.objects.existed_on(acq_on - datetime.timedelta(days=1))
-        )
+        self.assertNotIn(bird, Animal.objects.existed_on(acq_on - dt_days(1)))
 
     def test_status_of_dead_bird(self):
         species = Species.objects.get(pk=1)
@@ -187,21 +186,21 @@ class AnimalModelTests(TestCase):
         user = models.get_sentinel_user()
         status_born = models.get_birth_event_type()
         self.assertEqual(status_born.adds, 1)
-        born_on = datetime.date.today() - datetime.timedelta(days=10)
+        born_on = today() - dt_days(10)
         event_born = Event.objects.create(
             animal=bird, status=status_born, date=born_on, entered_by=user
         )
         status_died = Status.objects.get(name="died")
         self.assertEqual(status_died.removes, 1)
-        died_on = datetime.date.today() - datetime.timedelta(days=1)
+        died_on = today() - dt_days(1)
         Event.objects.create(
             animal=bird, status=status_died, date=died_on, entered_by=user
         )
 
         self.assertEqual(bird.acquisition_event(), event_born)
         self.assertIs(bird.alive(), False)
-        self.assertIs(bird.alive(on_date=died_on - datetime.timedelta(days=1)), True)
-        self.assertIs(bird.alive(on_date=born_on - datetime.timedelta(days=1)), False)
+        self.assertIs(bird.alive(on_date=died_on - dt_days(1)), True)
+        self.assertIs(bird.alive(on_date=born_on - dt_days(1)), False)
 
         self.assertEqual(bird.age(), died_on - born_on)
         self.assertEqual(bird.age(on_date=died_on), died_on - born_on)
@@ -221,19 +220,11 @@ class AnimalModelTests(TestCase):
         self.assertIn(bird, Animal.objects.hatched())
         self.assertNotIn(bird, Animal.objects.unhatched())
         self.assertIn(bird, Animal.objects.alive_on(born_on))
-        self.assertIn(
-            bird, Animal.objects.alive_on(died_on - datetime.timedelta(days=1))
-        )
-        self.assertNotIn(
-            bird, Animal.objects.alive_on(born_on - datetime.timedelta(days=1))
-        )
+        self.assertIn(bird, Animal.objects.alive_on(died_on - dt_days(1)))
+        self.assertNotIn(bird, Animal.objects.alive_on(born_on - dt_days(1)))
         self.assertIn(bird, Animal.objects.existed_on(born_on))
-        self.assertIn(
-            bird, Animal.objects.existed_on(died_on - datetime.timedelta(days=1))
-        )
-        self.assertNotIn(
-            bird, Animal.objects.existed_on(born_on - datetime.timedelta(days=1))
-        )
+        self.assertIn(bird, Animal.objects.existed_on(died_on - dt_days(1)))
+        self.assertNotIn(bird, Animal.objects.existed_on(born_on - dt_days(1)))
 
     def test_bird_hatched_alive_order(self):
         species = Species.objects.get(pk=1)
@@ -241,7 +232,7 @@ class AnimalModelTests(TestCase):
         user = models.get_sentinel_user()
         status_born = models.get_birth_event_type()
         self.assertEqual(status_born.adds, 1)
-        born_on = datetime.date.today() - datetime.timedelta(days=10)
+        born_on = today() - dt_days(10)
         Event.objects.create(
             animal=bird, status=status_born, date=born_on, entered_by=user
         )
@@ -253,7 +244,7 @@ class AnimalModelTests(TestCase):
 
         status_died = Status.objects.get(name="died")
         self.assertEqual(status_died.removes, 1)
-        died_on = datetime.date.today() - datetime.timedelta(days=1)
+        died_on = today() - dt_days(1)
         Event.objects.create(
             animal=bird, status=status_died, date=died_on, entered_by=user
         )
@@ -270,7 +261,7 @@ class AnimalModelTests(TestCase):
         user = models.get_sentinel_user()
         status_laid = models.get_unborn_creation_event_type()
         self.assertEqual(status_laid.adds, 0)
-        laid_on = datetime.date.today() - datetime.timedelta(days=10)
+        laid_on = today() - dt_days(10)
         Event.objects.create(
             animal=egg, status=status_laid, date=laid_on, entered_by=user
         )
@@ -296,19 +287,16 @@ class AnimalModelTests(TestCase):
         self.assertNotIn(egg, Animal.objects.hatched())
         self.assertIn(egg, Animal.objects.unhatched())
         self.assertIn(egg, Animal.objects.existed_on(laid_on))
-        self.assertNotIn(
-            egg, Animal.objects.existed_on(laid_on - datetime.timedelta(days=1))
-        )
+        self.assertNotIn(egg, Animal.objects.existed_on(laid_on - dt_days(1)))
 
     def test_with_dates_as_of_date(self):
         species = Species.objects.get(pk=1)
         bird = Animal.objects.create(species=species)
         models.get_birth_event_type()
-        age = datetime.timedelta(days=5)
-        today = datetime.date.today()
-        birthday = today - age
+        age = dt_days(5)
+        birthday = today() - age
         user = models.get_sentinel_user()
-        laid_on = today - datetime.timedelta(days=10)
+        laid_on = today() - dt_days(10)
         Event.objects.create(
             animal=bird,
             status=models.get_unborn_creation_event_type(),
@@ -324,14 +312,14 @@ class AnimalModelTests(TestCase):
         Event.objects.create(
             animal=bird,
             status=models.get_death_event_type(),
-            date=today,
+            date=today(),
             entered_by=user,
         )
         annotated_bird = Animal.objects.with_dates().get(pk=bird.pk)
         self.assertEqual(annotated_bird.first_event_on, laid_on)
         self.assertEqual(annotated_bird.born_on, birthday)
         self.assertEqual(annotated_bird.acquired_on, birthday)
-        self.assertEqual(annotated_bird.died_on, today)
+        self.assertEqual(annotated_bird.died_on, today())
         self.assertEqual(annotated_bird.age, age)
 
         annotated_bird = Animal.objects.with_dates(birthday).get(pk=bird.pk)
@@ -339,20 +327,18 @@ class AnimalModelTests(TestCase):
         self.assertEqual(annotated_bird.born_on, birthday)
         self.assertEqual(annotated_bird.acquired_on, birthday)
         self.assertIs(annotated_bird.died_on, None)
-        self.assertEqual(annotated_bird.age, datetime.timedelta(days=0))
+        self.assertEqual(annotated_bird.age, dt_days(0))
 
-        annotated_bird = Animal.objects.with_dates(
-            birthday - datetime.timedelta(days=1)
-        ).get(pk=bird.pk)
+        annotated_bird = Animal.objects.with_dates(birthday - dt_days(1)).get(
+            pk=bird.pk
+        )
         self.assertEqual(annotated_bird.first_event_on, laid_on)
         self.assertIs(annotated_bird.born_on, None)
         self.assertIs(annotated_bird.acquired_on, None)
         self.assertIs(annotated_bird.died_on, None)
         self.assertIs(annotated_bird.age, None)
 
-        annotated_bird = Animal.objects.with_dates(
-            laid_on - datetime.timedelta(days=1)
-        ).get(pk=bird.pk)
+        annotated_bird = Animal.objects.with_dates(laid_on - dt_days(1)).get(pk=bird.pk)
         self.assertIs(annotated_bird.first_event_on, None)
         self.assertIs(annotated_bird.born_on, None)
         self.assertIs(annotated_bird.acquired_on, None)
@@ -366,9 +352,7 @@ class AnimalModelTests(TestCase):
         youngest_group = species.age_set.get(min_days=0)
         for age_group in species.age_set.all():
             bird = Animal.objects.create(species=species)
-            birthday = datetime.date.today() - datetime.timedelta(
-                days=age_group.min_days
-            )
+            birthday = today() - datetime.timedelta(days=age_group.min_days)
             Event.objects.create(
                 animal=bird, status=status, date=birthday, entered_by=user
             )
@@ -377,14 +361,13 @@ class AnimalModelTests(TestCase):
             abird = Animal.objects.with_dates().get(pk=bird.pk)
             self.assertEqual(abird.age_group(birthday), youngest_group.name)
             abird = Animal.objects.with_dates().get(pk=bird.pk)
-            self.assertIs(abird.age_group(birthday - datetime.timedelta(days=1)), None)
+            self.assertIs(abird.age_group(birthday - dt_days(1)), None)
 
     def test_age_grouping_of_egg(self):
         species = Species.objects.get(pk=1)
         status = models.get_unborn_creation_event_type()
         user = models.get_sentinel_user()
-        today = datetime.date.today()
-        laid_on = today - datetime.timedelta(days=7)
+        laid_on = today() - dt_days(7)
         egg = Animal.objects.create(species=species)
         _event = Event.objects.create(
             animal=egg, status=status, date=laid_on, entered_by=user
@@ -394,12 +377,12 @@ class AnimalModelTests(TestCase):
         aegg = Animal.objects.with_dates().get(pk=egg.pk)
         self.assertEqual(aegg.age_group(laid_on), models.UNBORN_ANIMAL_NAME)
         aegg = Animal.objects.with_dates().get(pk=egg.pk)
-        self.assertIs(aegg.age_group(laid_on - datetime.timedelta(days=1)), None)
+        self.assertIs(aegg.age_group(laid_on - dt_days(1)), None)
         # Adding a hatch event
         _event = Event.objects.create(
             animal=egg,
             status=models.get_birth_event_type(),
-            date=today,
+            date=today(),
             entered_by=user,
         )
         aegg = Animal.objects.with_dates().get(pk=egg.pk)
@@ -408,7 +391,7 @@ class AnimalModelTests(TestCase):
         self.assertEqual(aegg.age_group(laid_on), models.UNBORN_ANIMAL_NAME)
         aegg = Animal.objects.with_dates().get(pk=egg.pk)
         self.assertEqual(
-            aegg.age_group(today - datetime.timedelta(days=1)),
+            aegg.age_group(today() - dt_days(1)),
             models.UNBORN_ANIMAL_NAME,
         )
 
@@ -418,7 +401,7 @@ class AnimalModelTests(TestCase):
         self.assertIs(bird.last_location(), None)
         user = models.get_sentinel_user()
         status_1 = models.get_birth_event_type()
-        birthday = datetime.date.today() - datetime.timedelta(days=10)
+        birthday = today() - dt_days(10)
         location_1 = Location.objects.get(pk=2)
         Event.objects.create(
             animal=bird,
@@ -432,7 +415,7 @@ class AnimalModelTests(TestCase):
         self.assertEqual(abird.last_location, location_1.name)
 
         status_2 = Status.objects.get(name="moved")
-        date_2 = datetime.date.today() - datetime.timedelta(days=1)
+        date_2 = today() - dt_days(1)
         location_2 = Location.objects.get(pk=1)
         Event.objects.create(
             animal=bird,
@@ -448,12 +431,10 @@ class AnimalModelTests(TestCase):
         self.assertEqual(bird.last_location(on_date=birthday), location_1)
         abird = Animal.objects.with_location(on_date=birthday).get(pk=bird.pk)
         self.assertEqual(abird.last_location, location_1.name)
-        self.assertIs(
-            bird.last_location(on_date=birthday - datetime.timedelta(days=1)), None
+        self.assertIs(bird.last_location(on_date=birthday - dt_days(1)), None)
+        abird = Animal.objects.with_location(on_date=birthday - dt_days(1)).get(
+            pk=bird.pk
         )
-        abird = Animal.objects.with_location(
-            on_date=birthday - datetime.timedelta(days=1)
-        ).get(pk=bird.pk)
         self.assertIs(abird.last_location, None)
 
     def test_updating_sex(self):
@@ -463,7 +444,7 @@ class AnimalModelTests(TestCase):
         self.assertEqual(bird.sex, Animal.Sex.UNKNOWN_SEX)
 
         user = models.get_sentinel_user()
-        date = datetime.date.today()
+        date = today()
         event = bird.update_sex(Animal.Sex.FEMALE, date=date, entered_by=user)
         # force refresh from database
         bird = Animal.objects.get(pk=bird.pk)
@@ -479,12 +460,11 @@ class AnimalModelTests(TestCase):
         self.assertIs(bird.band_color, None)
         self.assertIs(bird.plumage, None)
         user = models.get_sentinel_user()
-        datetime.date.today()
         color = Color.objects.get(pk=1)
         event = bird.update_band(
             band_number=100,
             band_color=color,
-            date=datetime.date.today(),
+            date=today(),
             entered_by=user,
         )
         # force refresh from database
@@ -503,12 +483,11 @@ class AnimalModelTests(TestCase):
             species=species, sex=Animal.Sex.MALE, plumage=plumage
         )
         user = models.get_sentinel_user()
-        datetime.date.today()
         color = Color.objects.get(pk=1)
         bird.update_band(
             band_number=100,
             band_color=color,
-            date=datetime.date.today(),
+            date=today(),
             entered_by=user,
         )
         # force refresh from database
@@ -541,8 +520,8 @@ class ParentModelTests(TestCase):
         sire = Animal.objects.create(species=species, sex=Animal.Sex.MALE)
         dam = Animal.objects.create(species=species, sex=Animal.Sex.FEMALE)
         status = models.get_birth_event_type()
-        age = datetime.timedelta(days=5)
-        birthday = datetime.date.today() - age
+        age = dt_days(5)
+        birthday = today() - age
         user = models.get_sentinel_user()
         location = Location.objects.get(pk=2)
         bird = Animal.objects.create_from_parents(
@@ -571,8 +550,8 @@ class ParentModelTests(TestCase):
         species = Species.objects.get(pk=1)
         sire = Animal.objects.create(species=species, sex=Animal.Sex.MALE)
         dam = Animal.objects.create(species=species, sex=Animal.Sex.FEMALE)
-        age = datetime.timedelta(days=5)
-        birthday = datetime.date.today() - age
+        age = dt_days(5)
+        birthday = today() - age
         make_child(sire, dam, birthday)
         self.assertEqual(sire.children.unhatched().count(), 0)
         self.assertEqual(sire.children.hatched().count(), 1)
@@ -585,7 +564,7 @@ class ParentModelTests(TestCase):
         user = models.get_sentinel_user()
         location = Location.objects.get(pk=2)
 
-        birthday = datetime.date.today() - datetime.timedelta(days=365)
+        birthday = today() - dt_days(365)
         sire = Animal.objects.create_with_event(
             species=species,
             date=birthday,
@@ -605,14 +584,14 @@ class ParentModelTests(TestCase):
         # add death event for dam to check that alive status is correct
         Event.objects.create(
             animal=dam,
-            date=datetime.date.today() - datetime.timedelta(days=5),
+            date=today() - dt_days(5),
             entered_by=user,
             status=died_status,
         )
         son = Animal.objects.create_from_parents(
             sire=sire,
             dam=dam,
-            date=datetime.date.today() - datetime.timedelta(days=100),
+            date=today() - dt_days(100),
             status=born_status,
             entered_by=user,
             location=location,
@@ -620,7 +599,7 @@ class ParentModelTests(TestCase):
         )
         wife = Animal.objects.create_with_event(
             species=species,
-            date=datetime.date.today() - datetime.timedelta(days=99),
+            date=today() - dt_days(99),
             location=location,
             status=born_status,
             entered_by=user,
@@ -629,25 +608,25 @@ class ParentModelTests(TestCase):
         grandson = make_child(
             son,
             wife,
-            datetime.date.today() - datetime.timedelta(days=50),
+            today() - dt_days(50),
             sex=Animal.Sex.MALE,
         )
         granddaughter_1 = make_child(
             son,
             wife,
-            datetime.date.today() - datetime.timedelta(days=50),
+            today() - dt_days(50),
             sex=Animal.Sex.FEMALE,
         )
         granddaughter_2 = make_child(
             son,
             wife,
-            datetime.date.today() - datetime.timedelta(days=45),
+            today() - dt_days(45),
             sex=Animal.Sex.FEMALE,
         )
         # add death event to check that alive status of descendents is correct
         Event.objects.create(
             animal=granddaughter_2,
-            date=datetime.date.today() - datetime.timedelta(days=1),
+            date=today() - dt_days(1),
             entered_by=user,
             status=died_status,
         )
@@ -685,15 +664,15 @@ class EventModelTests(TestCase):
         species = Species.objects.get(pk=1)
         bird = Animal.objects.create(species=species)
         status = models.get_birth_event_type()
-        age = datetime.timedelta(days=5)
-        birthday = datetime.date.today() - age
+        age = dt_days(5)
+        birthday = today() - age
         user = models.get_sentinel_user()
         event = Event.objects.create(
             animal=bird, status=status, date=birthday, entered_by=user
         )
-        self.assertEqual(event.age(), datetime.timedelta(days=0))
+        self.assertEqual(event.age(), dt_days(0))
         status_2 = Status.objects.get(name="moved")
-        date_2 = datetime.date.today() - datetime.timedelta(days=1)
+        date_2 = today() - dt_days(1)
         event_2 = Event(
             animal=bird,
             status=status_2,
@@ -707,7 +686,7 @@ class EventModelTests(TestCase):
         bird = Animal.objects.create(species=species)
         user = models.get_sentinel_user()
         status_2 = Status.objects.get(name="moved")
-        date_2 = datetime.date.today() - datetime.timedelta(days=1)
+        date_2 = today() - dt_days(1)
         event_2 = Event(
             animal=bird,
             status=status_2,
@@ -725,13 +704,13 @@ class EventModelTests(TestCase):
         event_1_1 = Event.objects.create(
             animal=bird_1,
             status=status,
-            date=datetime.date.today() - datetime.timedelta(days=1),
+            date=today() - dt_days(1),
             entered_by=user,
         )
         Event.objects.create(
             animal=bird_1,
             status=status,
-            date=datetime.date.today() - datetime.timedelta(days=10),
+            date=today() - dt_days(10),
             entered_by=user,
         )
 
@@ -739,14 +718,14 @@ class EventModelTests(TestCase):
         Event.objects.create(
             animal=bird_2,
             status=status,
-            date=datetime.date.today() - datetime.timedelta(days=50),
+            date=today() - dt_days(50),
             entered_by=user,
         )
 
         event_2_2 = Event.objects.create(
             animal=bird_2,
             status=status,
-            date=datetime.date.today() - datetime.timedelta(days=25),
+            date=today() - dt_days(25),
             entered_by=user,
         )
 
@@ -759,7 +738,7 @@ class EventModelTests(TestCase):
         status = models.get_birth_event_type()
         user = models.get_sentinel_user()
         event = Event.objects.create(
-            animal=bird, status=status, date=datetime.date.today(), entered_by=user
+            animal=bird, status=status, date=today(), entered_by=user
         )
         self.assertCountEqual(Event.objects.in_month(), [event])
 
@@ -786,14 +765,14 @@ class EventModelTests(TestCase):
         user = models.get_sentinel_user()
         status_1 = Status.objects.get(name="note")
         _event = Event.objects.create(
-            animal=bird, status=status_1, date=datetime.date.today(), entered_by=user
+            animal=bird, status=status_1, date=today(), entered_by=user
         )
         _event = Event.objects.create(
-            animal=bird, status=status_1, date=datetime.date.today(), entered_by=user
+            animal=bird, status=status_1, date=today(), entered_by=user
         )
         status_2 = Status.objects.get(name="moved")
         _event = Event.objects.create(
-            animal=bird, status=status_2, date=datetime.date.today(), entered_by=user
+            animal=bird, status=status_2, date=today(), entered_by=user
         )
         counts = {
             item["status__name"]: item["count"]
@@ -814,7 +793,7 @@ class PairingModelTests(TestCase):
     def test_create_pairing_with_events(self):
         user = models.get_sentinel_user()
         location = Location.objects.get(pk=1)
-        date = datetime.date.today()
+        date = today()
         pairing = Pairing.objects.create_with_events(
             sire=self.sire,
             dam=self.dam,
@@ -835,7 +814,7 @@ class PairingModelTests(TestCase):
         pairing = Pairing(
             sire=self.dam,
             dam=self.sire,
-            began_on=datetime.date.today(),
+            began_on=today(),
         )
         with self.assertRaises(ValidationError):
             pairing.full_clean()
@@ -845,28 +824,25 @@ class PairingModelTests(TestCase):
             Pairing.objects.create(
                 sire=self.sire,
                 dam=self.dam,
-                began_on=datetime.date.today(),
-                ended_on=datetime.date.today() - datetime.timedelta(days=5),
+                began_on=today(),
+                ended_on=today() - dt_days(5),
             )
 
     def test_pairing_active_on_date(self):
         # the date logic for whether a pair is active is a little different from
         # some of the other statuses.
-        today = datetime.date.today()
-        pairing_began_on = today - datetime.timedelta(days=10)
-        pairing_ended_on = today - datetime.timedelta(days=2)
+        pairing_began_on = today() - dt_days(10)
+        pairing_ended_on = today() - dt_days(2)
         pairing = Pairing.objects.create(
             sire=self.sire, dam=self.dam, began_on=pairing_began_on
         )
         self.assertFalse(
-            pairing.active(on_date=pairing_began_on - datetime.timedelta(days=1)),
+            pairing.active(on_date=pairing_began_on - dt_days(1)),
             "unclosed pairing is inactive before it began",
         )
         self.assertNotIn(
             pairing,
-            Pairing.objects.active(
-                on_date=pairing_began_on - datetime.timedelta(days=1)
-            ),
+            Pairing.objects.active(on_date=pairing_began_on - dt_days(1)),
             "unclosed pairing is inactive before it began",
         )
         self.assertTrue(
@@ -890,14 +866,12 @@ class PairingModelTests(TestCase):
         pairing.ended_on = pairing_ended_on
         pairing.save()
         self.assertFalse(
-            pairing.active(on_date=pairing_began_on - datetime.timedelta(days=1)),
+            pairing.active(on_date=pairing_began_on - dt_days(1)),
             "closed pairing is inactive before it began",
         )
         self.assertNotIn(
             pairing,
-            Pairing.objects.active(
-                on_date=pairing_began_on - datetime.timedelta(days=1)
-            ),
+            Pairing.objects.active(on_date=pairing_began_on - dt_days(1)),
             "closed pairing is inactive before it began",
         )
         self.assertTrue(
@@ -929,9 +903,8 @@ class PairingModelTests(TestCase):
         )
 
     def test_pairing_active_between_dates(self):
-        today = datetime.date.today()
-        pairing_began_on = today - datetime.timedelta(days=10)
-        pairing_ended_on = today - datetime.timedelta(days=2)
+        pairing_began_on = today() - dt_days(10)
+        pairing_ended_on = today() - dt_days(2)
         pairing = Pairing.objects.create(
             sire=self.sire,
             dam=self.dam,
@@ -939,8 +912,8 @@ class PairingModelTests(TestCase):
             ended_on=pairing_ended_on,
         )
         active_before = Pairing.objects.active_between(
-            pairing_began_on - datetime.timedelta(days=10),
-            pairing_began_on - datetime.timedelta(days=1),
+            pairing_began_on - dt_days(10),
+            pairing_began_on - dt_days(1),
         )
         self.assertEqual(
             active_before.count(),
@@ -948,8 +921,8 @@ class PairingModelTests(TestCase):
             "pairing should not be active in a window before the pairing began",
         )
         active_around_start = Pairing.objects.active_between(
-            pairing_began_on - datetime.timedelta(days=2),
-            pairing_began_on + datetime.timedelta(days=2),
+            pairing_began_on - dt_days(2),
+            pairing_began_on + dt_days(2),
         )
         self.assertIn(
             pairing,
@@ -957,8 +930,8 @@ class PairingModelTests(TestCase):
             "pairing should be active in a window that includes began_on",
         )
         active_within_pairing = Pairing.objects.active_between(
-            pairing_began_on + datetime.timedelta(days=2),
-            pairing_ended_on - datetime.timedelta(days=2),
+            pairing_began_on + dt_days(2),
+            pairing_ended_on - dt_days(2),
         )
         self.assertIn(
             pairing,
@@ -966,8 +939,8 @@ class PairingModelTests(TestCase):
             "pairing should be active in a window between began_on and ended_on",
         )
         active_around_end = Pairing.objects.active_between(
-            pairing_ended_on - datetime.timedelta(days=2),
-            pairing_ended_on + datetime.timedelta(days=2),
+            pairing_ended_on - dt_days(2),
+            pairing_ended_on + dt_days(2),
         )
         self.assertIn(
             pairing,
@@ -975,8 +948,8 @@ class PairingModelTests(TestCase):
             "pairing should be active in a window between began_on and ended_on",
         )
         active_after_end = Pairing.objects.active_between(
-            pairing_ended_on + datetime.timedelta(days=2),
-            pairing_ended_on + datetime.timedelta(days=4),
+            pairing_ended_on + dt_days(2),
+            pairing_ended_on + dt_days(4),
         )
         self.assertEqual(
             active_after_end.count(),
@@ -988,8 +961,8 @@ class PairingModelTests(TestCase):
         pairing_1 = Pairing.objects.create(
             sire=self.sire,
             dam=self.dam,
-            began_on=datetime.date.today() - datetime.timedelta(days=100),
-            ended_on=datetime.date.today() - datetime.timedelta(days=70),
+            began_on=today() - dt_days(100),
+            ended_on=today() - dt_days(70),
         )
         other_bird = Animal.objects.create(
             species=Species.objects.get(pk=1), sex=Animal.Sex.FEMALE
@@ -997,11 +970,11 @@ class PairingModelTests(TestCase):
         pairing_2 = Pairing.objects.create(
             sire=self.sire,
             dam=other_bird,
-            began_on=datetime.date.today() - datetime.timedelta(days=50),
-            ended_on=datetime.date.today() - datetime.timedelta(days=20),
+            began_on=today() - dt_days(50),
+            ended_on=today() - dt_days(20),
         )
         pairing_3 = Pairing.objects.create(
-            sire=self.sire, dam=self.dam, began_on=datetime.date.today()
+            sire=self.sire, dam=self.dam, began_on=today()
         )
         self.assertFalse(pairing_1.active())
         self.assertFalse(pairing_2.active())
@@ -1013,8 +986,8 @@ class PairingModelTests(TestCase):
         self.assertCountEqual(pairing_3.other_pairings(), [pairing_1])
 
     def test_pairing_egg_list(self):
-        pairing_began_on = datetime.date.today() - datetime.timedelta(days=10)
-        pairing_ended_on = datetime.date.today()
+        pairing_began_on = today() - dt_days(10)
+        pairing_ended_on = today()
         pairing = Pairing.objects.create(
             sire=self.sire,
             dam=self.dam,
@@ -1027,7 +1000,7 @@ class PairingModelTests(TestCase):
 
         egg = Animal.objects.create(species=self.sire.species)
         egg.parents.set([self.sire, self.dam])
-        laid_on = pairing_began_on - datetime.timedelta(days=1)
+        laid_on = pairing_began_on - dt_days(1)
         Event.objects.create(
             animal=egg, status=status_laid, date=laid_on, entered_by=user
         )
@@ -1039,7 +1012,7 @@ class PairingModelTests(TestCase):
 
         egg = Animal.objects.create(species=self.sire.species)
         egg.parents.set([self.sire, self.dam])
-        laid_on = pairing_ended_on - datetime.timedelta(days=4)
+        laid_on = pairing_ended_on - dt_days(4)
         Event.objects.create(
             animal=egg, status=status_laid, date=laid_on, entered_by=user
         )
@@ -1050,18 +1023,18 @@ class PairingModelTests(TestCase):
         )
         self.assertNotIn(
             egg,
-            pairing.eggs().existed_on(pairing_ended_on - datetime.timedelta(days=5)),
+            pairing.eggs().existed_on(pairing_ended_on - dt_days(5)),
             "egg laid in pairing does not exist before it was created",
         )
         self.assertIn(
             egg,
-            pairing.eggs().existed_on(pairing_ended_on - datetime.timedelta(days=3)),
+            pairing.eggs().existed_on(pairing_ended_on - dt_days(3)),
             "egg laid in pairing exists after it was created",
         )
 
         egg = Animal.objects.create(species=self.sire.species)
         egg.parents.set([self.sire, self.dam])
-        laid_on = pairing_ended_on + datetime.timedelta(days=1)
+        laid_on = pairing_ended_on + dt_days(1)
         Event.objects.create(
             animal=egg, status=status_laid, date=laid_on, entered_by=user
         )
@@ -1076,8 +1049,8 @@ class PairingModelTests(TestCase):
         self.assertEqual(annotated_pairing.n_eggs, pairing.eggs().count())
 
     def test_pairing_progeny_status(self):
-        pairing_began_on = datetime.date.today() - datetime.timedelta(days=10)
-        pairing_ended_on = datetime.date.today()
+        pairing_began_on = today() - dt_days(10)
+        pairing_ended_on = today()
         pairing = Pairing.objects.create(
             sire=self.sire,
             dam=self.dam,
@@ -1088,14 +1061,14 @@ class PairingModelTests(TestCase):
         user = models.get_sentinel_user()
         egg = Animal.objects.create(species=self.sire.species)
         egg.parents.set([self.sire, self.dam])
-        laid_on = pairing_ended_on - datetime.timedelta(days=4)
+        laid_on = pairing_ended_on - dt_days(4)
         Event.objects.create(
             animal=egg,
             status=models.get_unborn_creation_event_type(),
             date=laid_on,
             entered_by=user,
         )
-        lost_on = laid_on + datetime.timedelta(days=2)
+        lost_on = laid_on + dt_days(2)
         Event.objects.create(
             animal=egg,
             status=Status.objects.get(name="lost"),
@@ -1104,17 +1077,17 @@ class PairingModelTests(TestCase):
         )
         self.assertNotIn(
             egg,
-            pairing.eggs().existed_on(laid_on - datetime.timedelta(days=1)),
+            pairing.eggs().existed_on(laid_on - dt_days(1)),
             "egg laid in pairing does not exist before it was created",
         )
         self.assertIn(
             egg,
-            pairing.eggs().existed_on(laid_on + datetime.timedelta(days=1)),
+            pairing.eggs().existed_on(laid_on + dt_days(1)),
             "egg laid in pairing exists after it was created",
         )
         self.assertNotIn(
             egg,
-            pairing.eggs().existed_on(lost_on + datetime.timedelta(days=1)),
+            pairing.eggs().existed_on(lost_on + dt_days(1)),
             "egg laid in pairing does not exist after it was lost",
         )
 
@@ -1122,15 +1095,11 @@ class PairingModelTests(TestCase):
         pairing = Pairing.objects.create(
             sire=self.sire,
             dam=self.dam,
-            began_on=datetime.date.today() - datetime.timedelta(days=10),
-            ended_on=datetime.date.today(),
+            began_on=today() - dt_days(10),
+            ended_on=today(),
         )
-        chick_1 = make_child(
-            self.sire, self.dam, datetime.date.today() - datetime.timedelta(days=5)
-        )
-        chick_2 = make_child(
-            self.sire, self.dam, datetime.date.today() - datetime.timedelta(days=4)
-        )
+        chick_1 = make_child(self.sire, self.dam, today() - dt_days(5))
+        chick_2 = make_child(self.sire, self.dam, today() - dt_days(4))
         # chicks count as eggs even if there is no event marking when the egg
         # was laid
         self.assertCountEqual(pairing.eggs(), [chick_1, chick_2])
@@ -1149,27 +1118,25 @@ class PairingModelTests(TestCase):
         pairing = Pairing.objects.create(
             sire=self.sire,
             dam=self.dam,
-            began_on=datetime.date.today() - datetime.timedelta(days=10),
-            ended_on=datetime.date.today(),
+            began_on=today() - dt_days(10),
+            ended_on=today(),
         )
-        chick_1 = make_child(
-            self.sire, self.dam, datetime.date.today() - datetime.timedelta(days=5)
-        )
+        chick_1 = make_child(self.sire, self.dam, today() - dt_days(5))
         self.assertEqual(chick_1.birth_pairing(), pairing)
 
     def test_related_events(self):
         pairing = Pairing.objects.create(
             sire=self.sire,
             dam=self.dam,
-            began_on=datetime.date.today() - datetime.timedelta(days=10),
-            ended_on=datetime.date.today() - datetime.timedelta(days=5),
+            began_on=today() - dt_days(10),
+            ended_on=today() - dt_days(5),
         )
         user = models.get_sentinel_user()
         status = Status.objects.get(name="moved")
         Event.objects.create(
             animal=self.sire,
             status=status,
-            date=datetime.date.today() - datetime.timedelta(days=20),
+            date=today() - dt_days(20),
             entered_by=user,
         )
         self.assertEqual(pairing.events().count(), 0)
@@ -1177,7 +1144,7 @@ class PairingModelTests(TestCase):
         event_during = Event.objects.create(
             animal=self.sire,
             status=status,
-            date=datetime.date.today() - datetime.timedelta(days=6),
+            date=today() - dt_days(6),
             entered_by=user,
         )
         self.assertCountEqual(pairing.events(), [event_during])
@@ -1185,14 +1152,14 @@ class PairingModelTests(TestCase):
         Event.objects.create(
             animal=self.sire,
             status=status,
-            date=datetime.date.today(),
+            date=today(),
             entered_by=user,
         )
         self.assertCountEqual(pairing.events(), [event_during])
 
     def test_pairing_last_location(self):
         # create pairing without a location
-        pairing_began_on = datetime.date.today() - datetime.timedelta(days=10)
+        pairing_began_on = today() - dt_days(10)
         pairing = Pairing.objects.create(
             sire=self.sire,
             dam=self.dam,
@@ -1205,9 +1172,7 @@ class PairingModelTests(TestCase):
             "pairing without events should have no location",
         )
         self.assertIs(
-            pairing.last_location(
-                on_date=datetime.date.today() - datetime.timedelta(days=12)
-            ),
+            pairing.last_location(on_date=today() - dt_days(12)),
             None,
             "pairing without events should have no location before pairing started",
         )
@@ -1225,7 +1190,7 @@ class PairingModelTests(TestCase):
         _ = Event.objects.create(
             animal=self.sire,
             status=status,
-            date=pairing_began_on - datetime.timedelta(days=10),
+            date=pairing_began_on - dt_days(10),
             entered_by=user,
             location=location,
         )
@@ -1235,9 +1200,7 @@ class PairingModelTests(TestCase):
             "events before the pairing should not affect the location",
         )
         self.assertIs(
-            pairing.last_location(
-                on_date=pairing_began_on - datetime.timedelta(days=2)
-            ),
+            pairing.last_location(on_date=pairing_began_on - dt_days(2)),
             None,
             "events before pairing should not affect location on any date",
         )
@@ -1252,7 +1215,7 @@ class PairingModelTests(TestCase):
         event_1 = Event.objects.create(
             animal=self.sire,
             status=status,
-            date=datetime.date.today() - datetime.timedelta(days=6),
+            date=today() - dt_days(6),
             entered_by=user,
             location=location,
         )
@@ -1278,7 +1241,7 @@ class PairingModelTests(TestCase):
         _ = Event.objects.create(
             animal=self.dam,
             status=status,
-            date=datetime.date.today() - datetime.timedelta(days=4),
+            date=today() - dt_days(4),
             entered_by=user,
             location=location_2,
         )
@@ -1302,10 +1265,9 @@ class PairingModelTests(TestCase):
     def test_pairing_last_location_on_date(self):
         # very similar to previous test but create all the events first and then
         # do the tests
-        pairing_began_on = datetime.date.today() - datetime.timedelta(days=10)
-        pairing_ended_on = datetime.date.today() - datetime.timedelta(days=3)
+        pairing_began_on = today() - dt_days(10)
+        pairing_ended_on = today() - dt_days(3)
         user = models.get_sentinel_user()
-        status = Status.objects.get(name="moved")
         location_1 = Location.objects.get(pk=1)
         location_2 = Location.objects.get(pk=2)
         pairing = Pairing.objects.create_with_events(
@@ -1320,14 +1282,12 @@ class PairingModelTests(TestCase):
         _ = Event.objects.create(
             animal=self.dam,
             status=Status.objects.get(name="moved"),
-            date=datetime.date.today(),
+            date=today(),
             entered_by=user,
             location=location_2,
         )
         self.assertIs(
-            pairing.last_location(
-                on_date=pairing_began_on - datetime.timedelta(days=1)
-            ),
+            pairing.last_location(on_date=pairing_began_on - dt_days(1)),
             None,
             "pairing location before pairing began should be None",
         )
@@ -1351,11 +1311,11 @@ class PairingModelTests(TestCase):
         pairing = Pairing.objects.create(
             sire=self.sire,
             dam=self.dam,
-            began_on=datetime.date.today() - datetime.timedelta(days=10),
+            began_on=today() - dt_days(10),
         )
         user = models.get_sentinel_user()
         location = Location.objects.get(pk=1)
-        date = datetime.date.today()
+        date = today()
         pairing.close(
             ended_on=date,
             entered_by=user,
@@ -1402,10 +1362,10 @@ class PairingModelTests(TestCase):
         pairing = Pairing.objects.create(
             sire=self.sire,
             dam=self.dam,
-            began_on=datetime.date.today() - datetime.timedelta(days=10),
+            began_on=today() - dt_days(10),
         )
         user = models.get_sentinel_user()
-        date = datetime.date.today()
+        date = today()
         pairing.close(
             ended_on=date,
             entered_by=user,
@@ -1440,7 +1400,7 @@ class LocationModelTests(TestCase):
         user = models.get_sentinel_user()
         bird = Animal.objects.create_with_event(
             species,
-            date=datetime.date.today(),
+            date=today(),
             status=models.get_birth_event_type(),
             entered_by=user,
             location=location,
@@ -1462,8 +1422,7 @@ class LocationModelTests(TestCase):
         species = Species.objects.get(pk=1)
         user = models.get_sentinel_user()
         status = Status.objects.get(name="moved")
-        today = datetime.date.today()
-        last_week = today - datetime.timedelta(days=7)
+        last_week = today() - dt_days(7)
         # bird starts in location 1 one week ago
         bird = Animal.objects.create_with_event(
             species,
@@ -1473,7 +1432,7 @@ class LocationModelTests(TestCase):
             location=location_1,
         )
         # bird moves to location 2 yesterday
-        yesterday = today - datetime.timedelta(days=1)
+        yesterday = today() - dt_days(1)
         _event = Event.objects.create(
             animal=bird,
             date=yesterday,
@@ -1515,8 +1474,7 @@ class LocationModelTests(TestCase):
         )
         species = Species.objects.get(pk=1)
         user = models.get_sentinel_user()
-        today = datetime.date.today()
-        last_week = today - datetime.timedelta(days=7)
+        last_week = today() - dt_days(7)
         # bird starts in location 1 as an egg
         bird = Animal.objects.create_with_event(
             species,
@@ -1526,7 +1484,7 @@ class LocationModelTests(TestCase):
             location=location_1,
         )
         # then it hatches yesterday
-        yesterday = today - datetime.timedelta(days=1)
+        yesterday = today() - dt_days(1)
         _event = Event.objects.create(
             animal=bird,
             date=yesterday,

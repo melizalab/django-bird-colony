@@ -25,6 +25,14 @@ warnings.filterwarnings("error")
 User = get_user_model()
 
 
+def today() -> datetime.date:
+    return datetime.date.today()
+
+
+def dt_days(days: int) -> datetime.timedelta:
+    return datetime.timedelta(days=days)
+
+
 class BaseColonyTest(TestCase):
     """Base class for tests that need a pre-populated colony"""
 
@@ -32,7 +40,7 @@ class BaseColonyTest(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        birthday = datetime.date.today() - datetime.timedelta(days=365)
+        birthday = today() - dt_days(365)
         status = models.get_birth_event_type()
         user = models.get_sentinel_user()
         species = Species.objects.get(pk=1)
@@ -63,13 +71,13 @@ class BaseColonyTest(TestCase):
         pairing = Pairing.objects.create_with_events(
             sire=cls.sire,
             dam=cls.dam,
-            began_on=birthday + datetime.timedelta(days=80),
+            began_on=birthday + dt_days(80),
             purpose="old pairing",
             entered_by=user,
             location=cls.nest,
         )
         pairing.close(
-            ended_on=birthday + datetime.timedelta(days=120),
+            ended_on=birthday + dt_days(120),
             entered_by=user,
             location=Location.objects.get(pk=1),
             comment="ended old pairing",
@@ -90,7 +98,7 @@ class BaseColonyTest(TestCase):
         _pairing = Pairing.objects.create_with_events(
             sire=cls.sire,
             dam=cls.dam,
-            began_on=datetime.date.today() - datetime.timedelta(days=20),
+            began_on=today() - dt_days(20),
             purpose="new pairing",
             entered_by=user,
             location=cls.nest,
@@ -100,7 +108,7 @@ class BaseColonyTest(TestCase):
             _child = Animal.objects.create_from_parents(
                 sire=cls.sire,
                 dam=cls.dam,
-                date=datetime.date.today() - datetime.timedelta(days=i),
+                date=today() - datetime.timedelta(days=i),
                 status=status,
                 entered_by=user,
                 location=cls.nest,
@@ -221,15 +229,14 @@ class NestReportTests(BaseColonyTest):
         self.assertEqual(response.status_code, 200)
 
     def test_nest_report_default_dates(self):
-        today = datetime.date.today()
         response = self.client.get(reverse("birds:nest-summary"))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["since"], today - datetime.timedelta(days=4))
-        self.assertEqual(response.context["until"], today)
+        self.assertEqual(response.context["since"], today() - dt_days(4))
+        self.assertEqual(response.context["until"], today())
         dates = response.context["dates"]
         self.assertEqual(len(dates), 5)
-        self.assertEqual(dates[0], today - datetime.timedelta(days=4))
-        self.assertEqual(dates[-1], today)
+        self.assertEqual(dates[0], today() - dt_days(4))
+        self.assertEqual(dates[-1], today())
 
     def test_nest_check_list(self):
         nest_check = NestCheck.objects.create(
@@ -242,7 +249,6 @@ class NestReportTests(BaseColonyTest):
         self.assertCountEqual(response.context["nest_checks"], [nest_check])
 
     def test_nest_report_bird_counts(self):
-        datetime.date.today()
         response = self.client.get(reverse("birds:nest-summary"))
         nest_data = response.context["nest_data"][0]
         self.assertEqual(nest_data["location"], self.nest)
@@ -262,9 +268,9 @@ class EventSummaryTests(TestCase):
     def setUpTestData(cls):
         # can't use BaseColonyTest because we need to make sure the events land
         # in specific months
-        today = datetime.date.today()
-        start_of_this_month = datetime.date(today.year, today.month, 1)
-        end_of_last_month = start_of_this_month - datetime.timedelta(days=1)
+        date = today()
+        start_of_this_month = datetime.date(date.year, date.month, 1)
+        end_of_last_month = start_of_this_month - dt_days(1)
         start_of_last_month = datetime.date(
             end_of_last_month.year, end_of_last_month.month, 1
         )
@@ -273,7 +279,7 @@ class EventSummaryTests(TestCase):
         user = models.get_sentinel_user()
         location = Location.objects.get(pk=1)
         cls.species = Species.objects.get(pk=1)
-        birthday = datetime.date.today() - datetime.timedelta(days=365)
+        birthday = date - dt_days(365)
         cls.sire = Animal.objects.create_with_event(
             species=cls.species,
             status=hatch_status,
@@ -324,21 +330,21 @@ class EventSummaryTests(TestCase):
             )
 
     def test_event_summary_url_exists_at_desired_location(self):
-        today = datetime.date.today()
-        response = self.client.get(f"/birds/summary/events/{today.year}/{today.month}/")
+        date = today()
+        response = self.client.get(f"/birds/summary/events/{date.year}/{date.month}/")
         self.assertEqual(response.status_code, 200)
 
     def test_event_summary_404_at_nonsense_dates(self):
-        today = datetime.date.today()
-        response = self.client.get(f"/birds/summary/events/{today.year}/13/")
+        date = today()
+        response = self.client.get(f"/birds/summary/events/{date.year}/13/")
         self.assertEqual(response.status_code, 404)
-        response = self.client.get(f"/birds/summary/events/{today.year}/0/")
+        response = self.client.get(f"/birds/summary/events/{date.year}/0/")
         self.assertEqual(response.status_code, 404)
 
     def test_event_summary_previous_month(self):
-        today = datetime.date.today()
-        start_of_this_month = datetime.date(today.year, today.month, 1)
-        end_of_last_month = start_of_this_month - datetime.timedelta(days=1)
+        date = today()
+        start_of_this_month = datetime.date(date.year, date.month, 1)
+        end_of_last_month = start_of_this_month - dt_days(1)
         response = self.client.get(
             reverse(
                 "birds:event_summary",
@@ -359,11 +365,11 @@ class EventSummaryTests(TestCase):
         self.assertListEqual(zf_counts[1], [("adult", {"M": 1, "F": 1})])
 
     def test_event_summary_current_month(self):
-        today = datetime.date.today()
+        date = today()
         response = self.client.get(
             reverse(
                 "birds:event_summary",
-                args=[today.year, today.month],
+                args=[date.year, date.month],
             )
         )
         self.assertEqual(response.status_code, 200)
@@ -412,10 +418,10 @@ class NewAnimalFormViewTests(TestCase):
             reverse("birds:new_animal"),
             {
                 "acq_status": status.pk,
-                "acq_date": datetime.date.today() - datetime.timedelta(days=10),
+                "acq_date": today() - dt_days(10),
                 "sex": "M",
                 "species": species.pk,
-                "banding_date": datetime.date.today(),
+                "banding_date": today(),
                 "band_number": 10,
                 "location": location.pk,
                 "user": self.test_user1.pk,
@@ -435,7 +441,7 @@ class NewAnimalFormViewTests(TestCase):
         sire = Animal.objects.create_with_event(
             species=species,
             status=status,
-            date=datetime.date.today() - datetime.timedelta(days=100),
+            date=today() - dt_days(100),
             entered_by=self.test_user1,
             location=location,
             sex=Animal.Sex.MALE,
@@ -444,7 +450,7 @@ class NewAnimalFormViewTests(TestCase):
         dam = Animal.objects.create_with_event(
             species=species,
             status=status,
-            date=datetime.date.today() - datetime.timedelta(days=100),
+            date=today() - dt_days(100),
             entered_by=self.test_user1,
             location=location,
             sex=Animal.Sex.FEMALE,
@@ -455,11 +461,11 @@ class NewAnimalFormViewTests(TestCase):
             reverse("birds:new_animal"),
             {
                 "acq_status": status.pk,
-                "acq_date": datetime.date.today() - datetime.timedelta(days=10),
+                "acq_date": today() - dt_days(10),
                 "sex": "U",
                 "sire": sire.pk,
                 "dam": dam.pk,
-                "banding_date": datetime.date.today(),
+                "banding_date": today(),
                 "band_number": 10,
                 "location": location.pk,
                 "user": self.test_user1.pk,
@@ -501,7 +507,7 @@ class NewBandFormViewTests(TestCase):
         response = self.client.post(
             reverse("birds:new_band", args=[self.animal.uuid]),
             {
-                "banding_date": datetime.date.today(),
+                "banding_date": today(),
                 "sex": "M",
                 "band_number": 10,
                 "user": self.test_user1.pk,
@@ -526,7 +532,7 @@ class NewEventFormViewTests(TestCase):
         self.animal = Animal.objects.create_with_event(
             species=Species.objects.get(pk=1),
             status=models.get_birth_event_type(),
-            date=datetime.date.today() - datetime.timedelta(days=365),
+            date=today() - dt_days(365),
             entered_by=models.get_sentinel_user(),
             location=Location.objects.get(pk=1),
             sex=Animal.Sex.MALE,
@@ -552,7 +558,7 @@ class NewEventFormViewTests(TestCase):
         response = self.client.post(
             reverse("birds:new_event", args=[self.animal.uuid]),
             {
-                "date": datetime.date.today(),
+                "date": today(),
                 "status": status.pk,
                 "location": 1,
                 "entered_by": self.test_user1.pk,
@@ -569,7 +575,7 @@ class PairingFormViewTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        birthday = datetime.date.today() - datetime.timedelta(days=365)
+        birthday = today() - dt_days(365)
         status = models.get_birth_event_type()
         user = models.get_sentinel_user()
         location = Location.objects.get(pk=1)
@@ -598,13 +604,13 @@ class PairingFormViewTests(TestCase):
         cls.pairing = Pairing.objects.create_with_events(
             sire=cls.sire,
             dam=cls.dam,
-            began_on=birthday + datetime.timedelta(days=80),
+            began_on=birthday + dt_days(80),
             purpose="old pairing",
             entered_by=user,
             location=location,
         )
         cls.pairing.close(
-            ended_on=birthday + datetime.timedelta(days=120),
+            ended_on=birthday + dt_days(120),
             entered_by=user,
             location=location,
             comment="ended old pairing",
@@ -644,7 +650,7 @@ class PairingFormViewTests(TestCase):
         new_pairing = Pairing.objects.create_with_events(
             sire=self.sire,
             dam=self.dam,
-            began_on=datetime.date.today() - datetime.timedelta(days=10),
+            began_on=today() - dt_days(10),
             purpose="new pairing",
             entered_by=self.test_user1,
             location=Location.objects.get(pk=1),
@@ -660,7 +666,7 @@ class PairingFormViewTests(TestCase):
             {
                 "sire": self.sire.pk,
                 "dam": self.dam.pk,
-                "began_on": datetime.date.today(),
+                "began_on": today(),
                 "purpose": "evil",
                 "entered_by": self.test_user1.pk,
                 "location": location.pk,
@@ -678,7 +684,7 @@ class PairingFormViewTests(TestCase):
         new_pairing = Pairing.objects.create_with_events(
             sire=self.sire,
             dam=self.dam,
-            began_on=datetime.date.today() - datetime.timedelta(days=10),
+            began_on=today() - dt_days(10),
             purpose="new pairing",
             entered_by=self.test_user1,
             location=Location.objects.get(pk=1),
@@ -686,7 +692,7 @@ class PairingFormViewTests(TestCase):
         response = self.client.post(
             reverse("birds:end_pairing", args=[new_pairing.pk]),
             {
-                "ended_on": datetime.date.today(),
+                "ended_on": today(),
                 "location": 1,
                 "entered_by": self.test_user1.pk,
                 "comment": "testing",
@@ -701,7 +707,7 @@ class NestCheckFormViewTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        birthday = datetime.date.today() - datetime.timedelta(days=365)
+        birthday = today() - dt_days(365)
         status = models.get_birth_event_type()
         user = models.get_sentinel_user()
         location = Location.objects.get(pk=1)
@@ -728,7 +734,7 @@ class NestCheckFormViewTests(TestCase):
         _ = Pairing.objects.create_with_events(
             sire=cls.sire,
             dam=cls.dam,
-            began_on=datetime.date.today() - datetime.timedelta(days=1),
+            began_on=today() - dt_days(1),
             purpose="testing",
             entered_by=user,
             location=cls.nest,
@@ -757,14 +763,13 @@ class NestCheckFormViewTests(TestCase):
         )
 
     def test_initial_nest_with_egg_and_chick(self):
-        today = datetime.date.today()
         user = models.get_sentinel_user()
         status_laid = models.get_unborn_creation_event_type()
         status_hatched = models.get_birth_event_type()
         Animal.objects.create_from_parents(
             sire=self.sire,
             dam=self.dam,
-            date=today,
+            date=today(),
             status=status_hatched,
             entered_by=user,
             location=self.nest,
@@ -772,7 +777,7 @@ class NestCheckFormViewTests(TestCase):
         Animal.objects.create_from_parents(
             sire=self.sire,
             dam=self.dam,
-            date=today,
+            date=today(),
             status=status_laid,
             entered_by=user,
             location=self.nest,
@@ -855,7 +860,7 @@ class NestCheckFormViewTests(TestCase):
         egg = eggs.first()
         self.assertEqual(egg.sire(), self.sire)
         self.assertEqual(egg.dam(), self.dam)
-        self.assertEqual(egg.first_event_on, datetime.date.today())
+        self.assertEqual(egg.first_event_on, today())
         self.assertEqual(egg.age_group(), "egg")
         nest_checks = NestCheck.objects.all()
         self.assertEqual(nest_checks.count(), 1)
@@ -867,7 +872,7 @@ class NestCheckFormViewTests(TestCase):
         child_1 = Animal.objects.create_from_parents(
             sire=self.sire,
             dam=self.dam,
-            date=datetime.date.today() - datetime.timedelta(days=1),
+            date=today() - dt_days(1),
             status=status_laid,
             entered_by=user,
             location=self.nest,
@@ -907,7 +912,7 @@ class NestCheckFormViewTests(TestCase):
         self.assertEqual(children.count(), 1)
         child = children.first()
         self.assertEqual(child, child_1)
-        self.assertEqual(child.born_on, datetime.date.today())
+        self.assertEqual(child.born_on, today())
         self.assertEqual(child.age_group(), "hatchling")
         nest_checks = NestCheck.objects.all()
         self.assertEqual(nest_checks.count(), 1)

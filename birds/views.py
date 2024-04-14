@@ -16,7 +16,6 @@ from django.urls import reverse
 from django.utils import dateparse
 from django.utils.timezone import make_aware
 from django.utils.translation import gettext_lazy as _
-from django.views import generic
 from django.views.decorators.http import require_http_methods
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_link_header_pagination import LinkHeaderPagination
@@ -872,7 +871,7 @@ class APIAnimalPedigree(generics.ListAPIView):
     pagination_class = LargeResultsSetPagination
 
     def get_queryset(self):
-        from django.db.models import Count, Q
+        from django.db.models import Count
 
         queryset = (
             Animal.objects.with_status()
