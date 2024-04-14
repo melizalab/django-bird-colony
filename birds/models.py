@@ -459,42 +459,44 @@ class Animal(models.Model):
         )
         return (is_alive["added"] or 0) > (is_alive["removed"] or 0)
 
-    def age_group(self):
+    def age_group(self, on_date: Optional[datetime.date] = None):
         """Returns the age group of the animal by joining on the Age model.
 
         Classified as an adult if there was a non-hatch acquisition event.
         Otherwise, an egg if there was at least one non-acquisition event.
-        Otherwise, None. Returns "unclassified" if there is no match in the Age
+        Otherwise, None. Returns None if there is no match in the Age
         table (this can only happen if there is not an object with min_age = 0).
 
         This method can only be used if the object was retrieved using the
-        with_dates() annotation. If the age group as of a specific date is
-        desired, supply this to with_dates().
+        with_dates() annotation.
 
         """
-        if self.age is None:
-            if self.acquired_on is not None:
+        refdate = on_date or datetime.date.today()
+        if self.born_on is None or self.born_on > refdate:
+            if self.acquired_on is not None and self.acquired_on <= refdate:
                 return ADULT_ANIMAL_NAME
-            elif self.first_event_on is not None:
+            elif self.first_event_on is not None and self.first_event_on <= refdate:
                 return UNBORN_ANIMAL_NAME
             else:
                 return None
+        if self.died_on is None or self.died_on > refdate:
+            age = refdate - self.born_on
         else:
-            age_days = self.age.days
-            # for multiple animals, it's faster to do this lookup in python if
-            # age_set is prefetched
-            groups = sorted(
-                filter(
-                    lambda ag: ag.min_days <= age_days,
-                    self.species.age_set.all(),
-                ),
-                key=lambda ag: ag.min_days,
-                reverse=True,
-            )
-            try:
-                return groups[0].name
-            except IndexError:
-                pass
+            age = self.died_on - self.born_on
+        age_days = age.days
+        # faster to do this lookup in python if age_set is prefetched
+        groups = sorted(
+            filter(
+                lambda ag: ag.min_days <= age_days,
+                self.species.age_set.all(),
+            ),
+            key=lambda ag: ag.min_days,
+            reverse=True,
+        )
+        try:
+            return groups[0].name
+        except IndexError:
+            pass
 
     def expected_hatch(self):
         """For eggs, expected hatch date. None if not an egg, already hatched,

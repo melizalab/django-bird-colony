@@ -117,15 +117,18 @@ def tabulate_pairs(since: datetime.date, until: datetime.date):
     data = []
     for pair in active_pairs:
         location = pair.last_location(on_date=since)
+        eggs = pair.eggs().with_dates().with_related()
         days = []
-        eggs = pair.eggs()
         for date in dates:
             counts = Counter()
-            for animal in eggs.existed_on(date):
-                age_group = animal.age_group()
-                counts[age_group] += 1
+            for animal in eggs:
+                # dead/lost animals are not counted
+                if animal.died_on is None or animal.died_on > date:
+                    age_group = animal.age_group(date)
+                    if age_group is not None:
+                        counts[age_group] += 1
             days.append(counts)
-        data.append({"pair": pair, "counts": days})
+        data.append({"pair": pair, "location": location, "counts": days})
     return dates, data
 
 

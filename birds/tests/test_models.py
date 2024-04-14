@@ -374,12 +374,10 @@ class AnimalModelTests(TestCase):
             )
             abird = Animal.objects.with_dates().get(pk=bird.pk)
             self.assertEqual(abird.age_group(), age_group.name)
-            abird = Animal.objects.with_dates(birthday).get(pk=bird.pk)
-            self.assertEqual(abird.age_group(), youngest_group.name)
-            abird = Animal.objects.with_dates(
-                birthday - datetime.timedelta(days=1)
-            ).get(pk=bird.pk)
-            self.assertIs(abird.age_group(), None)
+            abird = Animal.objects.with_dates().get(pk=bird.pk)
+            self.assertEqual(abird.age_group(birthday), youngest_group.name)
+            abird = Animal.objects.with_dates().get(pk=bird.pk)
+            self.assertIs(abird.age_group(birthday - datetime.timedelta(days=1)), None)
 
     def test_age_grouping_of_egg(self):
         species = Species.objects.get(pk=1)
@@ -393,12 +391,10 @@ class AnimalModelTests(TestCase):
         )
         aegg = Animal.objects.with_dates().get(pk=egg.pk)
         self.assertEqual(aegg.age_group(), models.UNBORN_ANIMAL_NAME)
-        aegg = Animal.objects.with_dates(laid_on).get(pk=egg.pk)
-        self.assertEqual(aegg.age_group(), models.UNBORN_ANIMAL_NAME)
-        aegg = Animal.objects.with_dates(laid_on - datetime.timedelta(days=1)).get(
-            pk=egg.pk
-        )
-        self.assertIs(aegg.age_group(), None)
+        aegg = Animal.objects.with_dates().get(pk=egg.pk)
+        self.assertEqual(aegg.age_group(laid_on), models.UNBORN_ANIMAL_NAME)
+        aegg = Animal.objects.with_dates().get(pk=egg.pk)
+        self.assertIs(aegg.age_group(laid_on - datetime.timedelta(days=1)), None)
         # Adding a hatch event
         _event = Event.objects.create(
             animal=egg,
@@ -408,12 +404,13 @@ class AnimalModelTests(TestCase):
         )
         aegg = Animal.objects.with_dates().get(pk=egg.pk)
         self.assertEqual(aegg.age_group(), "hatchling")
-        aegg = Animal.objects.with_dates(laid_on).get(pk=egg.pk)
-        self.assertEqual(aegg.age_group(), models.UNBORN_ANIMAL_NAME)
-        aegg = Animal.objects.with_dates(today - datetime.timedelta(days=1)).get(
-            pk=egg.pk
+        aegg = Animal.objects.with_dates().get(pk=egg.pk)
+        self.assertEqual(aegg.age_group(laid_on), models.UNBORN_ANIMAL_NAME)
+        aegg = Animal.objects.with_dates().get(pk=egg.pk)
+        self.assertEqual(
+            aegg.age_group(today - datetime.timedelta(days=1)),
+            models.UNBORN_ANIMAL_NAME,
         )
-        self.assertIs(aegg.age_group(), models.UNBORN_ANIMAL_NAME)
 
     def test_bird_locations(self):
         species = Species.objects.get(pk=1)
