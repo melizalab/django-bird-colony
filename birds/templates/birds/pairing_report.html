@@ -12,7 +12,7 @@
     <th>location</th>
     <th>pair</th>
     {% for date in dates %}
-    <th>{{ date|date:"SHORT_DATE_FORMAT" }}</th>
+    <th>{{ date|date:"D m/d/Y" }}</th>
     {% endfor %}
   </thead>
   <tbody>
@@ -43,7 +43,7 @@
   <tbody>
     {% for check in checks %}
     <tr>
-      <td>{{ check.datetime.date }}</td>
+      <td>{{ check.datetime|date:"D m/d/Y" }}</td>
       <td>{{ check.entered_by }}</td>
       <td>{{ check.comments }}</td>
     </tr>
