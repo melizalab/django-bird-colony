@@ -1,5 +1,5 @@
 {% extends "base_view.html" %}
-{% load date_fmt %}
+{% load bird_tags %}
 
 {% block title %} meliza-lab : pairing : {{ pairing }} {% endblock %}
 
@@ -57,7 +57,7 @@
           <td><a href="{{ event.animal.get_absolute_url }}">{{ event.animal.name }}</a></td>
           <td>{{ event.status }}</td>
           <td>{{ event.date }}</td>
-          <td>{{ event.location }}</td>
+          <td>{{ event.location|link_or_blank }}</td>
           <td>{{ event.description }}</td>
         </tr>
     {% endfor %}

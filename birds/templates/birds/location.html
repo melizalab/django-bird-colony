@@ -1,5 +1,5 @@
 {% extends "base_view.html" %}
-{% load date_fmt %}
+{% load bird_tags %}
 
 {% block title %} meliza-lab : location : {{ location }} {% endblock %}
 
@@ -11,7 +11,33 @@
 
 <h3>Animals</h3>
 
-{% include "birds/animal_table.html" %}
+<table class="table table-striped table-condensed">
+  <thead>
+    <th>Name</th>
+    <th>Species</th>
+    <th>Sex</th>
+    <th>Age</th>
+    <th>Alive</th>
+    <th>Children</th>
+    <th>UUID</th>
+    <th>Reserved</th>
+  </thead>
+  <tbody>
+    {% for animal in animal_list %}
+        <tr>
+          <td><a href="{{ animal.get_absolute_url }}">{{ animal.name }}</a></td>
+          <td>{{ animal.species }}</td>
+          <td>{{ animal.sex }}</td>
+          <td>{{ animal.age|agestr }} ({{ animal.age_group }})</td>
+          <td>{{ animal.alive|yesno }}</td>
+          <td>{{ animal.children.hatched.count}}</td>
+          <td>{{ animal.uuid }}</td>
+          <td>{% if animal.reserved_by %}{{ animal.reserved_by }}{% endif %}</td>
+          <td></td>
+        </tr>
+    {% endfor %}
+  </tbody>
+</table>
 
 <h3>Recent Events</h3>
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
 from django import template
-from django.utils.html import format_html_join
+from django.utils.html import format_html, format_html_join
 
 register = template.Library()
 
@@ -47,6 +47,13 @@ def url_list(values):
     return format_html_join(
         ", ", '<a href="{}">{}</a>', ((obj.get_absolute_url(), obj) for obj in values)
     )
+
+
+@register.filter
+def link_or_blank(value):
+    if value is None:
+        return ""
+    return format_html('<a href="{}">{}</a>', value.get_absolute_url(), value)
 
 
 @register.filter

@@ -1,5 +1,6 @@
 {% extends "base_view.html" %}
 {% load widget_tweaks %}
+{% load bird_tags %}
 
 {% block title %} meliza-lab : events {% endblock %}
 
@@ -39,7 +40,7 @@
           <td><a href="{{ event.animal.get_absolute_url }}">{{ event.animal }}</a></td>
           <td>{{ event.status }}</td>
           <td>{{ event.date }}</td>
-          <td>{{ event.location }}</td>
+          <td>{{ event.location|link_or_blank }}</td>
           <td>{{ event.description }}</td>
           <td>{{ event.entered_by }}</td>	  
           <td><a href="{% url 'admin:birds_event_change' event.id %}"

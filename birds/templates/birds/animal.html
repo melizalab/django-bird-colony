@@ -1,5 +1,5 @@
 {% extends "base_view.html" %}
-{% load date_fmt %}
+{% load bird_tags %}
 
 {% block title %} meliza-lab : bird : {{ animal.name }} {% endblock %}
 
@@ -59,7 +59,7 @@
           <td>{{ event.status }}</td>
           <td>{{ event.date }}</td>
 	  <td>{{ event.age|agestr }}</td>
-          <td>{{ event.location }}</td>
+          <td>{{ event.location|link_or_blank }}</td>
           <td>{{ event.description }}</td>
 	  <td>{{ event.entered_by}}</td>
           <td><a href="{% url 'admin:birds_event_change' event.id %}"
