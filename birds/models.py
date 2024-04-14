@@ -20,12 +20,13 @@ from django.db.models import (
     Max,
     Min,
     OuterRef,
+    Prefetch,
     Q,
     Subquery,
     Sum,
     When,
 )
-from django.db.models.functions import Cast, Greatest, Now, Trunc, TruncDay
+from django.db.models.functions import Cast, Greatest, JSONObject, Now, Trunc, TruncDay
 from django.db.models.lookups import GreaterThan
 from django.urls import reverse
 from django.utils.functional import cached_property
@@ -264,6 +265,13 @@ class AnimalQuerySet(models.QuerySet):
 
     def with_location(self, on_date: Optional[datetime.date] = None):
         refdate = on_date or datetime.date.today()
+        # return self.prefetch_related(
+        #     Prefetch(
+        #         "event_set",
+        #         queryset=Event.objects.has_location().order_by("-date", "-created"),
+        #         to_attr="locations",
+        #     )
+        # )
         return self.annotate(
             last_location=Subquery(
                 Event.objects.filter(
@@ -273,6 +281,7 @@ class AnimalQuerySet(models.QuerySet):
                 )
                 .order_by("-date", "-created")
                 .values("location__name")[:1]
+                # .values(data=JSONObject(id="location__pk", name="location__name"))[:1]
             ),
         )
 
