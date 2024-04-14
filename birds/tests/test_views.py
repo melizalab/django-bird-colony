@@ -175,6 +175,8 @@ class AnimalViewTests(BaseColonyTest):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context["event_list"]), 4)
 
+
+class PairingViewTests(BaseColonyTest):
     def test_pairing_list_url_exists_at_desired_location(self):
         response = self.client.get("/birds/pairings/")
         self.assertEqual(response.status_code, 200)
@@ -192,6 +194,25 @@ class AnimalViewTests(BaseColonyTest):
         response = self.client.get(reverse("birds:pairings_active"))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context["pairing_list"]), 1)
+
+
+class LocationViewTest(BaseColonyTest):
+    def test_location_list_url_exists_at_desired_location(self):
+        response = self.client.get("/birds/locations/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_location_list_contains_all_locations(self):
+        response = self.client.get(reverse("birds:locations"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["location_list"]), 2)
+
+    def test_location_detail_404_invalid_id(self):
+        response = self.client.get(reverse("birds:location", args=[99]))
+        self.assertEqual(response.status_code, 404)
+
+    def test_location_detail_view_contains_all_living_birds(self):
+        response = self.client.get(reverse("birds:location", args=[self.nest.id]))
+        self.assertEqual(len(response.context["animal_list"]), 2 + self.n_children)
 
 
 class NestReportTests(BaseColonyTest):
