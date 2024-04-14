@@ -124,6 +124,7 @@ class Status(models.Model):
 class Location(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=45, unique=True)
+    description = models.TextField(default="")
     nest = models.BooleanField(
         default=False, help_text="select for locations used for breeding"
     )
@@ -138,6 +139,9 @@ class Location(models.Model):
 
     def __str__(self):
         return self.name
+
+    def get_absolute_url(self):
+        return reverse("birds:location", kwargs={"pk": self.id})
 
     class Meta:
         ordering = ["name"]

@@ -1,0 +1,38 @@
+{% extends "base_view.html" %}
+{% load widget_tweaks %}
+
+{% block title %} meliza-lab : locations {% endblock %}
+
+{% block content %}
+<h2>{% if header_text %}{{ header_text}}{% else %}Locations{% endif %}</h2>
+
+<table class="table table-striped table-condensed">
+  <thead>
+    <th>Name</th>
+    <th>Animals</th>
+  </thead>
+  <tbody>
+    {% for location in location_list %}
+        <tr>
+          <td><a href="{{ location.get_absolute_url }}">{{ location }}</a></td>
+          <td>{{ location.birds.alive.count }}</td>
+        </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<div class="pagination">
+    <span class="step-links">
+        {% if page_obj.has_previous %}
+            <a href="?{{ query.urlencode }}&amp;page={{ page_obj.previous_page_number }}">previous</a> |
+        {% endif %}
+
+        <span class="current">
+            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+        </span>
+
+        {% if page_obj.has_next %}
+            | <a href="?{{ query.urlencode }}&amp;page={{ page_obj.next_page_number }}">next</a>
+        {% endif %}
+    </span>
+</div>
+{% endblock %}

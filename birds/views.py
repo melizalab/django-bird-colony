@@ -47,6 +47,7 @@ from birds.models import (
     ADULT_ANIMAL_NAME,
     Animal,
     Event,
+    Location,
     NestCheck,
     Pairing,
     Sample,
@@ -279,7 +280,9 @@ def reservation_entry(request, uuid: str):
 
 # Events
 @require_http_methods(["GET"])
-def event_list(request, animal: Optional[str] = None):
+def event_list(
+    request, *, animal: Optional[str] = None, location: Optional[int] = None
+):
     qs = Event.objects.with_related().order_by("-date", "-created")
     if animal is not None:
         animal = get_object_or_404(Animal, uuid=animal)
@@ -316,6 +319,46 @@ def new_event_entry(request, uuid: str):
         form.initial["entered_by"] = request.user
 
     return render(request, "birds/event_entry.html", {"form": form, "animal": animal})
+
+
+# Locations
+@require_http_methods(["GET"])
+def location_list(request):
+    # faster to query by bird and annotate with location (as in location_summary)
+    # qs = (
+    #     Animal.objects.with_annotations()
+    #     .with_related()
+    #     .alive()
+    #     .order_by("last_location")
+    # )
+    # counts = {}
+    # for location, animals in groupby(qs, key=lambda animal: animal.last_location):
+    #     counts[location] = len(animals)
+    qs = Location.objects.order_by("name")
+    paginator = Paginator(qs, 25)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+    return render(
+        request,
+        "birds/location_list.html",
+        {"page_obj": page_obj, "location_list": page_obj.object_list},
+    )
+
+
+@require_http_methods(["GET"])
+def location_view(request, pk):
+    location = get_object_or_404(Location, pk=pk)
+    birds = location.birds().with_dates().with_related().alive().order_by("-created")
+    events = location.event_set.with_related()
+    return render(
+        request,
+        "birds/location.html",
+        {
+            "location": location,
+            "animal_list": birds,
+            "event_list": events,
+        },
+    )
 
 
 # Pairings
@@ -534,6 +577,8 @@ def pairing_report(request):
         since = None
     until = until or datetime.date.today()
     since = since or (until - datetime.timedelta(days=default_days))
+    if until - since > datetime.timedelta(days=9):
+        raise ValueError("report cannot span more than 10 days")
     dates, pairs = tabulate_pairs(since, until)
     checks = NestCheck.objects.filter(
         datetime__date__gte=since, datetime__date__lte=until

@@ -1,0 +1,46 @@
+{% extends "base_view.html" %}
+{% load date_fmt %}
+
+{% block title %} meliza-lab : location : {{ location }} {% endblock %}
+
+{% block content %}
+
+<h2>{{ location }}</h2>
+
+<p>{{ location.description }}</p>
+
+<h3>Animals</h3>
+
+{% include "birds/animal_table.html" %}
+
+<h3>Recent Events</h3>
+
+<table class="table table-striped table-condensed">
+  <thead>
+    <th>Animal</th>
+    <th>Status</th>
+    <th>Date</th>
+    <th>Age</th>
+    <th>Comments</th>
+    <th>Entered by</th>
+    <th>Edit</th>
+  </thead>
+  <tbody>
+    {% for event in event_list|slice:":10" %}
+        <tr>
+          <td><a href="{{ event.animal.get_absolute_url }}">{{ event.animal }}</a></td>
+          <td>{{ event.status }}</td>
+          <td>{{ event.date }}</td>
+	  <td>{{ event.age|agestr }}</td>
+          <td>{{ event.description }}</td>
+	  <td>{{ event.entered_by}}</td>
+          <td><a href="{% url 'admin:birds_event_change' event.id %}"
+                 class="glyphicon glyphicon-edit" alt="[edit]" aria-label="[Edit]"></a></td>
+        </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<a href="events/">show all</a>&nbsp;&nbsp;
+
+
+{% endblock %}

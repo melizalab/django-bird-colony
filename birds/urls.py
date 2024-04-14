@@ -61,8 +61,11 @@ urlpatterns = [
         name="animal_events",
     ),
     re_path(r"^events/$", views.event_list, name="events"),
-    re_path(r"^pairings/$", views.pairing_list, name="pairings"),
-    re_path(r"^pairings/active/$", views.active_pairing_list, name="pairings_active"),
+    path("locations/", views.location_list, name="locations"),
+    path("locations/<int:pk>/", views.location_view, name="location"),
+    path("locations/<int:location>/", views.event_list, name="events"),
+    path("pairings/", views.pairing_list, name="pairings"),
+    path("pairings/active/", views.active_pairing_list, name="pairings_active"),
     path("pairings/<int:pk>/", views.pairing_view, name="pairing"),
     path(
         "pairings/<int:pk>/new/",

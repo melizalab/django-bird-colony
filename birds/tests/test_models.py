@@ -428,6 +428,8 @@ class AnimalModelTests(TestCase):
             location=location_1,
         )
         self.assertEqual(bird.last_location(), location_1)
+        abird = Animal.objects.with_location().get(pk=bird.pk)
+        self.assertEqual(abird.last_location, location_1.name)
 
         status_2 = Status.objects.get(name="moved")
         date_2 = datetime.date.today() - datetime.timedelta(days=1)
@@ -441,10 +443,18 @@ class AnimalModelTests(TestCase):
         )
         self.assertIs(bird.alive(), True)
         self.assertEqual(bird.last_location(), location_2)
+        abird = Animal.objects.with_location().get(pk=bird.pk)
+        self.assertEqual(abird.last_location, location_2.name)
         self.assertEqual(bird.last_location(on_date=birthday), location_1)
+        abird = Animal.objects.with_location(on_date=birthday).get(pk=bird.pk)
+        self.assertEqual(abird.last_location, location_1.name)
         self.assertIs(
             bird.last_location(on_date=birthday - datetime.timedelta(days=1)), None
         )
+        abird = Animal.objects.with_location(
+            on_date=birthday - datetime.timedelta(days=1)
+        ).get(pk=bird.pk)
+        self.assertIs(abird.last_location, None)
 
     def test_updating_sex(self):
         species = Species.objects.get(pk=1)
@@ -1428,11 +1438,10 @@ class LocationModelTests(TestCase):
         self.assertFalse(location.birds().exists())
         species = Species.objects.get(pk=1)
         user = models.get_sentinel_user()
-        status = Status.objects.get(name="moved")
         bird = Animal.objects.create_with_event(
             species,
             date=datetime.date.today(),
-            status=status,
+            status=models.get_birth_event_type(),
             entered_by=user,
             location=location,
         )
@@ -1459,7 +1468,7 @@ class LocationModelTests(TestCase):
         bird = Animal.objects.create_with_event(
             species,
             date=last_week,
-            status=status,
+            status=models.get_birth_event_type(),
             entered_by=user,
             location=location_1,
         )
