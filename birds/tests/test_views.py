@@ -95,7 +95,7 @@ class BaseColonyTest(TestCase):
                 band_color=band_color,
                 band_number=10 + i,
             )
-        _pairing = Pairing.objects.create_with_events(
+        cls.pairing = Pairing.objects.create_with_events(
             sire=cls.sire,
             dam=cls.dam,
             began_on=today() - dt_days(20),
@@ -289,6 +289,37 @@ class NestReportTests(BaseColonyTest):
             self.assertEqual(len(day["animals"]["adult"]), 2 + self.n_children)
             self.assertCountEqual(day["animals"]["egg"], eggs[: i + 1])
             self.assertEqual(day["counts"]["egg"], i + 1)
+
+
+class BreedingReportTests(BaseColonyTest):
+    def test_breeding_report_url_exists_at_desired_location(self):
+        response = self.client.get("/birds/summary/breeding/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_breeding_report_default_dates(self):
+        response = self.client.get(reverse("birds:breeding-summary"))
+        self.assertEqual(response.status_code, 200)
+        dates = response.context["dates"]
+        self.assertEqual(len(dates), 5)
+        self.assertEqual(dates[0], today() - dt_days(4))
+        self.assertEqual(dates[-1], today())
+
+    def test_nest_check_list(self):
+        nest_check = NestCheck.objects.create(
+            entered_by=models.get_sentinel_user(),
+            datetime=make_aware(datetime.datetime.now()),
+            comments="much nesting",
+        )
+        response = self.client.get(reverse("birds:breeding-summary"))
+        self.assertEqual(response.status_code, 200)
+        self.assertCountEqual(response.context["checks"], [nest_check])
+
+    def test_nest_report_bird_counts(self):
+        response = self.client.get(reverse("birds:breeding-summary"))
+        pairing = response.context["pairs"][0]
+        self.assertEqual(pairing["pair"], self.pairing)
+        for i, day in enumerate(pairing["counts"]):
+            self.assertDictEqual(day, {"egg": i + 1})
 
 
 class EventSummaryTests(TestCase):

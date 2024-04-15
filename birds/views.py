@@ -614,7 +614,7 @@ def location_summary(request):
 
 
 @require_http_methods(["GET"])
-def pairing_report(request):
+def breeding_report(request):
     default_days = 4
     try:
         until = dateparse.parse_date(request.GET["until"])
@@ -634,7 +634,7 @@ def pairing_report(request):
     ).order_by("-datetime")
     return render(
         request,
-        "birds/pairing_report.html",
+        "birds/breeding_report.html",
         {
             "dates": dates,
             "pairs": pairs,
