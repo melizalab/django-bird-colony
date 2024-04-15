@@ -22,8 +22,7 @@
   <dt>sire</dt><dd>{% if animal.sire %}<a href="{{ animal.sire.get_absolute_url }}">{{ animal.sire }}</a>{% endif %}</dd>
   <dt>dam</dt><dd>{% if animal.dam %}<a href="{{ animal.dam.get_absolute_url }}">{{ animal.dam }}</a>{% endif %}</dd>
   <dt>reserved by</dt>
-  <dd>
-    <span class="text-warning">{{ animal.reserved_by }}</span>
+  <dd>{% if animal.reserved_by %}<a href="{% url 'birds:user' animal.reserved_by.id %}">{{ animal.reserved_by }}</a>{% endif %}
   </dd>
 </dl>
 {% if not animal.sexed %}

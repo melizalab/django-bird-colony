@@ -22,7 +22,7 @@
           <td>{{ animal.last_location|default_if_none:"" }}</td>
           <td>{{ animal.children.hatched.count}}</td>
           <td>{{ animal.uuid }}</td>
-          <td>{% if animal.reserved_by %}{{ animal.reserved_by }}{% endif %}</td>
+          <td>{% if animal.reserved_by %}<a href="{% url 'birds:user' animal.reserved_by.id %}">{{ animal.reserved_by }}</a>{% endif %}</td>
           <td></td>
         </tr>
     {% endfor %}

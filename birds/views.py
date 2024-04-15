@@ -6,8 +6,9 @@ from collections import Counter, defaultdict
 from itertools import groupby
 from typing import Optional
 
+from django.contrib.auth.models import User
 from django.core.paginator import Paginator
-from django.db.models import F, Q
+from django.db.models import F, Q, Count
 from django.db.utils import IntegrityError
 from django.forms import ValidationError, formset_factory
 from django.http import Http404, HttpResponseRedirect
@@ -286,6 +287,13 @@ def event_list(
     if animal is not None:
         animal = get_object_or_404(Animal, uuid=animal)
         qs = qs.filter(animal=animal)
+        header_text = f"Events for {animal}"
+    elif location is not None:
+        location = get_object_or_404(Location, pk=location)
+        qs = qs.filter(location=location)
+        header_text = f"Events for {location}"
+    else:
+        header_text = "Events"
     f = EventFilter(request.GET, queryset=qs)
     paginator = Paginator(f.qs, 25)
     page_number = request.GET.get("page")
@@ -293,7 +301,12 @@ def event_list(
     return render(
         request,
         "birds/event_list.html",
-        {"filter": f, "page_obj": page_obj, "event_list": page_obj.object_list},
+        {
+            "filter": f,
+            "page_obj": page_obj,
+            "event_list": page_obj.object_list,
+            "header_text": header_text,
+        },
     )
 
 
@@ -356,6 +369,43 @@ def location_view(request, pk):
             "location": location,
             "animal_list": birds,
             "event_list": events,
+        },
+    )
+
+
+# Users
+@require_http_methods(["GET"])
+def user_list(request):
+    queryset = (
+        User.objects.filter(is_active=True)
+        .annotate(n_reserved=Count("animal"))
+        .order_by("-n_reserved")
+    )
+    return render(
+        request,
+        "birds/user_list.html",
+        {"user_list": queryset},
+    )
+
+
+@require_http_methods(["GET"])
+def user_view(request, pk):
+    user = get_object_or_404(User, pk=pk)
+    reserved = (
+        user.animal_set.with_annotations().with_related().order_by("-alive", "-age")
+    )
+    f = AnimalFilter(request.GET, queryset=reserved)
+    paginator = Paginator(f.qs, 25)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+    return render(
+        request,
+        "birds/user.html",
+        {
+            "reserver": user,
+            "filter": f,
+            "page_obj": page_obj,
+            "animal_list": page_obj.object_list,
         },
     )
 

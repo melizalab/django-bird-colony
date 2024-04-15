@@ -223,6 +223,36 @@ class LocationViewTest(BaseColonyTest):
         self.assertEqual(len(response.context["animal_list"]), 2 + self.n_children)
 
 
+class UserViewTest(BaseColonyTest):
+    def setUp(self):
+        self.test_user1 = User.objects.create_user(
+            username="testuser1", password="1X<ISRUkw+tuK"
+        )
+        self.test_user1.save()
+
+    def test_user_list_url_exists_at_desired_location(self):
+        response = self.client.get("/birds/users/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_user_list_contains_all_users(self):
+        response = self.client.get(reverse("birds:users"))
+        self.assertEqual(response.status_code, 200)
+        self.assertCountEqual(
+            response.context["user_list"],
+            [self.test_user1, models.get_sentinel_user()],
+        )
+
+    def test_user_detail_404_invalid_id(self):
+        response = self.client.get(reverse("birds:user", args=[99]))
+        self.assertEqual(response.status_code, 404)
+
+    def test_user_detail_view_contains_all_reserved_birds(self):
+        species = Species.objects.get(pk=1)
+        animal = Animal.objects.create(species=species, reserved_by=self.test_user1)
+        response = self.client.get(reverse("birds:user", args=[self.test_user1.id]))
+        self.assertCountEqual(response.context["animal_list"], [animal])
+
+
 class NestReportTests(BaseColonyTest):
     def test_nest_report_url_exists_at_desired_location(self):
         response = self.client.get("/birds/summary/nests/")
