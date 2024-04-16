@@ -39,7 +39,7 @@ def tabulate_locations(since, until):
     data = {}
     while repdate <= until:
         locations = defaultdict(list)
-        alive = Animal.objects.existed_on(repdate)
+        alive = Animal.objects.existing(repdate)
         qs = (
             Event.objects.has_location()
             .latest_by_animal()
@@ -92,7 +92,7 @@ def tabulate_nests(since: datetime.date, until: datetime.date):
             counts = Counter()
             birds = (
                 nest.birds(date)
-                .existed_on(date)
+                .existing(date)
                 .with_dates(date)
                 .select_related("species", "band_color")
                 .prefetch_related("species__age_set")

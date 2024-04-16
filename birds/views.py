@@ -143,8 +143,7 @@ def animal_genealogy(request, uuid: str):
         .order_by("-alive", "-age")
         for gen in generations
     ]
-    # have to manually filter here because alive() will call with_status()
-    living = [qs.filter(alive__gt=0) for qs in descendents]
+    living = [qs.alive() for qs in descendents]
     return render(
         request,
         "birds/genealogy.html",
@@ -830,7 +829,7 @@ def event_summary(request, year: int, month: int):
     birds = (
         Animal.objects.with_dates(refdate)
         .prefetch_related("species__age_set")
-        .alive_on(refdate)
+        .alive(refdate)
         .order_by("species", "born_on")
     )
     counter = defaultdict(lambda: defaultdict(Counter))
@@ -871,7 +870,7 @@ def api_info(request, format=None):
 
 class APIAnimalsList(generics.ListAPIView):
     queryset = (
-        Animal.objects.with_status()
+        Animal.objects.with_dates()
         .select_related("reserved_by", "species", "band_color")
         .prefetch_related("parents")
         .order_by("band_color", "band_number")
@@ -887,7 +886,7 @@ class APIAnimalChildList(APIAnimalsList):
     def get_queryset(self):
         animal = get_object_or_404(Animal, uuid=self.kwargs["pk"])
         return (
-            animal.children.with_status()
+            animal.children.with_dates()
             .select_related("reserved_by", "species", "band_color")
             .prefetch_related("parents")
             .order_by("band_color", "band_number")
@@ -924,8 +923,7 @@ class APIAnimalPedigree(generics.ListAPIView):
         from django.db.models import Count
 
         queryset = (
-            Animal.objects.with_status()
-            .with_dates()
+            Animal.objects.with_dates()
             .select_related("reserved_by", "species", "band_color", "plumage")
             .prefetch_related("parents__species")
             .prefetch_related("parents__band_color")

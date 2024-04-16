@@ -89,13 +89,17 @@ class AnimalModelTests(TestCase):
         self.assertIs(bird.age(on_date=random_date), None)
         self.assertNotIn(bird, Animal.objects.alive())
         self.assertNotIn(bird, Animal.objects.hatched())
-        annotated_bird = Animal.objects.with_status().get(pk=bird.pk)
-        self.assertFalse(annotated_bird.alive)
+        self.assertIs(
+            bird.expected_hatch(),
+            None,
+            "bird without events should not have expected hatch",
+        )
         annotated_bird = Animal.objects.with_dates().get(pk=bird.pk)
         self.assertIs(annotated_bird.born_on, None)
         self.assertIs(annotated_bird.acquired_on, None)
         self.assertIs(annotated_bird.died_on, None)
         self.assertIs(annotated_bird.first_event_on, None)
+        self.assertFalse(annotated_bird.alive)
         annotated_bird = Animal.objects.with_dates(random_date).get(pk=bird.pk)
         self.assertIs(annotated_bird.born_on, None)
         self.assertIs(annotated_bird.acquired_on, None)
@@ -123,23 +127,21 @@ class AnimalModelTests(TestCase):
         self.assertIs(bird.alive(on_date=birthday - dt_days(1)), False)
         self.assertIs(bird.expected_hatch(), None)
 
-        annotated_bird = Animal.objects.with_status().get(pk=bird.pk)
-        self.assertIs(annotated_bird.alive, True)
-
         annotated_bird = Animal.objects.with_dates().get(pk=bird.pk)
         self.assertEqual(annotated_bird.first_event_on, birthday)
         self.assertEqual(annotated_bird.born_on, birthday)
         self.assertEqual(annotated_bird.acquired_on, birthday)
         self.assertIs(annotated_bird.died_on, None)
+        self.assertIs(annotated_bird.alive, True)
         self.assertEqual(annotated_bird.age, age)
 
         self.assertIn(bird, Animal.objects.alive())
         self.assertIn(bird, Animal.objects.hatched())
         self.assertNotIn(bird, Animal.objects.unhatched())
-        self.assertIn(bird, Animal.objects.alive_on(birthday))
-        self.assertNotIn(bird, Animal.objects.alive_on(birthday - dt_days(1)))
-        self.assertIn(bird, Animal.objects.existed_on(birthday))
-        self.assertNotIn(bird, Animal.objects.existed_on(birthday - dt_days(1)))
+        self.assertIn(bird, Animal.objects.alive(birthday))
+        self.assertNotIn(bird, Animal.objects.alive(birthday - dt_days(1)))
+        self.assertIn(bird, Animal.objects.existing(birthday))
+        self.assertNotIn(bird, Animal.objects.existing(birthday - dt_days(1)))
 
     def test_status_of_transferred_bird(self):
         species = Species.objects.get(pk=1)
@@ -160,25 +162,23 @@ class AnimalModelTests(TestCase):
         self.assertIs(bird.alive(on_date=acq_on - dt_days(1)), False)
         self.assertIs(bird.expected_hatch(), None)
 
-        annotated_bird = Animal.objects.with_status().get(pk=bird.pk)
-        self.assertIs(annotated_bird.alive, True)
-
         annotated_bird = Animal.objects.with_dates().get(pk=bird.pk)
         self.assertEqual(annotated_bird.first_event_on, acq_on)
         self.assertIs(annotated_bird.born_on, None)
         self.assertEqual(annotated_bird.acquired_on, acq_on)
         self.assertIs(annotated_bird.died_on, None)
         self.assertIs(annotated_bird.age, None)
+        self.assertIs(annotated_bird.alive, True)
         self.assertEqual(annotated_bird.age_group(), models.ADULT_ANIMAL_NAME)
 
         self.assertIn(bird, Animal.objects.alive())
         self.assertNotIn(bird, Animal.objects.hatched())
         self.assertIn(bird, Animal.objects.unhatched())
         self.assertIn(bird, Animal.objects.unhatched().alive())
-        self.assertIn(bird, Animal.objects.alive_on(acq_on))
-        self.assertNotIn(bird, Animal.objects.alive_on(acq_on - dt_days(1)))
-        self.assertIn(bird, Animal.objects.existed_on(acq_on))
-        self.assertNotIn(bird, Animal.objects.existed_on(acq_on - dt_days(1)))
+        self.assertIn(bird, Animal.objects.alive(acq_on))
+        self.assertNotIn(bird, Animal.objects.alive(acq_on - dt_days(1)))
+        self.assertIn(bird, Animal.objects.existing(acq_on))
+        self.assertNotIn(bird, Animal.objects.existing(acq_on - dt_days(1)))
 
     def test_status_of_dead_bird(self):
         species = Species.objects.get(pk=1)
@@ -206,25 +206,23 @@ class AnimalModelTests(TestCase):
         self.assertEqual(bird.age(on_date=died_on), died_on - born_on)
         self.assertIs(bird.expected_hatch(), None)
 
-        annotated_bird = Animal.objects.with_status().get(pk=bird.pk)
-        self.assertIs(annotated_bird.alive, False)
-
         annotated_bird = Animal.objects.with_dates().get(pk=bird.pk)
         self.assertEqual(annotated_bird.first_event_on, born_on)
         self.assertEqual(annotated_bird.born_on, born_on)
         self.assertEqual(annotated_bird.acquired_on, born_on)
         self.assertEqual(annotated_bird.died_on, died_on)
+        self.assertIs(annotated_bird.alive, False)
         self.assertEqual(annotated_bird.age, died_on - born_on)
 
         self.assertNotIn(bird, Animal.objects.alive())
         self.assertIn(bird, Animal.objects.hatched())
         self.assertNotIn(bird, Animal.objects.unhatched())
-        self.assertIn(bird, Animal.objects.alive_on(born_on))
-        self.assertIn(bird, Animal.objects.alive_on(died_on - dt_days(1)))
-        self.assertNotIn(bird, Animal.objects.alive_on(born_on - dt_days(1)))
-        self.assertIn(bird, Animal.objects.existed_on(born_on))
-        self.assertIn(bird, Animal.objects.existed_on(died_on - dt_days(1)))
-        self.assertNotIn(bird, Animal.objects.existed_on(born_on - dt_days(1)))
+        self.assertIn(bird, Animal.objects.alive(born_on))
+        self.assertIn(bird, Animal.objects.alive(died_on - dt_days(1)))
+        self.assertNotIn(bird, Animal.objects.alive(born_on - dt_days(1)))
+        self.assertIn(bird, Animal.objects.existing(born_on))
+        self.assertIn(bird, Animal.objects.existing(died_on - dt_days(1)))
+        self.assertNotIn(bird, Animal.objects.existing(born_on - dt_days(1)))
 
     def test_bird_hatched_alive_order(self):
         species = Species.objects.get(pk=1)
@@ -238,9 +236,12 @@ class AnimalModelTests(TestCase):
         )
         # it should not matter what order these are called in
         self.assertIn(bird, Animal.objects.alive().hatched())
-        self.assertIn(bird, Animal.objects.hatched(alive=True))
+        self.assertIn(bird, Animal.objects.hatched().alive())
         self.assertNotIn(bird, Animal.objects.unhatched().alive())
         self.assertNotIn(bird, Animal.objects.alive().unhatched())
+        self.assertIs(
+            bird.expected_hatch(), None, "hatched bird should not have expected hatch"
+        )
 
         status_died = Status.objects.get(name="died")
         self.assertEqual(status_died.removes, 1)
@@ -248,10 +249,8 @@ class AnimalModelTests(TestCase):
         Event.objects.create(
             animal=bird, status=status_died, date=died_on, entered_by=user
         )
-        # this does not work because of filter interaction
-        # self.assertNotIn(bird, Animal.objects.hatched().alive())
+        self.assertNotIn(bird, Animal.objects.hatched().alive())
         self.assertNotIn(bird, Animal.objects.alive().hatched())
-        self.assertNotIn(bird, Animal.objects.hatched(alive=True))
         self.assertNotIn(bird, Animal.objects.unhatched().alive())
         self.assertNotIn(bird, Animal.objects.alive().unhatched())
 
@@ -272,22 +271,59 @@ class AnimalModelTests(TestCase):
         eggspected_hatch = laid_on + datetime.timedelta(days=species.incubation_days)
         self.assertEqual(egg.expected_hatch(), eggspected_hatch)
 
-        annotated_egg = Animal.objects.with_status().get(pk=egg.pk)
-        self.assertIs(annotated_egg.alive, False)
-
         annotated_egg = Animal.objects.with_dates().get(pk=egg.pk)
         self.assertEqual(annotated_egg.first_event_on, laid_on)
         self.assertIs(annotated_egg.born_on, None)
         self.assertIs(annotated_egg.acquired_on, None)
         self.assertIs(annotated_egg.died_on, None)
         self.assertIs(annotated_egg.age, None)
+        self.assertIs(annotated_egg.alive, False, "an egg is not alive")
         self.assertEqual(annotated_egg.age_group(), models.UNBORN_ANIMAL_NAME)
 
         self.assertNotIn(egg, Animal.objects.alive())
         self.assertNotIn(egg, Animal.objects.hatched())
         self.assertIn(egg, Animal.objects.unhatched())
-        self.assertIn(egg, Animal.objects.existed_on(laid_on))
-        self.assertNotIn(egg, Animal.objects.existed_on(laid_on - dt_days(1)))
+        self.assertIn(egg, Animal.objects.existing(laid_on))
+        self.assertNotIn(egg, Animal.objects.existing(laid_on - dt_days(1)))
+
+    def test_status_of_lost_egg(self):
+        species = Species.objects.get(pk=1)
+        egg = Animal.objects.create(species=species)
+        user = models.get_sentinel_user()
+        status_laid = models.get_unborn_creation_event_type()
+        status_lost = Status.objects.get(name=models.LOST_EVENT_NAME)
+        laid_on = today() - dt_days(10)
+        Event.objects.create(
+            animal=egg, status=status_laid, date=laid_on, entered_by=user
+        )
+        lost_on = today() - dt_days(2)
+        Event.objects.create(
+            animal=egg, status=status_lost, date=lost_on, entered_by=user
+        )
+
+        self.assertIs(egg.acquisition_event(), None)
+        self.assertIs(egg.alive(), False)
+        self.assertIs(egg.age(), None)
+        self.assertIs(
+            egg.expected_hatch(), None, "lost egg should not have expected hatch"
+        )
+
+        annotated_egg = Animal.objects.with_dates().get(pk=egg.pk)
+        self.assertEqual(annotated_egg.first_event_on, laid_on)
+        self.assertIs(annotated_egg.born_on, None)
+        self.assertIs(annotated_egg.acquired_on, None)
+        self.assertEqual(annotated_egg.died_on, lost_on)
+        self.assertIs(annotated_egg.age, None)
+        self.assertIs(annotated_egg.alive, False, "an egg is not alive")
+        self.assertEqual(annotated_egg.age_group(), models.UNBORN_ANIMAL_NAME)
+
+        self.assertNotIn(egg, Animal.objects.alive())
+        self.assertNotIn(egg, Animal.objects.hatched())
+        self.assertIn(egg, Animal.objects.unhatched())
+        self.assertNotIn(egg, Animal.objects.unhatched().existing())
+        self.assertIn(egg, Animal.objects.existing(laid_on))
+        self.assertNotIn(egg, Animal.objects.existing(laid_on - dt_days(1)))
+        self.assertNotIn(egg, Animal.objects.existing(lost_on))
 
     def test_with_dates_as_of_date(self):
         species = Species.objects.get(pk=1)
@@ -510,10 +546,21 @@ class ParentModelTests(TestCase):
         self.assertEqual(child.dam(), dam)
         self.assertTrue(sire.children.contains(child))
         self.assertTrue(dam.children.contains(child))
-        # child has no hatch event
-        self.assertEqual(sire.children.unhatched().count(), 1)
-        self.assertEqual(sire.children.hatched().count(), 0)
-        self.assertEqual(sire.children.alive().count(), 0)
+        self.assertEqual(
+            sire.children.unhatched().count(),
+            0,
+            "a bird with no events should not be in the unhatched group",
+        )
+        self.assertEqual(
+            sire.children.hatched().count(),
+            0,
+            "a bird with no events should not be in the hatched group",
+        )
+        self.assertEqual(
+            sire.children.alive().count(),
+            0,
+            "a bird with no events should not be in the alive group",
+        )
 
     def test_create_bird_from_parents(self):
         species = Species.objects.get(pk=1)
@@ -640,7 +687,7 @@ class ParentModelTests(TestCase):
             grandchildren.hatched(), [grandson, granddaughter_1, granddaughter_2]
         )
         self.assertCountEqual(
-            grandchildren.hatched(alive=True), [grandson, granddaughter_1]
+            grandchildren.hatched().alive(), [grandson, granddaughter_1]
         )
         self.assertCountEqual(grandchildren.alive(), [grandson, granddaughter_1])
         self.assertCountEqual(
@@ -1023,12 +1070,12 @@ class PairingModelTests(TestCase):
         )
         self.assertNotIn(
             egg,
-            pairing.eggs().existed_on(pairing_ended_on - dt_days(5)),
+            pairing.eggs().existing(pairing_ended_on - dt_days(5)),
             "egg laid in pairing does not exist before it was created",
         )
         self.assertIn(
             egg,
-            pairing.eggs().existed_on(pairing_ended_on - dt_days(3)),
+            pairing.eggs().existing(pairing_ended_on - dt_days(3)),
             "egg laid in pairing exists after it was created",
         )
 
@@ -1077,17 +1124,17 @@ class PairingModelTests(TestCase):
         )
         self.assertNotIn(
             egg,
-            pairing.eggs().existed_on(laid_on - dt_days(1)),
+            pairing.eggs().existing(laid_on - dt_days(1)),
             "egg laid in pairing does not exist before it was created",
         )
         self.assertIn(
             egg,
-            pairing.eggs().existed_on(laid_on + dt_days(1)),
+            pairing.eggs().existing(laid_on + dt_days(1)),
             "egg laid in pairing exists after it was created",
         )
         self.assertNotIn(
             egg,
-            pairing.eggs().existed_on(lost_on + dt_days(1)),
+            pairing.eggs().existing(lost_on + dt_days(1)),
             "egg laid in pairing does not exist after it was lost",
         )
 

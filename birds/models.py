@@ -131,11 +131,7 @@ class Location(models.Model):
 
     def birds(self, on_date: Optional[datetime.date] = None):
         """Returns an AnimalQuerySet with all the birds in this location"""
-        return (
-            Animal.objects.with_status()
-            .with_location(on_date=on_date)
-            .filter(last_location=self)
-        )
+        return Animal.objects.with_location(on_date=on_date).filter(last_location=self)
 
     def __str__(self):
         return self.name
@@ -221,20 +217,6 @@ class AnimalManager(models.Manager):
 class AnimalQuerySet(models.QuerySet):
     """Supports queries based on status that require joining on the event table"""
 
-    def with_status(self):
-        """Annotate the results with the animal's status (alive or not)
-
-        Warning: use this before filtering birds on related events, as the annotation
-        depends on having all the events.
-        """
-        return self.annotate(
-            # Need to compare added to removed because eggs are not "alive"
-            alive=GreaterThan(
-                Sum(Cast("event__status__adds", models.IntegerField())),
-                Sum(Cast("event__status__removes", models.IntegerField())),
-            )
-        )
-
     def with_dates(self, on_date: Optional[datetime.date] = None):
         """Annotate the birds with important dates (born, died, etc)
 
@@ -255,6 +237,11 @@ class AnimalQuerySet(models.QuerySet):
             ),
             died_on=Max("event__date", filter=Q(event__status__removes=True) & q_date),
             acquired_on=Min("event__date", filter=Q(event__status__adds=True) & q_date),
+            alive=Case(
+                When(died_on__isnull=False, then=False),
+                When(acquired_on__isnull=True, then=False),
+                default=True,
+            ),
             age=Case(
                 When(born_on__isnull=True, then=None),
                 When(died_on__isnull=True, then=on_date - F("born_on")),
@@ -292,52 +279,31 @@ class AnimalQuerySet(models.QuerySet):
             )
         )
 
-    def with_annotations(self):
-        return self.with_status().with_dates().with_location()
+    def with_annotations(self, on_date: Optional[datetime.date] = None):
+        return self.with_dates(on_date).with_location(on_date)
 
     def with_related(self):
         return self.select_related(
             "reserved_by", "species", "band_color"
         ).prefetch_related("species__age_set")
 
-    def alive(self):
-        """Only birds that are alive now.
+    def hatched(self, on_date: Optional[datetime.date] = None):
+        """Only birds that were born in the colony (excludes eggs)."""
+        return self.with_dates(on_date).filter(born_on__isnull=False)
 
-        Warning: this filter cannot be used after filtering birds on `event`,
-        because it calls `with_status`, and that needs to happen before
-        filtering. Instead of `hatched().alive()` call `alive().hatched()` or
-        use `.hatched(alive=True)`
-
-        """
-        return self.with_status().filter(alive__gt=0)
-
-    def hatched(self, alive: bool = False):
-        """Only birds that were born in the colony (excludes eggs).
-
-        alive: restrict only to living birds. Use this instead of alive()
-        queryset method because this filter interacts poorly with filters and
-        annotations that depend on counting events.
-
-        """
-        qs = self.with_status().filter(event__status=get_birth_event_type())
-        if alive:
-            return qs.filter(alive__gt=0)
-        else:
-            return qs
-
-    def unhatched(self):
+    def unhatched(self, on_date: Optional[datetime.date] = None):
         """Only birds that were not born in the colony (includes eggs)"""
-        return self.exclude(event__status=get_birth_event_type())
-
-    def alive_on(self, date: datetime.date):
-        """Only birds that were alive on date (added and not removed)"""
-        return self.with_dates(date).filter(
-            acquired_on__isnull=False, died_on__isnull=True
+        return self.with_dates(on_date).filter(
+            first_event_on__isnull=False, born_on__isnull=True
         )
 
-    def existed_on(self, date: datetime.date):
-        """Only birds that existed on date (created but not removed)"""
-        return self.with_dates(date).filter(
+    def alive(self, on_date: Optional[datetime.date] = None):
+        """Only birds that are alive (added but not removed)"""
+        return self.with_dates(on_date).filter(alive=True)
+
+    def existing(self, on_date: Optional[datetime.date] = None):
+        """Only birds that have not been removed"""
+        return self.with_dates(on_date).filter(
             first_event_on__isnull=False, died_on__isnull=True
         )
 
@@ -462,7 +428,7 @@ class Animal(models.Model):
     def alive(self, on_date: Optional[datetime.date] = None):
         """Returns true if the bird is alive (as of date).
 
-        This method is masked if with_status() is used on the queryset.
+        This method is masked if with_dates() is used on the queryset.
         """
         refdate = on_date or datetime.date.today()
         is_alive = self.event_set.filter(date__lte=refdate).aggregate(
@@ -511,23 +477,21 @@ class Animal(models.Model):
             pass
 
     def expected_hatch(self):
-        """For eggs, expected hatch date. None if not an egg, already hatched,
-        or incubation time is not known."""
+        """For eggs, expected hatch date. None if not an egg, lost, already
+        hatched, or incubation time is not known.
+
+        """
         days = self.species.incubation_days
         if days is None:
-            return None
-        try:
-            self.event_set.filter(status=get_birth_event_type()).get()
-            return None
-        except ObjectDoesNotExist:
             pass
-        try:
-            evt_laid = self.event_set.filter(
-                status=get_unborn_creation_event_type()
-            ).earliest()
-            return evt_laid.date + datetime.timedelta(days=days)
-        except ObjectDoesNotExist:
-            return None
+        elif self.event_set.filter(
+            Q(status__adds__gt=0) | Q(status__removes__gt=0)
+        ).exists():
+            pass
+        else:
+            evt_laid = self.event_set.filter(status=get_unborn_creation_event_type())
+            if evt_laid.exists():
+                return evt_laid.earliest().date + datetime.timedelta(days=days)
 
     def last_location(self, on_date: Optional[datetime.date] = None):
         """Returns the location recorded in the most recent event before `on_date`
