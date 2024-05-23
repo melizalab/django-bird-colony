@@ -443,8 +443,14 @@ class EventSummaryTests(TestCase):
         self.assertEqual(len(response.context["bird_counts"]), 1)
         zf_counts = response.context["bird_counts"][0]
         self.assertEqual(zf_counts[0], self.species.common_name)
+        # the chicks age group will depend on how many days it's been since the
+        # start of the month
+        expected_chick_age_group = (
+            self.species.age_set.filter(min_days__lt=date.day).first().name
+        )
         self.assertListEqual(
-            zf_counts[1], [("adult", {"M": 1, "F": 1}), ("hatchling", {"U": 4})]
+            zf_counts[1],
+            [("adult", {"M": 1, "F": 1}), (expected_chick_age_group, {"U": 4})],
         )
 
 
