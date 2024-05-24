@@ -18,7 +18,7 @@
   <tbody>
     {% for pairing in pairs %}
     <tr>
-      <td>{{pairing.pair.last_location}}</td>
+      <td>{{ pairing.location }}</td>
       <td>
 	<a href="{% url 'birds:pairing' pairing.pair.id %}">{{ pairing.pair.short_name }}</a>
       </td>
