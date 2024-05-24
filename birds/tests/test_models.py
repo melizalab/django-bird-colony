@@ -1057,12 +1057,8 @@ class PairingModelTests(TestCase):
             "egg laid before pairing is incorrectly associated with the pairing",
         )
 
-        egg = Animal.objects.create(species=self.sire.species)
-        egg.parents.set([self.sire, self.dam])
         laid_on = pairing_ended_on - dt_days(4)
-        Event.objects.create(
-            animal=egg, status=status_laid, date=laid_on, entered_by=user
-        )
+        egg = pairing.create_egg(date=laid_on, entered_by=user)
         self.assertCountEqual(
             pairing.eggs(),
             [egg],
@@ -1106,9 +1102,8 @@ class PairingModelTests(TestCase):
         )
         self.assertEqual(pairing.eggs().count(), 0)
         user = models.get_sentinel_user()
-        egg = Animal.objects.create(species=self.sire.species)
-        egg.parents.set([self.sire, self.dam])
         laid_on = pairing_ended_on - dt_days(4)
+        egg = pairing.create_egg(date=laid_on, entered_by=user)
         Event.objects.create(
             animal=egg,
             status=models.get_unborn_creation_event_type(),

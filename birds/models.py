@@ -833,7 +833,7 @@ class Pairing(models.Model):
         return qs.with_dates().filter(d_query)
 
     def events(self):
-        """Queryset with all events for the pair and their progeny during the pairing"""
+        """All events for the pair and their progeny during the pairing"""
         qs = Event.objects.filter(
             Q(animal__in=self.eggs()) | Q(animal__in=(self.sire, self.dam)),
             date__gte=self.began_on,
@@ -865,6 +865,31 @@ class Pairing(models.Model):
     def other_pairings(self):
         """Returns queryset with all other pairings of this sire and dam"""
         return Pairing.objects.filter(sire=self.sire, dam=self.dam).exclude(id=self.id)
+
+    def create_egg(
+        self,
+        date: datetime.date,
+        *,
+        entered_by: settings.AUTH_USER_MODEL,
+        location: Optional[Location] = None,
+        description: Optional[str] = None,
+        **animal_properties,
+    ):
+        """Create an egg and associated event for the pair"""
+        if date < self.began_on:
+            raise ValueError(_("Date must be on or after start of pairing"))
+        if self.ended_on is not None and date > self.ended_on:
+            raise ValueError(_("Date must be on or before end of pairing"))
+        return Animal.objects.create_from_parents(
+            sire=self.sire,
+            dam=self.dam,
+            date=date,
+            status=get_unborn_creation_event_type(),
+            entered_by=entered_by,
+            location=location,
+            description=description,
+            **animal_properties,
+        )
 
     def close(
         self,
@@ -911,6 +936,8 @@ class Pairing(models.Model):
             raise ValidationError(_("Sire must be a male"))
         if self.dam.sex != Animal.Sex.FEMALE:
             raise ValidationError(_("Dam must be a female"))
+        if self.ended_on is not None and self.ended_on <= self.began_on:
+            raise ValidationError(_("End date must be after start date"))
 
     class Meta:
         ordering = ["-began_on", "-ended_on"]
