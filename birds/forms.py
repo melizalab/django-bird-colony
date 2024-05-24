@@ -11,6 +11,7 @@ from birds.models import (
     Animal,
     Color,
     Location,
+    Pairing,
     Plumage,
     Sample,
     Species,
@@ -162,6 +163,48 @@ class NestCheckForm(forms.Form):
             data["dam"] = females[0]
 
         return data | {"delta_chicks": delta_chicks, "delta_eggs": delta_eggs}
+
+
+class BreedingCheckForm(forms.Form):
+    pairing = forms.ModelChoiceField(
+        queryset=Pairing.objects.active(), widget=forms.HiddenInput()
+    )
+    location = forms.ModelChoiceField(
+        queryset=Location.objects.all(), widget=forms.HiddenInput()
+    )
+    eggs = forms.IntegerField(label="eggs", min_value=0)
+    chicks = forms.IntegerField(label="chicks", min_value=0)
+
+    def clean(self):
+        data = super().clean()
+        pairing = data["pairing"]
+        initial_chicks = pairing.eggs().hatched()
+        initial_eggs = pairing.eggs().unhatched().order_by("created")
+        initial_eggs_count = initial_eggs.count()
+        delta_chicks = data["chicks"] - initial_chicks.count()
+        delta_eggs = data["eggs"] - (initial_eggs_count + delta_chicks)
+        if delta_chicks < 0:
+            raise forms.ValidationError(
+                _("Lost chicks need to be removed manually by adding an event")
+            )
+        if delta_chicks > initial_eggs_count:
+            raise forms.ValidationError(
+                _("Not enough eggs to make %(chicks)d new chick%(plural)s"),
+                params={"chicks": delta_chicks, "plural": pluralize(delta_chicks)},
+            )
+        data["hatch_status"] = get_status_or_error(models.BIRTH_EVENT_NAME)
+        data["laid_status"] = get_status_or_error(models.UNBORN_CREATION_EVENT_NAME)
+        data["lost_status"] = get_status_or_error(models.LOST_EVENT_NAME)
+
+        data["hatched_eggs"] = initial_eggs[:delta_chicks]
+        if delta_eggs < 0:
+            data["added_eggs"] = 0
+            data["lost_eggs"] = initial_eggs[delta_chicks:-delta_eggs]
+        else:
+            data["added_eggs"] = delta_eggs
+            data["lost_eggs"] = []
+
+        return data
 
 
 class NestCheckUser(forms.Form):

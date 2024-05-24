@@ -8,6 +8,7 @@ from django.test import TestCase
 
 from birds import models
 from birds.forms import (
+    BreedingCheckForm,
     NestCheckForm,
     NewAnimalForm,
     NewBandForm,
@@ -15,7 +16,16 @@ from birds.forms import (
     ReservationForm,
     SexForm,
 )
-from birds.models import Animal, Color, Location, Pairing, Plumage, Species, Status
+from birds.models import (
+    Animal,
+    Event,
+    Color,
+    Location,
+    Pairing,
+    Plumage,
+    Species,
+    Status,
+)
 
 warnings.filterwarnings("error")
 
@@ -523,7 +533,7 @@ class NestCheckFormTest(TestCase):
         self.assertFalse(form.is_valid())
 
     def test_nest_check_cannot_add_egg_without_a_male(self):
-        _ = models.Event.objects.create(
+        _ = Event.objects.create(
             animal=self.sire,
             date=today(),
             status=Status.objects.get(name="moved"),
@@ -547,7 +557,7 @@ class NestCheckFormTest(TestCase):
         self.assertFalse(form.is_valid())
 
     def test_nest_check_cannot_add_egg_without_a_female(self):
-        _ = models.Event.objects.create(
+        _ = Event.objects.create(
             animal=self.dam,
             date=today(),
             status=Status.objects.get(name="moved"),
@@ -569,5 +579,132 @@ class NestCheckFormTest(TestCase):
                 "form-0-chicks": 1,
             },
             initial=initial,
+        )
+        self.assertTrue(formset.is_valid())
+
+
+class BreedingCheckFormTest(TestCase):
+    fixtures = ["bird_colony_starter_kit"]
+
+    @classmethod
+    def setUpTestData(cls):
+        birthday = today() - dt_days(365)
+        status = models.get_birth_event_type()
+        cls.user = models.get_sentinel_user()
+        location = Location.objects.get(pk=1)
+        species = Species.objects.get(pk=1)
+        cls.sire = Animal.objects.create_with_event(
+            species=species,
+            status=status,
+            date=birthday,
+            entered_by=cls.user,
+            location=location,
+            sex=Animal.Sex.MALE,
+            band_number=1,
+        )
+        cls.dam = Animal.objects.create_with_event(
+            species=species,
+            status=status,
+            date=birthday,
+            entered_by=cls.user,
+            location=location,
+            sex=Animal.Sex.FEMALE,
+            band_number=2,
+        )
+        cls.nest = Location.objects.filter(nest=True).first()
+        cls.pairing = Pairing.objects.create_with_events(
+            sire=cls.sire,
+            dam=cls.dam,
+            began_on=today() - dt_days(10),
+            purpose="testing",
+            entered_by=cls.user,
+            location=cls.nest,
+        )
+
+    def test_nest_check_no_change(self):
+        egg = self.pairing.create_egg(today() - dt_days(5), entered_by=self.user)
+        child = self.pairing.create_egg(today() - dt_days(5), entered_by=self.user)
+        _event = Event.objects.create(
+            animal=child,
+            date=today(),
+            status=models.get_birth_event_type(),
+            entered_by=self.user,
+        )
+        form = BreedingCheckForm(
+            {"pairing": self.pairing, "location": self.nest, "eggs": 1, "chicks": 1},
+        )
+        self.assertTrue(form.is_valid())
+        self.assertFalse(form.cleaned_data["hatched_eggs"].exists())
+        self.assertCountEqual(form.cleaned_data["lost_eggs"], [])
+        self.assertEqual(form.cleaned_data["added_eggs"], 0)
+
+    def test_nest_check_add_egg(self):
+        form = BreedingCheckForm(
+            {"pairing": self.pairing, "location": self.nest, "eggs": 1, "chicks": 0}
+        )
+        self.assertTrue(form.is_valid())
+        self.assertFalse(form.cleaned_data["hatched_eggs"].exists())
+        self.assertCountEqual(form.cleaned_data["lost_eggs"], [])
+        self.assertEqual(form.cleaned_data["added_eggs"], 1)
+
+    def test_nest_check_hatch_egg(self):
+        egg = self.pairing.create_egg(today() - dt_days(5), entered_by=self.user)
+        form = BreedingCheckForm(
+            {"pairing": self.pairing, "location": self.nest, "eggs": 0, "chicks": 1},
+        )
+        self.assertTrue(form.is_valid())
+        self.assertCountEqual(form.cleaned_data["hatched_eggs"], [egg])
+        self.assertCountEqual(form.cleaned_data["lost_eggs"], [])
+        self.assertEqual(form.cleaned_data["added_eggs"], 0)
+
+    def test_nest_check_lose_egg(self):
+        egg = self.pairing.create_egg(today() - dt_days(5), entered_by=self.user)
+        form = BreedingCheckForm(
+            {"pairing": self.pairing, "location": self.nest, "eggs": 0, "chicks": 0},
+        )
+        self.assertTrue(form.is_valid())
+        self.assertFalse(form.cleaned_data["hatched_eggs"].exists())
+        self.assertCountEqual(form.cleaned_data["lost_eggs"], [egg])
+        self.assertEqual(form.cleaned_data["added_eggs"], 0)
+
+    def test_nest_check_hatch_egg_lose_egg(self):
+        egg_1 = self.pairing.create_egg(today() - dt_days(5), entered_by=self.user)
+        egg_2 = self.pairing.create_egg(today() - dt_days(4), entered_by=self.user)
+        form = BreedingCheckForm(
+            {"pairing": self.pairing, "location": self.nest, "eggs": 0, "chicks": 1},
+        )
+        self.assertTrue(form.is_valid())
+        self.assertCountEqual(form.cleaned_data["hatched_eggs"], [egg_1])
+        self.assertCountEqual(form.cleaned_data["lost_eggs"], [egg_2])
+        self.assertEqual(form.cleaned_data["added_eggs"], 0)
+
+    def test_nest_check_cannot_hatch_without_egg(self):
+        egg = self.pairing.create_egg(today() - dt_days(5), entered_by=self.user)
+        form = BreedingCheckForm({"pairing": self.pairing, "eggs": 0, "chicks": 2})
+        self.assertFalse(form.is_valid())
+
+    def test_nest_check_cannot_lose_chick(self):
+        chick = self.pairing.create_egg(today() - dt_days(5), entered_by=self.user)
+        _event = Event.objects.create(
+            animal=chick,
+            date=today(),
+            status=models.get_birth_event_type(),
+            entered_by=self.user,
+        )
+        form = BreedingCheckForm({"pairing": self.pairing, "eggs": 0, "chicks": 0})
+        self.assertFalse(form.is_valid())
+
+    def test_nest_check_formset(self):
+        egg = self.pairing.create_egg(today() - dt_days(5), entered_by=self.user)
+        BreedingCheckFormSet = formset_factory(BreedingCheckForm, extra=0)
+        formset = BreedingCheckFormSet(
+            {
+                "form-TOTAL_FORMS": 1,
+                "form-INITIAL_FORMS": 1,
+                "form-0-pairing": self.pairing,
+                "form-0-location": self.nest,
+                "form-0-eggs": 1,
+                "form-0-chicks": 1,
+            },
         )
         self.assertTrue(formset.is_valid())
