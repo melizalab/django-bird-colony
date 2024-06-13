@@ -32,6 +32,7 @@ from birds.filters import (
     SampleFilter,
 )
 from birds.forms import (
+    BreedingCheckForm,
     EndPairingForm,
     EventForm,
     NestCheckForm,
@@ -807,6 +808,115 @@ def nest_check(request):
             "dates": dates,
             "nest_checks": previous_checks,
             "nest_data": zip(nest_data, nest_formset),
+            "nest_formset": nest_formset,
+        },
+    )
+
+
+@require_http_methods(["GET", "POST"])
+def breeding_check(request):
+    """Nest check view.
+
+    This view is a two-stage form. With GET requests the user is shown a nest
+    report for the past 3 days and is able to update egg and chick counts for
+    each nest. POST requests do not get immediately committed to the database,
+    but instead are used to generate a confirmation form that summarizes
+    everything that will change. Submitting this form will then redirect to the
+    main breeding-report page.
+
+    """
+    BreedingCheckFormSet = formset_factory(BreedingCheckForm, extra=0)
+    until = datetime.date.today()
+
+    if request.method == "POST":
+        # post only needs to tabulate for today unless there's an error
+        _, pairs = tabulate_pairs(until, until)
+        initial = [
+            {
+                "pairing": p["pair"],
+                "location": p["location"],
+                "eggs": (n_eggs := p["counts"][0]["egg"]),
+                "chicks": p["counts"][0].total() - n_eggs,
+            }
+            for p in pairs
+        ]
+        nest_formset = BreedingCheckFormSet(
+            request.POST, initial=initial, prefix="nests"
+        )
+        user_form = NestCheckUser(request.POST, prefix="user")
+        if nest_formset.is_valid():
+            if not user_form.is_valid() or not user_form.cleaned_data["confirmed"]:
+                # coming from the original view, show the confirmation page
+                return render(
+                    request,
+                    "birds/breeding_check_confirm.html",
+                    {
+                        "nest_formset": nest_formset,
+                        "user_form": user_form,
+                    },
+                )
+            else:
+                # coming from the confirmation page
+                user = user_form.cleaned_data["entered_by"]
+                for form in nest_formset:
+                    data = form.cleaned_data
+                    for hatched_egg in data["hatched_eggs"]:
+                        _ = Event.objects.create(
+                            animal=hatched_egg,
+                            date=datetime.date.today(),
+                            status=data["hatch_status"],
+                            location=data["location"],
+                            entered_by=user,
+                        )
+                    for lost_egg in data["lost_eggs"]:
+                        _ = Event.objects.create(
+                            animal=lost_egg,
+                            date=datetime.date.today(),
+                            status=data["lost_status"],
+                            location=data["location"],
+                            entered_by=user,
+                        )
+                    for _ in range(data["added_eggs"]):
+                        data["pairing"].create_egg(
+                            date=datetime.date.today(),
+                            location=data["location"],
+                            entered_by=user,
+                        )
+                NestCheck.objects.create(
+                    entered_by=user,
+                    comments=user_form.cleaned_data["comments"],
+                    datetime=make_aware(datetime.datetime.now()),
+                )
+                return HttpResponseRedirect(reverse("birds:breeding-summary"))
+
+    # initial view on get or errors
+    since = until - datetime.timedelta(days=2)
+    dates, pairs = tabulate_pairs(since, until)
+    initial = []
+    for pairing in pairs:
+        today_counts = pairing["counts"][-1]
+        total_count = sum(today_counts.values())
+        eggs = today_counts.get("egg", 0)
+        initial.append(
+            {
+                "pairing": pairing["pair"],
+                "location": pairing["location"],
+                "eggs": eggs,
+                "chicks": total_count - eggs,
+            }
+        )
+    nest_formset = BreedingCheckFormSet(initial=initial, prefix="nests")
+    previous_checks = NestCheck.objects.filter(
+        datetime__date__gte=(until - datetime.timedelta(days=7))
+    ).order_by("-datetime")
+
+    return render(
+        request,
+        "birds/breeding_check.html",
+        {
+            "dates": dates,
+            "nest_checks": previous_checks,
+            "nest_data": zip(pairs, nest_formset),
             "nest_formset": nest_formset,
         },
     )

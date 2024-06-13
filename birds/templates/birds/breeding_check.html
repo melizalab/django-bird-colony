@@ -70,7 +70,7 @@ removed from the database.</p>
 </div>
 </form>
 
-<h4>Previous nest checks</h4>
+<h4>Recent nest checks</h4>
 
 <table class="table table-striped">
   <thead>
@@ -79,7 +79,7 @@ removed from the database.</p>
     <th>Comments</th>
   </thead>
   <tbody>
-    {% for check in checks %}
+    {% for check in nest_checks %}
     <tr>
       <td>{{ check.datetime|date:"D m/d/Y" }}</td>
       <td>{{ check.entered_by }}</td>

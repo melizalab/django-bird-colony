@@ -18,19 +18,13 @@
   </thead>
   <tbody>
     {% for form in nest_formset %}
-    {% with pairing=form.cleaned_data %}
+    {% with nest=form.cleaned_data %}
     <tr>
-      <td>{{ pairing.location }}</td>
-      <td>{{ pairing.pair.short_name }}</td>
+      <td>{{ nest.location }}</td>
+      <td>{{ nest.pairing.short_name }}</td>
       <td>
-	{% for item in items %}
-	{% if item.status is None %}
-	no changes
-	{% elif item.animal %}
-	{{ item.animal }} {{ item.status }} <br/>
-	{% else %}
-	laid an egg <br/>
-	{% endif %}
+	{% for change in form.change_summary %}
+	{{ change }} <br/>
 	{% endfor %}
       </td>
     </tr>
@@ -48,6 +42,7 @@
   {% csrf_token %}
   {{ nest_formset.management_form }}
   {% for form in nest_formset %}
+  {{ form.pairing }}
   {{ form.location }}
   {{ form.eggs.as_hidden }}
   {{ form.chicks.as_hidden }}

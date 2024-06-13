@@ -102,6 +102,9 @@ urlpatterns = [
     ),
     # forms
     re_path(r"^nest-check/$", login_required(views.nest_check), name="nest-check"),
+    path(
+        "breeding-check/", login_required(views.breeding_check), name="breeding-check"
+    ),
     # api
     re_path(r"^api/info/$", views.api_info, name="api_info"),
     re_path(r"^api/animals/$", views.APIAnimalsList.as_view(), name="animals_api"),
