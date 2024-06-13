@@ -178,11 +178,11 @@ class BreedingCheckForm(forms.Form):
     def clean(self):
         data = super().clean()
         pairing = data["pairing"]
-        initial_chicks = pairing.eggs().hatched()
+        initial_chicks = pairing.eggs().alive()
         initial_eggs = pairing.eggs().unhatched().order_by("created")
         initial_eggs_count = initial_eggs.count()
         delta_chicks = data["chicks"] - initial_chicks.count()
-        delta_eggs = data["eggs"] - (initial_eggs_count + delta_chicks)
+        delta_eggs = data["eggs"] - initial_eggs_count + delta_chicks
         if delta_chicks < 0:
             raise forms.ValidationError(
                 _("Lost chicks need to be removed manually by adding an event")
@@ -199,12 +199,26 @@ class BreedingCheckForm(forms.Form):
         data["hatched_eggs"] = initial_eggs[:delta_chicks]
         if delta_eggs < 0:
             data["added_eggs"] = 0
-            data["lost_eggs"] = initial_eggs[delta_chicks:-delta_eggs]
+            data["lost_eggs"] = initial_eggs[delta_chicks : (delta_chicks - delta_eggs)]
         else:
             data["added_eggs"] = delta_eggs
             data["lost_eggs"] = []
 
         return data
+
+    def change_summary(self):
+        data = self.cleaned_data
+        changes = []
+        for _ in range(data["added_eggs"]):
+            changes.append("laid an egg")
+        for hatched_egg in data["hatched_eggs"]:
+            changes.append(f"{hatched_egg} hatched")
+        for lost_egg in data["lost_eggs"]:
+            changes.append(f"{lost_egg} lost")
+        if len(changes) == 0:
+            return ["no changes"]
+        else:
+            return changes
 
 
 class NestCheckUser(forms.Form):

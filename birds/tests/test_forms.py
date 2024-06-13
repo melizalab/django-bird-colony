@@ -637,6 +637,7 @@ class BreedingCheckFormTest(TestCase):
         self.assertFalse(form.cleaned_data["hatched_eggs"].exists())
         self.assertCountEqual(form.cleaned_data["lost_eggs"], [])
         self.assertEqual(form.cleaned_data["added_eggs"], 0)
+        self.assertCountEqual(form.change_summary(), ["no changes"])
 
     def test_nest_check_add_egg(self):
         form = BreedingCheckForm(
@@ -646,6 +647,7 @@ class BreedingCheckFormTest(TestCase):
         self.assertFalse(form.cleaned_data["hatched_eggs"].exists())
         self.assertCountEqual(form.cleaned_data["lost_eggs"], [])
         self.assertEqual(form.cleaned_data["added_eggs"], 1)
+        self.assertCountEqual(form.change_summary(), ["laid an egg"])
 
     def test_nest_check_hatch_egg(self):
         egg = self.pairing.create_egg(today() - dt_days(5), entered_by=self.user)
@@ -656,6 +658,20 @@ class BreedingCheckFormTest(TestCase):
         self.assertCountEqual(form.cleaned_data["hatched_eggs"], [egg])
         self.assertCountEqual(form.cleaned_data["lost_eggs"], [])
         self.assertEqual(form.cleaned_data["added_eggs"], 0)
+        self.assertCountEqual(form.change_summary(), [f"{egg} hatched"])
+
+    def test_nest_check_hatch_egg_from_many(self):
+        egg_1 = self.pairing.create_egg(today() - dt_days(5), entered_by=self.user)
+        egg_2 = self.pairing.create_egg(today() - dt_days(4), entered_by=self.user)
+        egg_3 = self.pairing.create_egg(today() - dt_days(3), entered_by=self.user)
+        form = BreedingCheckForm(
+            {"pairing": self.pairing, "location": self.nest, "eggs": 2, "chicks": 1},
+        )
+        self.assertTrue(form.is_valid())
+        self.assertCountEqual(form.cleaned_data["hatched_eggs"], [egg_1])
+        self.assertCountEqual(form.cleaned_data["lost_eggs"], [])
+        self.assertEqual(form.cleaned_data["added_eggs"], 0)
+        self.assertCountEqual(form.change_summary(), [f"{egg_1} hatched"])
 
     def test_nest_check_lose_egg(self):
         egg = self.pairing.create_egg(today() - dt_days(5), entered_by=self.user)
@@ -666,6 +682,7 @@ class BreedingCheckFormTest(TestCase):
         self.assertFalse(form.cleaned_data["hatched_eggs"].exists())
         self.assertCountEqual(form.cleaned_data["lost_eggs"], [egg])
         self.assertEqual(form.cleaned_data["added_eggs"], 0)
+        self.assertCountEqual(form.change_summary(), [f"{egg} lost"])
 
     def test_nest_check_hatch_egg_lose_egg(self):
         egg_1 = self.pairing.create_egg(today() - dt_days(5), entered_by=self.user)
@@ -676,6 +693,32 @@ class BreedingCheckFormTest(TestCase):
         self.assertTrue(form.is_valid())
         self.assertCountEqual(form.cleaned_data["hatched_eggs"], [egg_1])
         self.assertCountEqual(form.cleaned_data["lost_eggs"], [egg_2])
+        self.assertEqual(form.cleaned_data["added_eggs"], 0)
+        self.assertCountEqual(
+            form.change_summary(), [f"{egg_1} hatched", f"{egg_2} lost"]
+        )
+
+    def test_nest_check_dead_chicks_not_counted(self):
+        egg = self.pairing.create_egg(today() - dt_days(5), entered_by=self.user)
+        child = self.pairing.create_egg(today() - dt_days(5), entered_by=self.user)
+        _event = Event.objects.create(
+            animal=child,
+            date=today() - dt_days(4),
+            status=models.get_birth_event_type(),
+            entered_by=self.user,
+        )
+        _event = Event.objects.create(
+            animal=child,
+            date=today(),
+            status=models.get_death_event_type(),
+            entered_by=self.user,
+        )
+        form = BreedingCheckForm(
+            {"pairing": self.pairing, "location": self.nest, "eggs": 1, "chicks": 0},
+        )
+        self.assertTrue(form.is_valid(), "Dead chick was counted as alive")
+        self.assertFalse(form.cleaned_data["hatched_eggs"].exists())
+        self.assertCountEqual(form.cleaned_data["lost_eggs"], [])
         self.assertEqual(form.cleaned_data["added_eggs"], 0)
 
     def test_nest_check_cannot_hatch_without_egg(self):
