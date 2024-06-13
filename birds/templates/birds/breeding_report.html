@@ -11,6 +11,7 @@
   <thead>
     <th>location</th>
     <th>pair</th>
+    <th>established</th>
     {% for date in dates %}
     <th>{{ date|date:"D m/d/Y" }}</th>
     {% endfor %}
@@ -22,6 +23,7 @@
       <td>
 	<a href="{% url 'birds:pairing' pairing.pair.id %}">{{ pairing.pair.short_name }}</a>
       </td>
+      <td>{{ pairing.pair.began_on|date:"m/d/Y" }}</td>
       {% for day in pairing.counts %}
       <td>
         {{ day|count_summary }}
