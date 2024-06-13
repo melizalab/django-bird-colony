@@ -721,6 +721,22 @@ class BreedingCheckFormTest(TestCase):
         self.assertCountEqual(form.cleaned_data["lost_eggs"], [])
         self.assertEqual(form.cleaned_data["added_eggs"], 0)
 
+    def test_nest_check_lost_eggs_not_counted(self):
+        egg = self.pairing.create_egg(today() - dt_days(5), entered_by=self.user)
+        _event = Event.objects.create(
+            animal=egg,
+            date=today() - dt_days(2),
+            status=Status.objects.get(name=models.LOST_EVENT_NAME),
+            entered_by=self.user,
+        )
+        form = BreedingCheckForm(
+            {"pairing": self.pairing, "location": self.nest, "eggs": 0, "chicks": 0},
+        )
+        self.assertTrue(form.is_valid())
+        self.assertFalse(form.cleaned_data["hatched_eggs"].exists())
+        self.assertCountEqual(form.cleaned_data["lost_eggs"], [])
+        self.assertEqual(form.cleaned_data["added_eggs"], 0)
+
     def test_nest_check_cannot_hatch_without_egg(self):
         egg = self.pairing.create_egg(today() - dt_days(5), entered_by=self.user)
         form = BreedingCheckForm({"pairing": self.pairing, "eggs": 0, "chicks": 2})

@@ -179,7 +179,7 @@ class BreedingCheckForm(forms.Form):
         data = super().clean()
         pairing = data["pairing"]
         initial_chicks = pairing.eggs().alive()
-        initial_eggs = pairing.eggs().unhatched().order_by("created")
+        initial_eggs = pairing.eggs().unhatched().existing().order_by("created")
         initial_eggs_count = initial_eggs.count()
         delta_chicks = data["chicks"] - initial_chicks.count()
         delta_eggs = data["eggs"] - initial_eggs_count + delta_chicks
