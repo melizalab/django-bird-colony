@@ -361,6 +361,7 @@ def location_list(request):
 def location_view(request, pk):
     location = get_object_or_404(Location, pk=pk)
     birds = location.birds().with_dates().with_related().alive().order_by("-created")
+    eggs = location.birds().unhatched().existing().order_by("-created")
     events = location.event_set.with_related()
     return render(
         request,
@@ -368,6 +369,7 @@ def location_view(request, pk):
         {
             "location": location,
             "animal_list": birds,
+            "egg_list": eggs,
             "event_list": events,
         },
     )
@@ -440,7 +442,14 @@ def active_pairing_list(request):
 def pairing_view(request, pk):
     qs = Pairing.objects.with_related().with_progeny_stats()
     pair = get_object_or_404(qs, pk=pk)
-    eggs = pair.eggs().with_annotations().with_related().order_by("-alive", "-created")
+    progeny = (
+        pair.eggs()
+        .with_annotations()
+        .with_related()
+        .hatched()
+        .order_by("-alive", "-created")
+    )
+    eggs = pair.eggs().with_annotations().with_related().unhatched().order_by("created")
     pairings = pair.other_pairings().with_progeny_stats()
     events = pair.events().with_related()
     return render(
@@ -448,7 +457,8 @@ def pairing_view(request, pk):
         "birds/pairing.html",
         {
             "pairing": pair,
-            "animal_list": eggs,
+            "animal_list": progeny,
+            "egg_list": eggs,
             "pairing_list": pairings,
             "event_list": events,
         },

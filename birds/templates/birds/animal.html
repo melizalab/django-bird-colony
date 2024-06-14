@@ -19,6 +19,7 @@
   <dt>living children</dt><dd>{{ animal.children.alive.count }}</dd>
   <dt>total children</dt><dd>{{ animal.children.hatched.count }}</dd>
   <dt>unhatched eggs</dt><dd> {{ animal.children.unhatched.count }}</dd>
+  <dt>birth pairing</dt><dd> {% if animal.birth_pairing %}<a href="{{ animal.birth_pairing.get_absolute_url }}">{{ animal.birth_pairing }}</a>{% endif %}</dd>
   <dt>sire</dt><dd>{% if animal.sire %}<a href="{{ animal.sire.get_absolute_url }}">{{ animal.sire }}</a>{% endif %}</dd>
   <dt>dam</dt><dd>{% if animal.dam %}<a href="{{ animal.dam.get_absolute_url }}">{{ animal.dam }}</a>{% endif %}</dd>
   <dt>reserved by</dt>

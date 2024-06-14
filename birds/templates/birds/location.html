@@ -39,6 +39,28 @@
   </tbody>
 </table>
 
+<h3>Eggs</h3>
+
+<table class="table table-striped table-condensed">
+  <thead>
+    <th>Name</th>
+    <th>Expected Hatch</th>
+    <th>Species</th>
+    <th>UUID</th>
+  </thead>
+  <tbody>
+    {% for egg in egg_list %}
+        <tr>
+          <td><a href="{{ egg.get_absolute_url }}">{{ egg.name }}</a></td>
+	  <td>{{ egg.expected_hatch }}</td>
+          <td>{{ egg.species }}</td>
+          <td>{{ egg.uuid }}</td>
+          <td></td>
+        </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
 <h3>Recent Events</h3>
 
 <table class="table table-striped table-condensed">
