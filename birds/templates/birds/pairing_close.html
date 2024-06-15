@@ -39,10 +39,10 @@
       {{ form.began_on.as_hidden }}
 
       <div class="form-group {% if form.ended.errors %}has-error{% endif %}">
-        <label for="id_ended" class="col-sm-2 control-label">Ending date * </label>
+        <label for="id_ended_on" class="col-sm-2 control-label">Ending date * </label>
         <div class="col-sm-3">
           <div class="input-group date" id="datetimepicker1">
-            {% render_field form.ended class+="form-control" data-format="MM/dd/YYYY" %}
+            {% render_field form.ended_on class+="form-control" data-format="MM/dd/YYYY" %}
             <span class="input-group-addon"><span class="glyphicon glyphicon-calendar"></span>
             </span>
           </div>
