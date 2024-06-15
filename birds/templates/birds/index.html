@@ -1,4 +1,5 @@
 {% extends "base_view.html" %}
+{% load fullurl %}
 {% load widget_tweaks %}
 
 {% block title %} meliza-lab : bird colony {% endblock %}
@@ -56,6 +57,7 @@ This web application allows you to access the animal database. Here are some thi
 
 <p>Note: Use the bird's page to add banding information, samples, and events.</p>
 
+<hr/>
 <h3>API</h3>
 
 <p>You can also query the database using the HTTP API. Specify query parameters using the URL.</p>
@@ -68,12 +70,16 @@ This web application allows you to access the animal database. Here are some thi
 
 <p><a href="{% url 'birds:pedigree_api' %}">{% url 'birds:pedigree_api' %}</a> retrieves a list of birds and parents with sex and heritable traits (e.g. plumage). By default, this only includes birds that are living (leaves) or that have children (stems). Set <code>restrict=False</code> to include all animals.</p>
 
+<p><a href="{% url 'birds:api_info' %}">{% url 'birds:api_info' %}</a> retrieves information about the API.</p>
 
 <h4>Examples</h4>
 
-<p><code>curl http://my.domain{% url 'birds:animals_api' %}?species=zebf&available=True</code> will retrieve all available (unreserved) zebra finches.</p>
+<p><code>curl {% fullurl 'birds:animals_api' %}?species=zebf&available=True</code> will retrieve all available (unreserved) zebra finches.</p>
 
-<p><code>curl http://my.domain{% url 'birds:events_api' %}?animal=bd0dcfc1</code> will retrieve all the events for the bird whose uuid begins with <code>bd0dcfc1</code>.</p>
+<p><code>curl {% fullurl 'birds:events_api' %}?animal=bd0dcfc1</code> will retrieve all the events for the bird whose uuid begins with <code>bd0dcfc1</code>.</p>
 
-
+<hr/>
+<footer>
+  <p><small>Version {{ version }}</small></p>
+</footer>
 {% endblock %}

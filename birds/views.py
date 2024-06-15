@@ -79,6 +79,7 @@ def index(request):
         {
             "today": today,
             "lastmonth": today.replace(day=1) - datetime.timedelta(days=1),
+            "version": __version__,
         },
     )
 
