@@ -45,8 +45,12 @@ class SampleForm(forms.ModelForm):
 
 class NewPairingForm(forms.Form):
     qs = Animal.objects.with_dates().alive()
-    sire = forms.ModelChoiceField(queryset=qs.filter(sex=Animal.Sex.MALE))
-    dam = forms.ModelChoiceField(queryset=qs.filter(sex=Animal.Sex.FEMALE))
+    sire = forms.ModelChoiceField(
+        queryset=qs.filter(sex=Animal.Sex.MALE).order_by("band_color", "band_number")
+    )
+    dam = forms.ModelChoiceField(
+        queryset=qs.filter(sex=Animal.Sex.FEMALE).order_by("band_color", "band_number")
+    )
     began_on = forms.DateField()
     purpose = forms.CharField(widget=forms.Textarea, required=False)
     entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
