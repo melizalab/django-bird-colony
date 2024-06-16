@@ -1431,6 +1431,30 @@ class PairingModelTests(TestCase):
                 entered_by=user,
             )
 
+    def test_close_pairing_removes_eggs(self):
+        pairing = Pairing.objects.create(
+            sire=self.sire,
+            dam=self.dam,
+            began_on=today() - dt_days(10),
+        )
+        user = models.get_sentinel_user()
+        _egg = pairing.create_egg(date=today() - dt_days(1), entered_by=user)
+        pairing.close(ended_on=today(), entered_by=user, remove_unhatched=True)
+        eggs = pairing.eggs().existing()
+        self.assertEqual(eggs.count(), 0)
+
+    def test_close_pairing_default_does_not_remove_eggs(self):
+        pairing = Pairing.objects.create(
+            sire=self.sire,
+            dam=self.dam,
+            began_on=today() - dt_days(10),
+        )
+        user = models.get_sentinel_user()
+        egg = pairing.create_egg(date=today() - dt_days(1), entered_by=user)
+        pairing.close(ended_on=today(), entered_by=user)
+        eggs = pairing.eggs().existing()
+        self.assertTrue(egg in eggs)
+
 
 class LocationModelTests(TestCase):
     fixtures = ["bird_colony_starter_kit"]

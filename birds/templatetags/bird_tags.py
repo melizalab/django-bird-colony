@@ -57,10 +57,12 @@ def link_or_blank(value):
 
 
 @register.filter
-def count_summary(counter):
+def count_summary(counter, join_by=", "):
     """Generate a summary of counts"""
+    if counter is None:
+        return "(not active)"
     return format_html_join(
-        ", ", "{}s: {}", ((k, v) for k, v in sorted(counter.items()))
+        join_by, "{}s: {}", ((k, v) for k, v in sorted(counter.items()))
     )
 
 

@@ -898,12 +898,14 @@ class Pairing(models.Model):
         *,
         location: Optional[Location] = None,
         comment: Optional[str] = None,
+        remove_unhatched: bool = False,
     ):
-        """Close an active pairing.
+        """Close an active pairing. Marks all remaining eggs as lost.
 
         Raises a ValueError if the pairing is not active. Sets ended date and a
-        comment on the model. If location is not None, adds "moved" events to
-        the sire and the dam.
+        comment on the model. If `location` is not None, adds "moved" events to
+        the sire and the dam. If `remove_unhatched` is True, adds "lost" events
+        to all unhatched eggs.
 
         """
         if not self.active():
@@ -929,6 +931,17 @@ class Pairing(models.Model):
                 location=location,
                 description=f"Ended pairing with {self.sire}",
             )
+        if remove_unhatched:
+            unhatched_eggs = self.eggs().unhatched().existing()
+            lost_event = Status.objects.get(name=LOST_EVENT_NAME)
+            for egg in unhatched_eggs:
+                Event.objects.create(
+                    animal=egg,
+                    date=ended_on,
+                    status=lost_event,
+                    entered_by=entered_by,
+                    description="marked as lost when pairing ended",
+                )
 
     def clean(self):
         """Validate the pairing"""

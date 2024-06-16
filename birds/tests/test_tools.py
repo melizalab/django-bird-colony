@@ -192,10 +192,11 @@ class TabulatePairsTests(TestCase):
     def test_empty_pairs(self):
         until = datetime.date.today()
         since = until - datetime.timedelta(days=3)
+        began_on = since + datetime.timedelta(days=1)
         pair = Pairing.objects.create_with_events(
             sire=self.sire,
             dam=self.dam,
-            began_on=since + datetime.timedelta(days=1),
+            began_on=began_on,
             purpose="testing",
             entered_by=models.get_sentinel_user(),
             location=self.nest,
@@ -270,3 +271,20 @@ class TabulatePairsTests(TestCase):
         self.assertDictEqual(counts[2], {"egg": 1})
         self.assertDictEqual(counts[3], {"hatchling": 1, "egg": 1})
         self.assertDictEqual(counts[4], {"hatchling": 1})
+
+    def test_only_active(self):
+        until = datetime.date.today()
+        since = until - datetime.timedelta(days=3)
+        pair = Pairing.objects.create_with_events(
+            sire=self.sire,
+            dam=self.dam,
+            began_on=since,
+            purpose="testing",
+            entered_by=models.get_sentinel_user(),
+            location=self.nest,
+        )
+        pair.close(
+            until - datetime.timedelta(days=1), entered_by=models.get_sentinel_user()
+        )
+        dates, data = tools.tabulate_pairs(since, until, only_active=True)
+        self.assertEqual(len(data), 0)

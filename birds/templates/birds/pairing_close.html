@@ -22,7 +22,7 @@
 
 <div class="panel panel-default">
   <div class="panel-heading">
-    <h3 class="panel-title">Close pairing: {{ pairing }} </h3>
+    <h3 class="panel-title">Close pairing: {{ pairing.short_name }} ({{pairing.began_on}} - )</h3>
   </div>
   <div class="panel-body">
     <form action="" class="form-horizontal" method="post" role="form">
@@ -54,6 +54,15 @@
         <div class="col-sm-5">
           {% render_field form.location class+="form-control" %}
         </div>
+      </div>
+
+      <div class="form-group {% if form.remove_unhatched.errors %}has-error{% endif %}">
+        <label for="id_remove_unhatched" class="col-sm-2 control-label">Mark {{ pairing.eggs.unhatched.existing.count }} unhatched egg(s) as lost? </label>
+        <div class="col-sm-3">
+	  <div class="checkbox">
+            {{ form.remove_unhatched }}
+	  </div>
+	</div>
       </div>
 
       <div class="form-group {% if form.entered_by.errors %}has-error{% endif %}">

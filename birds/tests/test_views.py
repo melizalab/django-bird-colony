@@ -756,6 +756,9 @@ class PairingFormViewTests(TestCase):
             entered_by=self.test_user1,
             location=Location.objects.get(pk=1),
         )
+        egg = new_pairing.create_egg(
+            date=today() - dt_days(1), entered_by=self.test_user1
+        )
         response = self.client.post(
             reverse("birds:end_pairing", args=[new_pairing.pk]),
             {
@@ -767,6 +770,36 @@ class PairingFormViewTests(TestCase):
         )
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, reverse("birds:pairing", args=[new_pairing.pk]))
+        eggs = new_pairing.eggs().existing()
+        self.assertTrue(egg in eggs)
+
+    def test_close_pairing_and_remove_unhatched(self):
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        new_pairing = Pairing.objects.create_with_events(
+            sire=self.sire,
+            dam=self.dam,
+            began_on=today() - dt_days(10),
+            purpose="new pairing",
+            entered_by=self.test_user1,
+            location=Location.objects.get(pk=1),
+        )
+        _egg = new_pairing.create_egg(
+            date=today() - dt_days(1), entered_by=self.test_user1
+        )
+        response = self.client.post(
+            reverse("birds:end_pairing", args=[new_pairing.pk]),
+            {
+                "ended_on": today(),
+                "location": 1,
+                "remove_unhatched": "on",
+                "entered_by": self.test_user1.pk,
+                "comment": "testing",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("birds:pairing", args=[new_pairing.pk]))
+        eggs = new_pairing.eggs().existing()
+        self.assertEqual(eggs.count(), 0)
 
 
 class NestCheckFormViewTests(TestCase):
@@ -1075,6 +1108,20 @@ class BreedingCheckFormViewTests(TestCase):
             form.initial,
             {"pairing": self.pairing, "location": self.nest, "eggs": 1, "chicks": 1},
         )
+
+    def test_includes_open_pairings(self):
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.get(reverse("birds:breeding-check"))
+        formset = response.context["nest_formset"]
+        self.assertEqual(len(formset), 1)
+        self.assertEqual(formset[0].initial["pairing"], self.pairing)
+
+    def test_omits_closed_pairings(self):
+        self.pairing.close(today() - dt_days(1), entered_by=models.get_sentinel_user())
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.get(reverse("birds:breeding-check"))
+        formset = response.context["nest_formset"]
+        self.assertEqual(len(formset), 0)
 
     def test_error_returns_original_form(self):
         data = {

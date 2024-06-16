@@ -108,25 +108,44 @@ def tabulate_nests(since: datetime.date, until: datetime.date):
     return dates, data
 
 
-def tabulate_pairs(since: datetime.date, until: datetime.date):
+def tabulate_pairs(
+    since: datetime.date, until: datetime.date, only_active: bool = False
+):
+    """Counts the number of chicks of each age group in all pairing over a range
+    of dates (since to until, inclusive). If `only_active` is True, only pairs
+    that are active on `until` are included; otherwise all pairs that were
+    active at any point between `since` and `until` are used.
+
+    TODO: move this logic into the Pairing model and let the caller decide which
+    pairs to look at over which dates.
+
+    """
     if since > until:
         raise ValueError("until must be after since")
     n_days = (until - since).days + 1
     dates = dates = [since + datetime.timedelta(days=x) for x in range(n_days)]
-    active_pairs = Pairing.objects.active_between(since, until).order_by("-began_on")
+    if only_active:
+        active_pairs = Pairing.objects.active(on_date=until).order_by("-began_on")
+    else:
+        active_pairs = Pairing.objects.active_between(since, until).order_by(
+            "-began_on"
+        )
     data = []
     for pair in active_pairs:
-        location = pair.last_location(on_date=since)
+        location = pair.last_location(on_date=until)
         eggs = pair.eggs().with_dates().with_related()
         days = []
         for date in dates:
             counts = Counter()
-            for animal in eggs:
-                # dead/lost animals are not counted
-                if animal.died_on is None or animal.died_on > date:
-                    age_group = animal.age_group(date)
-                    if age_group is not None:
-                        counts[age_group] += 1
+            if pair.ended_on is not None and date > pair.ended_on:
+                pass
+            else:
+                for animal in eggs:
+                    # dead/lost animals are not counted
+                    if animal.died_on is None or animal.died_on > date:
+                        age_group = animal.age_group(date)
+                        if age_group is not None:
+                            counts[age_group] += 1
             days.append(counts)
         data.append({"pair": pair, "location": location, "counts": days})
     return dates, data

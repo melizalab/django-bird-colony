@@ -518,6 +518,7 @@ def close_pairing(request, pk: int):
                     entered_by=data["entered_by"],
                     location=data["location"],
                     comment=data["comment"],
+                    remove_unhatched=data["remove_unhatched"],
                 )
                 return HttpResponseRedirect(reverse("birds:pairing", args=(pk,)))
             except IntegrityError:
@@ -902,7 +903,7 @@ def breeding_check(request):
 
     # initial view on get or errors
     since = until - datetime.timedelta(days=2)
-    dates, pairs = tabulate_pairs(since, until)
+    dates, pairs = tabulate_pairs(since, until, only_active=True)
     initial = []
     for pairing in pairs:
         today_counts = pairing["counts"][-1]

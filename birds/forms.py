@@ -112,6 +112,7 @@ class EndPairingForm(forms.Form):
     location = forms.ModelChoiceField(queryset=Location.objects.all(), required=False)
     entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
     comment = forms.CharField(widget=forms.Textarea, required=False)
+    remove_unhatched = forms.BooleanField(required=False)
 
 
 class NestCheckForm(forms.Form):
