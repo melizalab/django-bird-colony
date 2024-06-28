@@ -133,6 +133,7 @@ class AnimalViewTests(BaseColonyTest):
         response = self.client.get(reverse("birds:animals") + "?living=True")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context["animal_list"]), 2 + self.n_children)
+        self.assertDictEqual(response.context["query"], {"living": ["True"]})
 
     def test_event_view_url_exists_at_desired_location(self):
         response = self.client.get("/birds/events/")

@@ -92,14 +92,20 @@ def animal_list(request):
         .with_related()
         .order_by("band_color", "band_number")
     )
-    f = AnimalFilter(request.GET, queryset=qs)
+    query = request.GET.copy()
+    page_number = query.pop("page", None)
+    f = AnimalFilter(query, queryset=qs)
     paginator = Paginator(f.qs, 25)
-    page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
     return render(
         request,
         "birds/animal_list.html",
-        {"filter": f, "page_obj": page_obj, "animal_list": page_obj.object_list},
+        {
+            "filter": f,
+            "query": query,
+            "page_obj": page_obj,
+            "animal_list": page_obj.object_list,
+        },
     )
 
 
@@ -295,15 +301,17 @@ def event_list(
         header_text = f"Events for {location}"
     else:
         header_text = "Events"
-    f = EventFilter(request.GET, queryset=qs)
+    query = request.GET.copy()
+    page_number = query.pop("page", None)
+    f = EventFilter(query, queryset=qs)
     paginator = Paginator(f.qs, 25)
-    page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
     return render(
         request,
         "birds/event_list.html",
         {
             "filter": f,
+            "query": query,
             "page_obj": page_obj,
             "event_list": page_obj.object_list,
             "header_text": header_text,
@@ -397,9 +405,10 @@ def user_view(request, pk):
     reserved = (
         user.animal_set.with_annotations().with_related().order_by("-alive", "-age")
     )
-    f = AnimalFilter(request.GET, queryset=reserved)
+    query = request.GET.copy()
+    page_number = query.pop("page", None)
+    f = AnimalFilter(query, queryset=reserved)
     paginator = Paginator(f.qs, 25)
-    page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
     return render(
         request,
@@ -407,6 +416,7 @@ def user_view(request, pk):
         {
             "reserver": user,
             "filter": f,
+            "query": query,
             "page_obj": page_obj,
             "animal_list": page_obj.object_list,
         },
@@ -417,14 +427,15 @@ def user_view(request, pk):
 @require_http_methods(["GET"])
 def pairing_list(request):
     qs = Pairing.objects.with_related().with_progeny_stats().order_by("-began_on")
-    f = PairingFilter(request.GET, queryset=qs)
+    query = request.GET.copy()
+    page_number = query.pop("page", None)
+    f = PairingFilter(query, queryset=qs)
     paginator = Paginator(f.qs, 25)
-    page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
     return render(
         request,
         "birds/pairing_list.html",
-        {"page_obj": page_obj, "pairing_list": page_obj.object_list},
+        {"query": query, "page_obj": page_obj, "pairing_list": page_obj.object_list},
     )
 
 
@@ -560,14 +571,20 @@ def sample_list(request, animal: Optional[str] = None):
     if animal is not None:
         animal = get_object_or_404(Animal, uuid=animal)
         qs = qs.filter(animal=animal)
-    f = SampleFilter(request.GET, queryset=qs)
+    query = request.GET.copy()
+    page_number = query.pop("page", None)
+    f = SampleFilter(query, queryset=qs)
     paginator = Paginator(f.qs, 25)
-    page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
     return render(
         request,
         "birds/sample_list.html",
-        {"filter": f, "page_obj": page_obj, "sample_list": page_obj.object_list},
+        {
+            "filter": f,
+            "query": query,
+            "page_obj": page_obj,
+            "sample_list": page_obj.object_list,
+        },
     )
 
 
