@@ -9,7 +9,7 @@ from typing import Optional
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import (
     Case,
@@ -26,7 +26,6 @@ from django.db.models import (
     When,
 )
 from django.db.models.functions import Cast, Now, Trunc, TruncDay
-from django.db.models.lookups import GreaterThan
 from django.urls import reverse
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _

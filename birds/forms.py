@@ -214,7 +214,7 @@ class BreedingCheckForm(forms.Form):
     def change_summary(self):
         data = self.cleaned_data
         changes = []
-        for _ in range(data["added_eggs"]):
+        for _i in range(data["added_eggs"]):
             changes.append("laid an egg")
         for hatched_egg in data["hatched_eggs"]:
             changes.append(f"{hatched_egg} hatched")

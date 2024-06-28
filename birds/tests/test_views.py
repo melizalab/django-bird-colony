@@ -1158,7 +1158,6 @@ class BreedingCheckFormViewTests(TestCase):
         self.assertCountEqual(form.change_summary(), ["no changes"])
 
     def test_add_egg_with_form(self):
-        status_laid = models.get_unborn_creation_event_type()
         data = {
             "nests-TOTAL_FORMS": 1,
             "nests-INITIAL_FORMS": 1,
@@ -1189,7 +1188,6 @@ class BreedingCheckFormViewTests(TestCase):
     def test_hatch_egg_with_form(self):
         user = models.get_sentinel_user()
         status_laid = models.get_unborn_creation_event_type()
-        status_hatched = models.get_birth_event_type()
         child_1 = Animal.objects.create_from_parents(
             sire=self.sire,
             dam=self.dam,

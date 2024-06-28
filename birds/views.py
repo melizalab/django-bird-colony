@@ -8,7 +8,7 @@ from typing import Optional
 
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
-from django.db.models import F, Q, Count
+from django.db.models import Count, F, Q
 from django.db.utils import IntegrityError
 from django.forms import ValidationError, formset_factory
 from django.http import Http404, HttpResponseRedirect

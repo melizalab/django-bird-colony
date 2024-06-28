@@ -18,8 +18,8 @@ from birds.forms import (
 )
 from birds.models import (
     Animal,
-    Event,
     Color,
+    Event,
     Location,
     Pairing,
     Plumage,
@@ -622,7 +622,7 @@ class BreedingCheckFormTest(TestCase):
         )
 
     def test_nest_check_no_change(self):
-        egg = self.pairing.create_egg(today() - dt_days(5), entered_by=self.user)
+        _egg = self.pairing.create_egg(today() - dt_days(5), entered_by=self.user)
         child = self.pairing.create_egg(today() - dt_days(5), entered_by=self.user)
         _event = Event.objects.create(
             animal=child,
@@ -662,8 +662,8 @@ class BreedingCheckFormTest(TestCase):
 
     def test_nest_check_hatch_egg_from_many(self):
         egg_1 = self.pairing.create_egg(today() - dt_days(5), entered_by=self.user)
-        egg_2 = self.pairing.create_egg(today() - dt_days(4), entered_by=self.user)
-        egg_3 = self.pairing.create_egg(today() - dt_days(3), entered_by=self.user)
+        _egg_2 = self.pairing.create_egg(today() - dt_days(4), entered_by=self.user)
+        _egg_3 = self.pairing.create_egg(today() - dt_days(3), entered_by=self.user)
         form = BreedingCheckForm(
             {"pairing": self.pairing, "location": self.nest, "eggs": 2, "chicks": 1},
         )
@@ -699,7 +699,7 @@ class BreedingCheckFormTest(TestCase):
         )
 
     def test_nest_check_dead_chicks_not_counted(self):
-        egg = self.pairing.create_egg(today() - dt_days(5), entered_by=self.user)
+        _egg = self.pairing.create_egg(today() - dt_days(5), entered_by=self.user)
         child = self.pairing.create_egg(today() - dt_days(5), entered_by=self.user)
         _event = Event.objects.create(
             animal=child,
@@ -738,7 +738,7 @@ class BreedingCheckFormTest(TestCase):
         self.assertEqual(form.cleaned_data["added_eggs"], 0)
 
     def test_nest_check_cannot_hatch_without_egg(self):
-        egg = self.pairing.create_egg(today() - dt_days(5), entered_by=self.user)
+        _egg = self.pairing.create_egg(today() - dt_days(5), entered_by=self.user)
         form = BreedingCheckForm({"pairing": self.pairing, "eggs": 0, "chicks": 2})
         self.assertFalse(form.is_valid())
 
@@ -754,7 +754,7 @@ class BreedingCheckFormTest(TestCase):
         self.assertFalse(form.is_valid())
 
     def test_nest_check_formset(self):
-        egg = self.pairing.create_egg(today() - dt_days(5), entered_by=self.user)
+        _egg = self.pairing.create_egg(today() - dt_days(5), entered_by=self.user)
         BreedingCheckFormSet = formset_factory(BreedingCheckForm, extra=0)
         formset = BreedingCheckFormSet(
             {
