@@ -93,10 +93,14 @@ def animal_list(request):
         .order_by("band_color", "band_number")
     )
     query = request.GET.copy()
-    page_number = query.pop("page", None)
+    try:
+        page_number = query.pop("page")[-1]
+    except (KeyError, IndexError):
+        page_number = None
     f = AnimalFilter(query, queryset=qs)
     paginator = Paginator(f.qs, 25)
     page_obj = paginator.get_page(page_number)
+
     return render(
         request,
         "birds/animal_list.html",
@@ -302,7 +306,10 @@ def event_list(
     else:
         header_text = "Events"
     query = request.GET.copy()
-    page_number = query.pop("page", None)
+    try:
+        page_number = query.pop("page")[-1]
+    except (KeyError, IndexError):
+        page_number = None
     f = EventFilter(query, queryset=qs)
     paginator = Paginator(f.qs, 25)
     page_obj = paginator.get_page(page_number)
@@ -406,7 +413,10 @@ def user_view(request, pk):
         user.animal_set.with_annotations().with_related().order_by("-alive", "-age")
     )
     query = request.GET.copy()
-    page_number = query.pop("page", None)
+    try:
+        page_number = query.pop("page")[-1]
+    except (KeyError, IndexError):
+        page_number = None
     f = AnimalFilter(query, queryset=reserved)
     paginator = Paginator(f.qs, 25)
     page_obj = paginator.get_page(page_number)
@@ -428,7 +438,10 @@ def user_view(request, pk):
 def pairing_list(request):
     qs = Pairing.objects.with_related().with_progeny_stats().order_by("-began_on")
     query = request.GET.copy()
-    page_number = query.pop("page", None)
+    try:
+        page_number = query.pop("page")[-1]
+    except (KeyError, IndexError):
+        page_number = None
     f = PairingFilter(query, queryset=qs)
     paginator = Paginator(f.qs, 25)
     page_obj = paginator.get_page(page_number)
@@ -572,7 +585,10 @@ def sample_list(request, animal: Optional[str] = None):
         animal = get_object_or_404(Animal, uuid=animal)
         qs = qs.filter(animal=animal)
     query = request.GET.copy()
-    page_number = query.pop("page", None)
+    try:
+        page_number = query.pop("page")[-1]
+    except (KeyError, IndexError):
+        page_number = None
     f = SampleFilter(query, queryset=qs)
     paginator = Paginator(f.qs, 25)
     page_obj = paginator.get_page(page_number)
