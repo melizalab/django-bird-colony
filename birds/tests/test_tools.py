@@ -212,6 +212,27 @@ class TabulatePairsTests(TestCase):
         for day in pair_data["counts"]:
             self.assertEqual(day, {})
 
+    def test_pair_created_today(self):
+        until = datetime.date.today()
+        since = until - datetime.timedelta(days=3)
+        began_on = until
+        pair = Pairing.objects.create_with_events(
+            sire=self.sire,
+            dam=self.dam,
+            began_on=began_on,
+            purpose="testing",
+            entered_by=models.get_sentinel_user(),
+            location=self.nest,
+        )
+        dates, data = tools.tabulate_pairs(since, until)
+        self.assertEqual(len(dates), 4)
+        self.assertEqual(dates[0], since)
+        self.assertEqual(dates[-1], until)
+        self.assertEqual(len(data), 1)  # one nest
+        pair_data = data[0]
+        self.assertEqual(pair_data["pair"], pair)
+        self.assertEqual(pair_data["location"], self.nest)
+
     def test_pair_has_progeny_on_correct_days(self):
         user = models.get_sentinel_user()
         until = datetime.date.today()
@@ -288,3 +309,24 @@ class TabulatePairsTests(TestCase):
         )
         dates, data = tools.tabulate_pairs(since, until, only_active=True)
         self.assertEqual(len(data), 0)
+
+    def test_pair_created_today_only_active(self):
+        until = datetime.date.today()
+        since = until - datetime.timedelta(days=3)
+        began_on = until
+        pair = Pairing.objects.create_with_events(
+            sire=self.sire,
+            dam=self.dam,
+            began_on=began_on,
+            purpose="testing",
+            entered_by=models.get_sentinel_user(),
+            location=self.nest,
+        )
+        dates, data = tools.tabulate_pairs(since, until)
+        self.assertEqual(len(dates), 4)
+        self.assertEqual(dates[0], since)
+        self.assertEqual(dates[-1], until)
+        self.assertEqual(len(data), 1)  # one nest
+        pair_data = data[0]
+        self.assertEqual(pair_data["pair"], pair)
+        self.assertEqual(pair_data["location"], self.nest)
