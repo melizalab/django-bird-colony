@@ -115,61 +115,6 @@ class EndPairingForm(forms.Form):
     remove_unhatched = forms.BooleanField(required=False)
 
 
-class NestCheckForm(forms.Form):
-    location = forms.ModelChoiceField(
-        queryset=Location.objects.filter(nest=True), widget=forms.HiddenInput()
-    )
-    eggs = forms.IntegerField(label="eggs", min_value=0)
-    chicks = forms.IntegerField(label="chicks", min_value=0)
-
-    def clean(self):
-        data = super().clean()
-        initial_chicks = self.initial.get("chicks", 0)
-        initial_eggs = self.initial.get("eggs", 0)
-        delta_chicks = data["chicks"] - initial_chicks
-        delta_eggs = data["eggs"] - initial_eggs + delta_chicks
-        data["hatch_status"] = get_status_or_error(models.BIRTH_EVENT_NAME)
-        data["laid_status"] = get_status_or_error(models.UNBORN_CREATION_EVENT_NAME)
-        data["lost_status"] = get_status_or_error(models.LOST_EVENT_NAME)
-        if delta_chicks < 0:
-            raise forms.ValidationError(_("Missing chicks need to be removed manually"))
-        if delta_chicks > initial_eggs:
-            raise forms.ValidationError(
-                _("Not enough eggs to make %(chicks)d new chick%(plural)s"),
-                params={"chicks": delta_chicks, "plural": pluralize(delta_chicks)},
-            )
-        if delta_eggs > 0:
-            location = data["location"]
-            # this will be easier if the nest check is based on pairings
-            occupants = (
-                location.birds().with_dates().prefetch_related("species__age_set")
-            )
-            males = [
-                bird
-                for bird in occupants
-                if bird.sex == Animal.Sex.MALE
-                and bird.age_group() == models.ADULT_ANIMAL_NAME
-            ]
-            if len(males) == 0:
-                raise forms.ValidationError(_("location has no adult male to be sire"))
-            if len(males) > 1:
-                raise forms.ValidationError(_("location has >1 adult male"))
-            data["sire"] = males[0]
-            females = [
-                bird
-                for bird in occupants
-                if bird.sex == Animal.Sex.FEMALE
-                and bird.age_group() == models.ADULT_ANIMAL_NAME
-            ]
-            if len(females) == 0:
-                raise forms.ValidationError(_("location has no adult female to be dam"))
-            if len(females) > 1:
-                raise forms.ValidationError(_("location has >1 adult female"))
-            data["dam"] = females[0]
-
-        return data | {"delta_chicks": delta_chicks, "delta_eggs": delta_eggs}
-
-
 class BreedingCheckForm(forms.Form):
     pairing = forms.ModelChoiceField(
         queryset=Pairing.objects.active(), widget=forms.HiddenInput()

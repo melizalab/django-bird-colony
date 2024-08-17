@@ -31,7 +31,7 @@
       {% csrf_token %}
       <p><strong>Instructions</strong>: This form is for adding a single banded
 	bird to the database. Note, for birds hatched in the breeding colony,
-	the preferred method of adding birds is using the <a href="{% url 'birds:nest-check' %}">nest check form</a>. If the bird is already the database, use the "band bird" link on its page.</p>
+	the preferred method of adding birds is using the <a href="{% url 'birds:breeding-check' %}">nest check form</a>. If the bird is already the database, use the "band bird" link on its page.</p>
 
       <p>Parents are required for birds acquired through breeding. For birds
       acquired by other methods (including capture), parents are not required,

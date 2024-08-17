@@ -93,7 +93,6 @@ urlpatterns = [
         views.location_summary,
         name="location-summary",
     ),
-    re_path(r"^summary/nests/$", views.nest_report, name="nest-summary"),
     re_path(r"^summary/breeding/$", views.breeding_report, name="breeding-summary"),
     path(
         "summary/events/<int:year>/<int:month>/",
@@ -101,7 +100,6 @@ urlpatterns = [
         name="event_summary",
     ),
     # forms
-    re_path(r"^nest-check/$", login_required(views.nest_check), name="nest-check"),
     path(
         "breeding-check/", login_required(views.breeding_check), name="breeding-check"
     ),
