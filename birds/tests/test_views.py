@@ -1221,3 +1221,69 @@ class BreedingCheckFormViewTests(TestCase):
         self.assertEqual(child.age_group(), "hatchling")
         nest_checks = NestCheck.objects.all()
         self.assertEqual(nest_checks.count(), 1)
+
+
+class BreedingCheckFormNewPairingViewTests(TestCase):
+    fixtures = ["bird_colony_starter_kit"]
+
+    @classmethod
+    def setUpTestData(cls):
+        birthday = today() - dt_days(365)
+        status = models.get_birth_event_type()
+        user = models.get_sentinel_user()
+        location = Location.objects.get(pk=1)
+        species = Species.objects.get(pk=1)
+        cls.sire = Animal.objects.create_with_event(
+            species=species,
+            status=status,
+            date=birthday,
+            entered_by=user,
+            location=location,
+            sex=Animal.Sex.MALE,
+            band_number=1,
+        )
+        cls.dam = Animal.objects.create_with_event(
+            species=species,
+            status=status,
+            date=birthday,
+            entered_by=user,
+            location=location,
+            sex=Animal.Sex.FEMALE,
+            band_number=2,
+        )
+        cls.nest = Location.objects.filter(nest=True).first()
+
+    def setUp(self):
+        # Create a user
+        self.test_user1 = User.objects.create_user(
+            username="testuser1", password="1X<ISRUkw+tuK"
+        )
+        self.test_user1.save()
+
+    def test_nest_check_same_day(self):
+        user = models.get_sentinel_user()
+        pairing = Pairing.objects.create_with_events(
+            sire=self.sire,
+            dam=self.dam,
+            began_on=today(),
+            purpose="testing",
+            entered_by=user,
+            location=self.nest,
+        )
+        data = {
+            "nests-TOTAL_FORMS": 1,
+            "nests-INITIAL_FORMS": 1,
+            "nests-0-location": self.nest.pk,
+            "nests-0-pairing": pairing.pk,
+            "nests-0-eggs": 0,
+            "nests-0-chicks": 0,
+        }
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.post(reverse("birds:breeding-check"), data)
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "birds/breeding_check_confirm.html")
+        form = response.context["nest_formset"][0]
+        self.assertFalse(form.cleaned_data["hatched_eggs"].exists())
+        self.assertCountEqual(form.cleaned_data["lost_eggs"], [])
+        self.assertEqual(form.cleaned_data["added_eggs"], 0)
+        self.assertCountEqual(form.change_summary(), ["no changes"])

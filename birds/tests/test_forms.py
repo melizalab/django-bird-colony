@@ -767,3 +767,67 @@ class BreedingCheckFormTest(TestCase):
             },
         )
         self.assertTrue(formset.is_valid())
+
+
+class BreedingCheckNewPairingFormTest(TestCase):
+    fixtures = ["bird_colony_starter_kit"]
+
+    @classmethod
+    def setUpTestData(cls):
+        birthday = today() - dt_days(365)
+        status = models.get_birth_event_type()
+        cls.user = models.get_sentinel_user()
+        location = Location.objects.get(pk=1)
+        species = Species.objects.get(pk=1)
+        cls.sire = Animal.objects.create_with_event(
+            species=species,
+            status=status,
+            date=birthday,
+            entered_by=cls.user,
+            location=location,
+            sex=Animal.Sex.MALE,
+            band_number=1,
+        )
+        cls.dam = Animal.objects.create_with_event(
+            species=species,
+            status=status,
+            date=birthday,
+            entered_by=cls.user,
+            location=location,
+            sex=Animal.Sex.FEMALE,
+            band_number=2,
+        )
+        cls.nest = Location.objects.filter(nest=True).first()
+
+    def test_nest_check_same_day(self):
+        pairing = Pairing.objects.create_with_events(
+            sire=self.sire,
+            dam=self.dam,
+            began_on=today(),
+            purpose="testing",
+            entered_by=self.user,
+            location=self.nest,
+        )
+        form = BreedingCheckForm(
+            {"pairing": pairing, "location": self.nest, "eggs": 0, "chicks": 0},
+        )
+        self.assertTrue(form.is_valid())
+        self.assertFalse(form.cleaned_data["hatched_eggs"].exists())
+        self.assertCountEqual(form.cleaned_data["lost_eggs"], [])
+        self.assertEqual(form.cleaned_data["added_eggs"], 0)
+        self.assertCountEqual(form.change_summary(), ["no changes"])
+
+    def test_nest_check_inactive_pair(self):
+        pairing = Pairing.objects.create_with_events(
+            sire=self.sire,
+            dam=self.dam,
+            began_on=today() - dt_days(10),
+            purpose="testing",
+            entered_by=self.user,
+            location=self.nest,
+        )
+        pairing.close(ended_on=today(), entered_by=self.user)
+        form = BreedingCheckForm(
+            {"pairing": pairing, "location": self.nest, "eggs": 0, "chicks": 0},
+        )
+        self.assertFalse(form.is_valid())
