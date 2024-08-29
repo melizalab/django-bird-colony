@@ -131,6 +131,9 @@ class BreedingCheckForm(forms.Form):
         # parent class has an error validating the "pairing" field. Check for
         # this and return without doing any further validation
         if self.errors:
+            print("error in breeding check form:")
+            print(self.errors)
+            print(data)
             return data
         pairing = data["pairing"]
         initial_chicks = pairing.eggs().alive()
