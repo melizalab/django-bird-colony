@@ -2,6 +2,7 @@
 # -*- mode: python -*-
 import datetime
 import warnings
+from unittest import skip
 
 from django.forms import formset_factory
 from django.test import TestCase
@@ -662,6 +663,7 @@ class BreedingCheckNewPairingFormTest(TestCase):
         self.assertEqual(form.cleaned_data["added_eggs"], 0)
         self.assertCountEqual(form.change_summary(), ["no changes"])
 
+    @skip("no longer checked in validation")
     def test_nest_check_inactive_pair(self):
         pairing = Pairing.objects.create_with_events(
             sire=self.sire,

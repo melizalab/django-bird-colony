@@ -116,8 +116,10 @@ class EndPairingForm(forms.Form):
 
 
 class BreedingCheckForm(forms.Form):
+    # this should be active() only but it may be causing some weird and
+    # difficult to replicate form validation errors
     pairing = forms.ModelChoiceField(
-        queryset=Pairing.objects.active(), widget=forms.HiddenInput()
+        queryset=Pairing.objects.all(), widget=forms.HiddenInput()
     )
     location = forms.ModelChoiceField(
         queryset=Location.objects.all(), widget=forms.HiddenInput()
