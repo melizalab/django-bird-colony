@@ -19,16 +19,18 @@ You'll need to have a basic understanding of how to use [Django](https://www.dja
 ```python
 INSTALLED_APPS = (
     ...
+    'widget_tweaks',  # For form tweaking
     'rest_framework',
     'django_filters',
     'birds',
 )
 ```
+If any of the dependencies is missing install them using pip eg: `pip install widget_tweaks`.
 
 2. Include the birds URLconf in your project urls.py like this::
 
 ```python
-url(r'^birds/', include('birds.urls'))
+path(r'^birds/', include('birds.urls'))
 ```
 
 3. Run `python manage.py migrate` to create the database tables. If this is a new django install, run `python migrate.py createsuperuser` to create your admin user.
