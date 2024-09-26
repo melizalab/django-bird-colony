@@ -22,10 +22,11 @@ INSTALLED_APPS = (
     'widget_tweaks',  # For form tweaking
     'rest_framework',
     'django_filters',
+	'fullurl',
     'birds',
 )
 ```
-If any of the dependencies is missing install them using pip eg: `pip install widget_tweaks`.
+If any of the dependencies are missing, install them using pip eg: `pip install widget_tweaks`.
 
 2. Include the birds URLconf in your project urls.py like this::
 

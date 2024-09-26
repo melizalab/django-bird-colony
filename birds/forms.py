@@ -130,13 +130,8 @@ class BreedingCheckForm(forms.Form):
     def clean(self):
         data = super().clean()
         # there is an infrequent but difficult to reproduce condition where the
-        # parent class has an error validating the "pairing" field. Check for
-        # this and return without doing any further validation
-        if self.errors:
-            print("error in breeding check form:")
-            print(self.errors)
-            print(data)
-            return data
+        # parent class has an error validating the "pairing" field. It's a logic
+        # error so we want to raise an exception in the following line:
         pairing = data["pairing"]
         initial_chicks = pairing.eggs().alive()
         initial_eggs = pairing.eggs().unhatched().existing().order_by("created")
