@@ -453,7 +453,12 @@ def pairing_list(request):
 
 @require_http_methods(["GET"])
 def active_pairing_list(request):
-    qs = Pairing.objects.with_related().with_progeny_stats().with_location()
+    qs = (
+        Pairing.objects.with_related()
+        .with_progeny_stats()
+        .with_location()
+        .order_by("-began_on")
+    )
     f = PairingFilter(request.GET, queryset=qs)
     return render(
         request,
