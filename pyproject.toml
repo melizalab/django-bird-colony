@@ -43,7 +43,6 @@ path = "birds/__init__.py"
 [dependency-groups]
 dev = [
     "psycopg2-binary>=2.9.10,<3",
-    "pytest>=8.3.3,<9",
     "pytest-cov>=5.0.0",
     "pytest>=8.3.3,<9",
     "pytest-django>=4.9.0",

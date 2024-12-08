@@ -54,4 +54,4 @@ TEMPLATES = [
 ]
 
 DEBUG = True
-ROOT_URLCONF = 'inventory.tests.urls'
+ROOT_URLCONF = 'birds.tests.urls'
