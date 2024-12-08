@@ -1,7 +1,7 @@
 bird-colony
 -----------
 
-|ProjectStatus|_ |Version|_ |BuildStatus|_ |License|_ |PythonVersions|_ |DOI|
+|ProjectStatus|_ |Version|_ |BuildStatus|_ |License|_ |PythonVersions|_
 
 .. |ProjectStatus| image:: https://www.repostatus.org/badges/latest/active.svg
 .. _ProjectStatus: https://www.repostatus.org/#active
@@ -9,8 +9,8 @@ bird-colony
 .. |Version| image:: https://img.shields.io/pypi/v/django-bird-colony.svg
 .. _Version: https://pypi.python.org/pypi/django-bird-colony/
 
-.. |BuildStatus| image:: https://github.com/melizalab/django-bird-colony/actions/workflows/python_tests.yml/badge.svg
-.. _BuildStatus: https://github.com/melizalab/django-bird-colony/actions/workflows/python_tests.yml
+.. |BuildStatus| image:: https://github.com/melizalab/django-bird-colony/actions/workflows/test.yml/badge.svg
+.. _BuildStatus: https://github.com/melizalab/django-bird-colony/actions/workflows/test.yml
 
 .. |License| image:: https://img.shields.io/pypi/l/django-bird-colony.svg
 .. _License: https://opensource.org/license/bsd-3-clause/
