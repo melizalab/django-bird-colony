@@ -6,11 +6,11 @@ You may find that it can also be used for non-avian species. There's also suppor
 
 There is a growing collection of views that can be used to browse the database and perform common updates (like adding clutches). There is also a JSON API that supports a variety of search queries.
 
-bird-colony is licensed for you to use under the BSD License. See COPYING for details
+You'll need to have a basic understanding of how to use [Django](https://www.djangoproject.com/). `bird-colony` is licensed for you to use under the BSD License. See COPYING for details
 
 ### Quick start
 
-You'll need to have a basic understanding of how to use [Django](https://www.djangoproject.com/). Requires Python 3.8+ and Django 4.0+.
+1. Requires Python 3.10+. Runs on Django 4.2 LTS and 5.1.
 
 1. Install the package using pip: `pip install django-bird-colony`.
 
@@ -22,16 +22,17 @@ INSTALLED_APPS = (
     'widget_tweaks',  # For form tweaking
     'rest_framework',
     'django_filters',
+	'widget_tweaks',
 	'fullurl',
     'birds',
 )
 ```
-If any of the dependencies are missing, install them using pip eg: `pip install widget_tweaks`.
 
-2. Include the birds URLconf in your project urls.py like this::
+2. Include birds in `urlpatterns` in your project `urls.py`. Some of the views link to the admin interface, so make sure that is included, too:
 
 ```python
-path(r'^birds/', include('birds.urls'))
+    path("birds/", include("birds.urls")),
+    path("admin/", admin.site.urls),
 ```
 
 3. Run `python manage.py migrate` to create the database tables. If this is a new django install, run `python migrate.py createsuperuser` to create your admin user.
@@ -63,6 +64,15 @@ to set up some tables using the Django admin app.
 2. Add additional users to the database. This is particularly useful if you want to allow specific users to reserve animals.
 3. If you want to change some of the boilerplate text on the entry forms, you'll need to install the app from source. The templates are found under `birds/templates/birds` in the source directory.
 
+### Development
+
+Recommend using [uv](https://docs.astral.sh/uv/) for development.
+
+Run `uv sync` to create a virtual environment and install dependencies. `uv sync --no-dev --frozen` for deployment.
+
+Testing: `uv run pytest`. Requires a test database, will use settings from `inventory/test/settings.py`.
+
 ### Changelog
 
 In the 0.4.0 release, the primary key for animal records became the animal's uuid. To migrate from previous version, data must be exported as JSON under the 0.3.999 release and then imported under 0.4.0
+
