@@ -7,7 +7,7 @@ name = "django-bird-colony"
 dynamic = ["version"]
 description = "A simple Django app for managing a bird breeding colony"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = {text = "BSD 3-Clause License"}
 authors = [
     {name = "C Daniel Meliza", email = "dan@meliza.org"},
@@ -58,12 +58,12 @@ testpaths = ["birds/tests"]
 
 [tool.black]
 line-length = 88
-target-version = ["py38"]
+target-version = ["py310"]
 include = '\.pyi?$'
 
 [tool.ruff]
 line-length = 88
-target-version = "py38"
+target-version = "py310"
 lint.select = [
     "E",  # pycodestyle errors
     "W",  # pycodestyle warnings
