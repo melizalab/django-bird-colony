@@ -53,7 +53,7 @@ dev = [
 DJANGO_SETTINGS_MODULE = "birds.tests.settings"
 django_find_project = false
 python_files = ["test_*.py", "*_test.py"]
-addopts = "-v --cov=inventory --cov-report=term-missing"
+addopts = "-v --cov=birds --cov-report=term-missing"
 testpaths = ["birds/tests"]
 
 [tool.black]
