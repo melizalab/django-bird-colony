@@ -826,7 +826,7 @@ def breeding_check(request):
         {
             "dates": dates,
             "nest_checks": previous_checks,
-            "nest_data": zip(pairs, nest_formset),
+            "nest_data": zip(pairs, nest_formset, strict=True),
             "nest_formset": nest_formset,
         },
     )
