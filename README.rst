@@ -18,15 +18,17 @@ bird-colony
 .. |PythonVersions| image:: https://img.shields.io/pypi/pyversions/django-bird-colony.svg
 .. _PythonVersions: https://pypi.python.org/pypi/django-bird-colony/
 
-bird-colony is a Django application used to manage bird colonies
-(including breeding colonies). You may find that it can also be used for
-non-avian species. There’s also support for storing information about
-samples associated with animals in the colony, like genomic DNA or song
-recordings.
+bird-colony is a Django application the Meliza Lab uses to manage its zebra
+finch colony and keep breeding records. You may find it useful, even if you work
+with non-avian species.
 
-There is a growing collection of views that can be used to browse the
-database and perform common updates (like adding clutches). There is
-also a JSON API that supports a variety of search queries.
+Features:
+
+* Animals have globally unique identifiers and can optionally have colored and numbered leg bands (one band per animal). This means they keep their identities even if you have to reband them.
+* Record events over the lifespan of each animal, from egg to grave. Events can be linked to locations, so you can find where an animal is, or was on a certain date. Events can also be linked to measurements like weight so you can track these over time or use them to make breeding decisions.
+* Track pairings, pedigrees, and breeding success statistics. You can export a complete pedigree for all living birds in the colony and compute relatedness using external software like the R `pedigree <https://www.rdocumentation.org/packages/pedigree/versions/1.4.2>`_ package.
+* Useful forms for entering data, including periodic nest checks. Easy to track when eggs are laid and hatch and associate them with the correct parents.
+* Associate biological samples with animals and track their physical location.
 
 You’ll need to have a basic understanding of how to use
 `Django <https://www.djangoproject.com/>`__. ``bird-colony`` is licensed

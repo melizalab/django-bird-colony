@@ -62,6 +62,8 @@ def get_sentinel_user():
 
 
 class Species(models.Model):
+    """Represents an animal species. Every animal belongs to a species."""
+
     id = models.AutoField(primary_key=True)
     common_name = models.CharField(max_length=45)
     genus = models.CharField(max_length=45)
@@ -79,6 +81,8 @@ class Species(models.Model):
 
 
 class Color(models.Model):
+    """Represents a band color. Animals may be banded, and the bands can be colored."""
+
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=12, unique=True)
     abbrv = models.CharField("Abbreviation", max_length=3, unique=True)
@@ -88,9 +92,15 @@ class Color(models.Model):
 
     class Meta:
         ordering = ["name"]
+        verbose_name_plural = "band colors"
 
 
 class Plumage(models.Model):
+    """Represents a plumage type.
+
+    This is pretty rudimentary and should be expanded into a more detailed trait system.
+    """
+
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=16, unique=True)
     description = models.TextField()
@@ -104,6 +114,16 @@ class Plumage(models.Model):
 
 
 class Status(models.Model):
+    """Represents a type of event in the life of an animal.
+
+    Event types with the `adds` field set to True are for events that add a
+    living animal to the colony (e.g., hatching, transferring in). Event types
+    with the `removes` field set to True are for events that remove the animal
+    from the colony. This allows the database to determine the dates when
+    animals were alive.
+
+    """
+
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=16, unique=True)
     adds = models.BooleanField(default=False, help_text="select for acquisition events")
@@ -120,10 +140,39 @@ class Status(models.Model):
         verbose_name_plural = "status codes"
 
 
+class Measure(models.Model):
+    """Represents a type of measurement, like weight, with associated units"""
+
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=16, unique=True)
+    unit_sym = models.CharField(
+        "Unit: SI symbol",
+        max_length=8,
+        help_text="SI symbol for the unit of the measure (including prefix)",
+    )
+    unit_full = models.CharField(
+        "Unit: SI name",
+        max_length=16,
+        help_text="full SI name for the unit of the measure",
+    )
+
+    class Meta:
+        verbose_name_plural = "measurement type"
+
+
 class Location(models.Model):
+    """Represents a physical location in the colony.
+
+    Locations with the `nest` field set to True are designed as breeding
+    locations.
+
+    """
+
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=45, unique=True)
     description = models.TextField(default="")
+    # This field should probably be deprecated, as some locations are not
+    # permanently used for breeding.
     nest = models.BooleanField(
         default=False, help_text="select for locations used for breeding"
     )
@@ -143,6 +192,12 @@ class Location(models.Model):
 
 
 class Age(models.Model):
+    """Represents a named range of ages for a species.
+
+    For example, a zebra finch between 0 and 18 days is considered a hatchling.
+
+    """
+
     DEFAULT = "unclassified"
 
     id = models.AutoField(primary_key=True)
@@ -158,6 +213,7 @@ class Age(models.Model):
 
     class Meta:
         unique_together = ("name", "species")
+        verbose_name_plural = "age ranges"
 
 
 class AnimalManager(models.Manager):
@@ -271,7 +327,7 @@ class AnimalQuerySet(models.QuerySet):
         )
 
     def with_child_counts(self):
-        # TODO fix me - very slow
+        # TODO fix me - slow
         return self.annotate(
             n_children=Count(
                 "children", filter=Q(children__event__status=get_birth_event_type())
@@ -320,6 +376,16 @@ class AnimalQuerySet(models.QuerySet):
 
 
 class Parent(models.Model):
+    """Represents a parent-child relationship between animals.
+
+    Duplicate relationships are not allowed, but there are no other constraints
+    enforced at the model level. In principle, animals should either have no
+    parents, if they were transferred in, or exactly one male and one female
+    parent, if they were born in the colony, but these invariants have to be
+    checked in forms.
+
+    """
+
     id = models.AutoField(primary_key=True)
     child = models.ForeignKey("Animal", related_name="+", on_delete=models.CASCADE)
     parent = models.ForeignKey("Animal", related_name="+", on_delete=models.CASCADE)
@@ -327,8 +393,13 @@ class Parent(models.Model):
     def __str__(self):
         return "%s -> %s" % (self.parent, self.child)
 
+    class Meta:
+        unique_together = ("parent", "child")
+
 
 class Animal(models.Model):
+    """Represents an individual animal"""
+
     class Sex(models.TextChoices):
         MALE = "M", _("male")
         FEMALE = "F", _("female")
@@ -625,6 +696,8 @@ class EventQuerySet(models.QuerySet):
 
 
 class Event(models.Model):
+    """Represents an event in the life of an animal"""
+
     id = models.AutoField(primary_key=True)
     animal = models.ForeignKey("Animal", on_delete=models.CASCADE)
     date = models.DateField(default=datetime.date.today)
@@ -758,6 +831,14 @@ class PairingQuerySet(models.QuerySet):
 
 
 class Pairing(models.Model):
+    """Represents a pairing of a sire and a dam for breeding.
+
+    Pairings start when a male and female bird are placed together and end when
+    they are separated. Any eggs laid and animals that hatch during the period
+    are associated with the pairing.
+
+    """
+
     id = models.AutoField(primary_key=True)
     sire = models.ForeignKey(
         "Animal",
@@ -962,6 +1043,8 @@ class Pairing(models.Model):
 
 
 class NestCheck(models.Model):
+    """Represents a nest check, which is when someone counts the number of eggs and chicks for each pairing"""
+
     id = models.AutoField(primary_key=True)
     entered_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET(get_sentinel_user)
@@ -974,7 +1057,7 @@ class NestCheck(models.Model):
 
 
 class SampleType(models.Model):
-    """Doefines a type of biological sample"""
+    """Defines a type of biological sample"""
 
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=16, unique=True)
@@ -1038,3 +1121,21 @@ class Sample(models.Model):
 
     class Meta:
         ordering = ["animal", "type"]
+
+
+class Measurement(models.Model):
+    """Represents a measurement taken from an animal.
+
+    Measurements are associated with events. This is more complex than
+    associating them with animals, but it makes some downstream views easier to
+    generate. There can only be one measurement of each type associated with
+    each event.
+
+    """
+
+    id = models.AutoField(primary_key=True)
+    type = models.ForeignKey(Measure, on_delete=models.CASCADE)
+    event = models.ForeignKey(Event, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ("type", "event")

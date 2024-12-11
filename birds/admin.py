@@ -81,5 +81,7 @@ for model in (
     models.SampleType,
     models.SampleLocation,
     models.NestCheck,
+    models.Measure,
+    models.Measurement,
 ):
     admin.site.register(model)
