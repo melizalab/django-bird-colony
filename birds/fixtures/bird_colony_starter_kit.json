@@ -208,5 +208,15 @@
     "fields": {
       "name": "-80 freezer"
     }
-  }
+  },
+    {
+	"model": "birds.measure",
+	"pk": 1,
+	"fields": {
+	    "name": "weight",
+	    "unit_sym": "g",
+	    "unit_full": "gram",
+	    "format_str": "{:.1f}"
+	}
+    }
 ]

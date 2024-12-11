@@ -131,6 +131,7 @@ def animal_view(request, uuid: str):
         "birds/animal.html",
         {
             "animal": animal,
+            "animal_measurements": animal.measurements(),
             "animal_list": kids,
             "event_list": events,
             "sample_list": samples,

@@ -12,6 +12,8 @@ from birds.models import (
     Color,
     Event,
     Location,
+    Measure,
+    Measurement,
     Pairing,
     Plumage,
     Species,
@@ -1584,4 +1586,88 @@ class LocationModelTests(TestCase):
             location_1.birds().with_dates().first().age_group(),
             "hatchling",
             "bird age group should be 'hatchling' on today",
+        )
+
+
+class MeasurementModelTests(TestCase):
+    fixtures = ["bird_colony_starter_kit"]
+
+    def test_no_duplicate_measurements(self):
+        species = Species.objects.get(pk=1)
+        bird = Animal.objects.create(species=species)
+        status_1 = Status.objects.get(name="transferred in")
+        user = models.get_sentinel_user()
+        event_1 = Event.objects.create(
+            animal=bird, status=status_1, date=today(), entered_by=user
+        )
+        measure_1 = Measure.objects.get(name="weight")
+        # succeed
+        measurement = Measurement.objects.create(
+            type=measure_1, event=event_1, value=10.0
+        )
+        with self.assertRaises(IntegrityError):
+            measurement = Measurement.objects.create(
+                type=measure_1, event=event_1, value=12.0
+            )
+
+    def test_latest_measurement(self):
+        species = Species.objects.get(pk=1)
+        bird = Animal.objects.create(species=species)
+        status_1 = Status.objects.get(name="transferred in")
+        status_2 = Status.objects.get(name="note")
+        measure_1 = Measure.objects.get(name="weight")
+        measure_2 = Measure.objects.create(
+            name="length", unit_sym="cm", unit_full="centimeter"
+        )
+        user = models.get_sentinel_user()
+        event_1 = Event.objects.create(
+            animal=bird, status=status_1, date=today() - dt_days(10), entered_by=user
+        )
+        event_2 = Event.objects.create(
+            animal=bird, status=status_2, date=today(), entered_by=user
+        )
+
+        self.assertCountEqual(
+            bird.measurements(),
+            [],
+            "measurement list: no measurements, today",
+        )
+
+        measurement_1_1 = Measurement.objects.create(
+            type=measure_1, event=event_1, value=15.0
+        )
+        self.assertCountEqual(
+            bird.measurements(),
+            [measurement_1_1],
+            "measurement list: one measure, one date, today",
+        )
+
+        measurement_2_2 = Measurement.objects.create(
+            type=measure_2, event=event_2, value=10.3
+        )
+
+        self.assertCountEqual(
+            bird.measurements(),
+            [measurement_1_1, measurement_2_2],
+            "measurement list: two measures, different dates, today",
+        )
+
+        measurement_2_1 = Measurement.objects.create(
+            type=measure_2, event=event_1, value=10.2
+        )
+        self.assertCountEqual(
+            bird.measurements(),
+            [measurement_1_1, measurement_2_2],
+            "measurement list: two measures, two dates, one repeated, today",
+        )
+        self.assertCountEqual(
+            bird.measurements(on_date=event_1.date),
+            [measurement_1_1, measurement_2_1],
+            "measurement list: two measures, two dates, one repeated, as of earlier event",
+        )
+
+        self.assertCountEqual(
+            bird.measurements(on_date=event_1.date - dt_days(1)),
+            [],
+            "measurement list, two measures, two dates, one repeated, as of before any measurements",
         )

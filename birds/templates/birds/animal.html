@@ -15,6 +15,9 @@
   <dt>alive</dt><dd>{{ animal.alive|yesno }}</dd>
   <dt>acquired</dt><dd>{{ animal.acquisition_event.event_date }}</dd>
   <dt>age</dt><dd>{{ animal.age|agestr }} ({{ animal.age_group }})</dd>
+  {% for measurement in animal_measurements %}
+  <dt>{{ measurement.type.name }} </dt><dd>{{ measurement.formatted }}</dd>
+  {% endfor %}
   {% if animal.expected_hatch %}<dt>expected hatch</dt><dd>{{ animal.expected_hatch}}</dd>{% endif %}
   <dt>living children</dt><dd>{{ animal.children.alive.count }}</dd>
   <dt>total children</dt><dd>{{ animal.children.hatched.count }}</dd>
@@ -26,6 +29,8 @@
   <dd>{% if animal.reserved_by %}<a href="{% url 'birds:user' animal.reserved_by.id %}">{{ animal.reserved_by }}</a>{% endif %}
   </dd>
 </dl>
+
+
 {% if not animal.sexed %}
 <a href="{% url 'birds:set_sex' animal.uuid %}">update sex</a><br/>
 {% endif %}

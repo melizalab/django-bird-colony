@@ -24,8 +24,9 @@ from django.db.models import (
     Subquery,
     Sum,
     When,
+    Window,
 )
-from django.db.models.functions import Cast, Now, Trunc, TruncDay
+from django.db.models.functions import Cast, Now, Trunc, TruncDay, RowNumber
 from django.urls import reverse
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
@@ -146,18 +147,57 @@ class Measure(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=16, unique=True)
     unit_sym = models.CharField(
-        "Unit: SI symbol",
+        "SI unit symbol",
         max_length=8,
         help_text="SI symbol for the unit of the measure (including prefix)",
     )
     unit_full = models.CharField(
-        "Unit: SI name",
+        "SI unit name",
         max_length=16,
         help_text="full SI name for the unit of the measure",
     )
+    format_str = models.CharField(
+        "Format string",
+        max_length=8,
+        default="{:.1f}",
+        help_text="how to format values for this measure (use Python str.format() mini-language)",
+    )
+
+    def __str__(self):
+        return f"{self.name} ({self.unit_sym})"
 
     class Meta:
-        verbose_name_plural = "measurement type"
+        verbose_name_plural = "measurement types"
+
+
+class Measurement(models.Model):
+    """Represents a measurement taken from an animal.
+
+    Measurements are associated with events. This is more complex than
+    associating them with animals, but it makes some downstream views easier to
+    generate. There can only be one measurement of each type associated with
+    each event.
+
+    """
+
+    id = models.AutoField(primary_key=True)
+    type = models.ForeignKey("Measure", on_delete=models.CASCADE)
+    event = models.ForeignKey("Event", on_delete=models.CASCADE)
+    # different measures will require different degrees of precision, so we use
+    # FloatField here instead of DecimalField.
+    value = models.FloatField(help_text="the value of the measurement")
+
+    @property
+    def formatted(self):
+        val = self.type.format_str.format(self.value)
+        return f"{val} {self.type.unit_sym}"
+
+    def __str__(self):
+        event = self.event
+        return f"{event.animal}: {self.type.name} {self.formatted} on {event.date}"
+
+    class Meta:
+        unique_together = ("type", "event")
 
 
 class Location(models.Model):
@@ -606,6 +646,32 @@ class Animal(models.Model):
             .exclude(began_on__gte=events["born_on"])
             .exclude(ended_on__lte=events["born_on"])
             .first()
+        )
+
+    def measurements(self, on_date=None):
+        """Returns the most recent measurements as of `on_date` (today if not
+        specified) of each type for this animal.
+
+        """
+        refdate = on_date or datetime.date.today()
+        qs = Measurement.objects.filter(
+            event__animal=self.uuid, event__date__lte=refdate
+        )
+        # return (
+        #     qs.annotate(latest_date=Max("event__date"))
+        #     .filter(event__date=F("latest_date"))
+        #     .select_related("type", "event")
+        # )
+        return (
+            qs.annotate(
+                row_num=Window(
+                    expression=RowNumber(),
+                    partition_by=[F("type")],
+                    order_by=F("event__date").desc(),
+                )
+            )
+            .filter(row_num=1)
+            .select_related("type", "event")
         )
 
     def get_absolute_url(self):
@@ -1121,21 +1187,3 @@ class Sample(models.Model):
 
     class Meta:
         ordering = ["animal", "type"]
-
-
-class Measurement(models.Model):
-    """Represents a measurement taken from an animal.
-
-    Measurements are associated with events. This is more complex than
-    associating them with animals, but it makes some downstream views easier to
-    generate. There can only be one measurement of each type associated with
-    each event.
-
-    """
-
-    id = models.AutoField(primary_key=True)
-    type = models.ForeignKey(Measure, on_delete=models.CASCADE)
-    event = models.ForeignKey(Event, on_delete=models.CASCADE)
-
-    class Meta:
-        unique_together = ("type", "event")
