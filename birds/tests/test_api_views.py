@@ -12,6 +12,8 @@ from birds.models import (
     Animal,
     Location,
     Species,
+    Measure,
+    Measurement,
 )
 
 warnings.filterwarnings("error")
@@ -121,6 +123,30 @@ class ApiViewTests(APITestCase):
                     "location": self.location.name,
                 },
             )
+
+    def test_measurement_list_view(self):
+        value = 10.123
+        bird = self.children[0]
+        event = bird.event_set.first()
+        measure = Measure.objects.get(name="weight")
+        measurement = Measurement.objects.create(
+            event=event, type=measure, value=10.123
+        )
+        response = self.client.get(reverse("birds:measurements_api"))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        ret = response.data[0]
+        self.assertDictEqual(
+            ret,
+            ret
+            | {
+                "animal": bird.uuid,
+                "date": str(event.date),
+                "measure": measure.name,
+                "value": value,
+                "units": measure.unit_sym,
+            },
+        )
 
     def test_pedigree_view(self):
         response = self.client.get(reverse("birds:pedigree_api"))

@@ -15,6 +15,8 @@ from birds.models import (
     Color,
     Event,
     Location,
+    Measure,
+    Measurement,
     NestCheck,
     Pairing,
     Species,
@@ -45,6 +47,7 @@ class BaseColonyTest(TestCase):
         user = models.get_sentinel_user()
         species = Species.objects.get(pk=1)
         band_color = Color.objects.get(pk=1)
+        measure = Measure.objects.get(pk=1)
         cls.sire = Animal.objects.create_with_event(
             species=species,
             status=status,
@@ -55,6 +58,7 @@ class BaseColonyTest(TestCase):
             band_color=band_color,
             band_number=1,
         )
+        cls.sire.add_measurements([(measure, 15.0)], today(), user)
         cls.dam = Animal.objects.create_with_event(
             species=species,
             status=status,
@@ -65,6 +69,7 @@ class BaseColonyTest(TestCase):
             band_color=band_color,
             band_number=2,
         )
+        cls.dam.add_measurements([(measure, 14.0)], today(), user)
         cls.n_children = 10
         cls.n_eggs = 5
         cls.nest = Location.objects.filter(nest=True).first()
@@ -135,18 +140,6 @@ class AnimalViewTests(BaseColonyTest):
         self.assertEqual(len(response.context["animal_list"]), 2 + self.n_children)
         self.assertDictEqual(response.context["query"], {"living": ["True"]})
 
-    def test_event_view_url_exists_at_desired_location(self):
-        response = self.client.get("/birds/events/")
-        self.assertEqual(response.status_code, 200)
-
-    def test_event_view_contains_all_events(self):
-        response = self.client.get(reverse("birds:events"))
-        self.assertEqual(response.status_code, 200)
-        # one event per animal + 3 events per parent for pairing start/end
-        self.assertEqual(
-            len(response.context["event_list"]), 2 + self.n_children + self.n_eggs + 6
-        )
-
     def test_bird_detail_404_invalid_bird_id(self):
         id = uuid.uuid4()
         response = self.client.get(reverse("birds:animal", args=[id]))
@@ -163,9 +156,36 @@ class AnimalViewTests(BaseColonyTest):
         self.assertEqual(
             len(response.context["animal_list"]), self.n_children + self.n_eggs
         )
-        # one hatch, old pairing started and ended, new pairing started
-        self.assertEqual(len(response.context["event_list"]), 4)
+        # one hatch, old pairing started and ended, new pairing started, measurement
+        self.assertEqual(len(response.context["event_list"]), 5)
         self.assertEqual(len(response.context["pairing_list"]), 2)
+        self.assertEqual(len(response.context["animal_measurements"]), 1)
+
+    def test_child_detail_view_contains_all_related_objects(self):
+        child = self.sire.children.first()
+        response = self.client.get(reverse("birds:animal", args=[child.uuid]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["animal_list"]), 0)
+        # one event for hatch, no pairings, no measurements
+        self.assertEqual(len(response.context["event_list"]), 1)
+        self.assertEqual(len(response.context["pairing_list"]), 0)
+        self.assertEqual(len(response.context["animal_measurements"]), 0)
+
+
+class EventViewTests(BaseColonyTest):
+    def test_event_view_url_exists_at_desired_location(self):
+        response = self.client.get("/birds/events/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_event_view_contains_all_events(self):
+        response = self.client.get(reverse("birds:events"))
+        self.assertEqual(response.status_code, 200)
+        # one event per animal + 3 events per parent for pairing start/end + 2
+        # per parent for measurements
+        self.assertEqual(
+            len(response.context["event_list"]),
+            2 + self.n_children + self.n_eggs + 6 + 2,
+        )
 
     def test_bird_events_404_invalid_bird_id(self):
         id = uuid.uuid4()
@@ -180,7 +200,34 @@ class AnimalViewTests(BaseColonyTest):
     def test_animal_event_view_contains_all_related_objects(self):
         response = self.client.get(reverse("birds:events", args=[self.sire.uuid]))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.context["event_list"]), 4)
+        self.assertEqual(len(response.context["event_list"]), 5)
+
+
+class MeasurmentViewTests(BaseColonyTest):
+    def test_measurement_view_url_exists_at_desired_location(self):
+        response = self.client.get("/birds/measurements/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_measurement_view_contains_all_events(self):
+        response = self.client.get(reverse("birds:measurements"))
+        self.assertEqual(response.status_code, 200)
+        # one event per parent
+        self.assertEqual(len(response.context["measurement_list"]), 2)
+
+    def test_bird_measurements_404_invalid_bird_id(self):
+        id = uuid.uuid4()
+        response = self.client.get(reverse("birds:measurements", args=[id]))
+        self.assertEqual(response.status_code, 404)
+
+    def test_parent_measurement_list_at_correct_url(self):
+        url = f"/birds/animals/{self.sire.uuid}/measurements/"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+    def test_animal_measurement_view_contains_all_related_objects(self):
+        response = self.client.get(reverse("birds:measurements", args=[self.sire.uuid]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["measurement_list"]), 1)
 
 
 class PairingViewTests(BaseColonyTest):

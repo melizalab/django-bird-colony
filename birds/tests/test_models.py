@@ -1610,6 +1610,24 @@ class MeasurementModelTests(TestCase):
                 type=measure_1, event=event_1, value=12.0
             )
 
+    def test_add_measurements(self):
+        species = Species.objects.get(pk=1)
+        bird = Animal.objects.create(species=species)
+        measure_1 = Measure.objects.get(name="weight")
+        measure_2 = Measure.objects.create(
+            name="length", unit_sym="cm", unit_full="centimeter"
+        )
+        measurements = [(measure_1, 10.0), (measure_2, 15.3)]
+        event = bird.add_measurements(
+            measurements,
+            today(),
+            entered_by=models.get_sentinel_user(),
+        )
+        self.assertEqual(event.measurement_set.count(), len(measurements))
+        self.assertEqual(
+            Measurement.objects.filter(event__animal=bird).count(), len(measurements)
+        )
+
     def test_latest_measurement(self):
         species = Species.objects.get(pk=1)
         bird = Animal.objects.create(species=species)

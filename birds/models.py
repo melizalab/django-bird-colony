@@ -5,7 +5,7 @@ from __future__ import unicode_literals
 import datetime
 import uuid
 from functools import lru_cache
-from typing import Optional
+from typing import Optional, Sequence, Tuple
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -658,11 +658,6 @@ class Animal(models.Model):
         qs = Measurement.objects.filter(
             event__animal=self.uuid, event__date__lte=refdate
         )
-        # return (
-        #     qs.annotate(latest_date=Max("event__date"))
-        #     .filter(event__date=F("latest_date"))
-        #     .select_related("type", "event")
-        # )
         return (
             qs.annotate(
                 row_num=Window(
@@ -708,7 +703,7 @@ class Animal(models.Model):
         sex: Optional[Sex] = None,
         plumage: Optional[Plumage] = None,
         location: Optional[Location] = None,
-    ):
+    ) -> "Event":
         """Update the animal's band and create an event to note this"""
         status = Status.objects.get(name=BANDED_EVENT_NAME)
         self.band_number = band_number
@@ -727,6 +722,33 @@ class Animal(models.Model):
             location=location,
             description=f"banded as {self.band()}",
         )
+
+    def add_measurements(
+        self,
+        measurements: Sequence[Tuple[Measure, float]],
+        date: datetime.date,
+        entered_by: settings.AUTH_USER_MODEL,
+        *,
+        location: Optional[Location] = None,
+        description: Optional[str] = None,
+    ) -> "Event":
+        """Create an event with one or more associated measurements"""
+        status = Status.objects.get(name=NOTE_EVENT_NAME)
+        if description is None:
+            description = "measured " + " ".join(
+                measure.name for measure, _ in measurements
+            )
+        event = Event.objects.create(
+            animal=self,
+            date=date,
+            status=status,
+            entered_by=entered_by,
+            location=location,
+            description=description,
+        )
+        for type, value in measurements:
+            _ = Measurement.objects.create(event=event, type=type, value=value)
+        return event
 
     class Meta:
         ordering = ["band_color", "band_number"]
