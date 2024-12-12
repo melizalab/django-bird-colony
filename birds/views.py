@@ -28,6 +28,7 @@ from birds import __version__, api_version
 from birds.filters import (
     AnimalFilter,
     EventFilter,
+    MeasurementFilter,
     PairingFilter,
     SampleFilter,
 )
@@ -48,6 +49,8 @@ from birds.models import (
     Animal,
     Event,
     Location,
+    Measure,
+    Measurement,
     NestCheck,
     Pairing,
     Sample,
@@ -58,6 +61,7 @@ from birds.serializers import (
     AnimalPedigreeSerializer,
     AnimalSerializer,
     EventSerializer,
+    MeasurementSerializer,
     PedigreeRequestSerializer,
 )
 from birds.tools import tabulate_nests, tabulate_pairs
@@ -347,6 +351,44 @@ def new_event_entry(request, uuid: str):
         form.initial["entered_by"] = request.user
 
     return render(request, "birds/event_entry.html", {"form": form, "animal": animal})
+
+
+# Measurements
+@require_http_methods(["GET"])
+def measurement_list(
+    request,
+    *,
+    animal: Optional[str] = None,
+):
+    qs = Measurement.objects.select_related(
+        "event", "event__animal", "event__animal__species", "event__animal__band_color"
+    ).order_by("-event__date", "-created")
+    if animal is not None:
+        animal = get_object_or_404(Animal, uuid=animal)
+        qs = qs.filter(event__animal=animal)
+        header_text = f"Measurements for {animal}"
+    else:
+        header_text = "Measurements"
+    query = request.GET.copy()
+    try:
+        page_number = query.pop("page")[-1]
+    except (KeyError, IndexError):
+        page_number = None
+    f = MeasurementFilter(query, queryset=qs)
+    paginator = Paginator(f.qs, 25)
+    page_obj = paginator.get_page(page_number)
+
+    return render(
+        request,
+        "birds/measurement_list.html",
+        {
+            "filter": f,
+            "query": query,
+            "page_obj": page_obj,
+            "measurement_list": page_obj.object_list,
+            "header_text": header_text,
+        },
+    )
 
 
 # Locations
@@ -926,6 +968,13 @@ class APIEventsList(generics.ListAPIView):
     serializer_class = EventSerializer
     filter_backends = (DjangoFilterBackend,)
     filterset_class = EventFilter
+
+
+class APIMeasurementsList(generics.ListAPIView):
+    queryset = Measurement.objects.all()
+    serializer_class = MeasurementSerializer
+    filter_backends = (DjangoFilterBackend,)
+    filterset_class = MeasurementFilter
 
 
 class APIAnimalPedigree(generics.ListAPIView):

@@ -2,7 +2,7 @@
 # -*- mode: python -*-
 from django_filters import rest_framework as filters
 
-from birds.models import Animal, Event, Sample
+from birds.models import Animal, Event, Sample, Measurement
 
 
 class AnimalFilter(filters.FilterSet):
@@ -96,3 +96,28 @@ class SampleFilter(filters.FilterSet):
         fields = {
             "date": ["exact", "year", "range"],
         }
+
+
+class MeasurementFilter(filters.FilterSet):
+    animal = filters.CharFilter(
+        field_name="event__animal__uuid", lookup_expr="istartswith"
+    )
+    color = filters.CharFilter(
+        field_name="event__animal__band_color__name", lookup_expr="iexact"
+    )
+    band = filters.NumberFilter(
+        field_name="event__animal__band_number", lookup_expr="exact"
+    )
+    species = filters.CharFilter(
+        field_name="event__animal__species__code", lookup_expr="iexact"
+    )
+    entered_by = filters.CharFilter(
+        field_name="event__entered_by__username", lookup_expr="icontains"
+    )
+    date = filters.DateFromToRangeFilter(field_name="event__date")
+    type = filters.CharFilter(field_name="type__name", lookup_expr="icontains")
+    value = filters.RangeFilter()
+
+    class Meta:
+        model = Measurement
+        exclude = ["event"]

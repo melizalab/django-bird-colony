@@ -2,7 +2,7 @@
 {% load widget_tweaks %}
 {% load bird_tags %}
 
-{% block title %} meliza-lab : events {% endblock %}
+{% block title %} meliza-lab : measurements {% endblock %}
 
 {% block content %}
 <h2>{{ header_text }}</h2>
@@ -16,10 +16,10 @@
       {% render_field filter.form.band placeholder="Band number" class+="form-control" %}
     </div>
     <div class="col-sm-2">
-      {% render_field filter.form.location placeholder="Location" class+="form-control" %}
+      {% render_field filter.form.animal placeholder="UUID (beginning)" class+="form-control" %}
     </div>
     <div class="col-sm-2">
-      {% render_field filter.form.status placeholder="Status" class+="form-control" %}
+      {% render_field filter.form.type placeholder="Measurement type" class+="form-control" %}
     </div>
     <div class="col-sm-2">
       {% render_field filter.form.entered_by placeholder="Entered by" class+="form-control" %}
@@ -33,24 +33,19 @@
 <table class="table table-striped table-condensed">
   <thead>
     <th>Animal</th>
-    <th>Status</th>
     <th>Date</th>
-    <th>Location</th>
-    <th>Comments</th>
+    <th>Measure</th>
+    <th>Value</th>
     <th>Entered by</th>
-    <th>Edit</th>
   </thead>
   <tbody>
-    {% for event in event_list %}
+    {% for measure in measurement_list %}
         <tr>
-          <td><a href="{{ event.animal.get_absolute_url }}">{{ event.animal }}</a></td>
-          <td>{{ event.status }}</td>
-          <td>{{ event.date }}</td>
-          <td>{{ event.location|link_or_blank }}</td>
-          <td>{{ event.description }}</td>
-          <td>{{ event.entered_by }}</td>	  
-          <td><a href="{% url 'admin:birds_event_change' event.id %}"
-                 class="glyphicon glyphicon-edit" alt="[edit]" aria-label="[Edit]"></a></td>
+          <td><a href="{{ measure.event.animal.get_absolute_url }}">{{ measure.event.animal }}</a></td>
+          <td>{{ measure.event.date }}</td>
+          <td>{{ measure.type.name }}</td>
+          <td>{{ measure.formatted }}</td>	  	  
+          <td>{{ measure.event.entered_by }}</td>	  
         </tr>
     {% endfor %}
   </tbody>

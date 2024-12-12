@@ -4,7 +4,7 @@ import datetime
 
 from rest_framework import serializers
 
-from birds.models import Animal, Event, Status
+from birds.models import Animal, Event, Status, Measure, Measurement
 
 
 class AgeSerializer(serializers.Field):
@@ -102,6 +102,22 @@ class StatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = Status
         fields = ("name", "count")
+
+
+class MeasurementSerializer(serializers.ModelSerializer):
+    event_id = serializers.PrimaryKeyRelatedField(
+        source="event", queryset=Event.objects.all()
+    )
+    animal = serializers.PrimaryKeyRelatedField(source="event.animal", read_only=True)
+    date = serializers.DateField(source="event.date", read_only=True)
+    measure = serializers.SlugRelatedField(
+        source="type", slug_field="name", queryset=Measure.objects.all()
+    )
+    units = serializers.CharField(source="type.unit_sym", read_only=True)
+
+    class Meta:
+        model = Measurement
+        fields = ("event_id", "animal", "date", "measure", "value", "units")
 
 
 class EventSerializer(serializers.ModelSerializer):

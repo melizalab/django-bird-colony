@@ -186,6 +186,7 @@ class Measurement(models.Model):
     # different measures will require different degrees of precision, so we use
     # FloatField here instead of DecimalField.
     value = models.FloatField(help_text="the value of the measurement")
+    created = models.DateTimeField(auto_now_add=True)
 
     @property
     def formatted(self):
@@ -785,7 +786,7 @@ class Event(models.Model):
 
     def event_date(self):
         """Description of event and date"""
-        return "%s on %s" % (self.status, self.date)
+        return f"{self.status} on {self.date:%b %-d, %Y}"
 
     def age(self):
         """Age of the animal at the time of the event, or None if birthday not known"""

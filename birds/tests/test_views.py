@@ -169,7 +169,7 @@ class AnimalViewTests(BaseColonyTest):
 
     def test_bird_events_404_invalid_bird_id(self):
         id = uuid.uuid4()
-        response = self.client.get(reverse("birds:animal_events", args=[id]))
+        response = self.client.get(reverse("birds:events", args=[id]))
         self.assertEqual(response.status_code, 404)
 
     def test_parent_event_list_at_correct_url(self):
@@ -178,9 +178,7 @@ class AnimalViewTests(BaseColonyTest):
         self.assertEqual(response.status_code, 200)
 
     def test_animal_event_view_contains_all_related_objects(self):
-        response = self.client.get(
-            reverse("birds:animal_events", args=[self.sire.uuid])
-        )
+        response = self.client.get(reverse("birds:events", args=[self.sire.uuid]))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context["event_list"]), 4)
 

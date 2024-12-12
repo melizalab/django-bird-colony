@@ -73,13 +73,14 @@
     {% endfor %}
   </tbody>
 </table>
-<a href="events/">show all</a>&nbsp;&nbsp;
-<a href="events/new/">add event</a><br/>
+<a href="{% url 'birds:new_event' animal.uuid %}">add event</a>&nbsp;&nbsp;
+<a href="{% url 'birds:events' animal.uuid %}">all events</a>&nbsp;&nbsp;
+<a href="{% url 'birds:measurements' animal.uuid %}">all measurements</a><br/>
 
 <h3>Samples</h3>
 {% include "birds/sample_table.html" %}
-<a href="samples/">show all</a>&nbsp;&nbsp;
-<a href="samples/new/">add sample</a><br/>
+<a href="samples/new/">add sample</a>&nbsp;&nbsp;
+<a href="samples/">all samples</a><br/>
 
 <h3>Pairings</h3>
 
