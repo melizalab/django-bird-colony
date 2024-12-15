@@ -616,13 +616,17 @@ class NewEventFormViewTests(TestCase):
         )
 
     def test_redirect_if_not_logged_in(self):
-        response = self.client.get(reverse("birds:new_event", args=[self.animal.uuid]))
+        response = self.client.get(
+            reverse("birds:event_entry", args=[self.animal.uuid])
+        )
         self.assertEqual(response.status_code, 302)
         self.assertTrue(response.url.startswith("/accounts/login/"))
 
     def test_initial_values_and_options(self):
         self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
-        response = self.client.get(reverse("birds:new_event", args=[self.animal.uuid]))
+        response = self.client.get(
+            reverse("birds:event_entry", args=[self.animal.uuid])
+        )
         self.assertEqual(response.status_code, 200)
 
     def test_add_event(self):
@@ -631,7 +635,7 @@ class NewEventFormViewTests(TestCase):
         status = Status.objects.get(name=models.DEATH_EVENT_NAME)
         self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
         response = self.client.post(
-            reverse("birds:new_event", args=[self.animal.uuid]),
+            reverse("birds:event_entry", args=[self.animal.uuid]),
             {
                 "date": today(),
                 "status": status.pk,
@@ -643,6 +647,26 @@ class NewEventFormViewTests(TestCase):
         self.assertRedirects(response, reverse("birds:animal", args=[self.animal.uuid]))
         self.assertEqual(self.animal.event_set.count(), 2)
         self.assertFalse(self.animal.alive())
+
+    def test_edit_event(self):
+        event = self.animal.event_set.first()
+        new_date = today()
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.post(
+            reverse("birds:event_entry", args=[event.id]),
+            {
+                "date": new_date,
+                "status": event.status.pk,
+                "location": event.location.pk,
+                "entered_by": self.test_user1.pk,
+                "description": "updated",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("birds:animal", args=[self.animal.uuid]))
+        event = self.animal.event_set.first()
+        self.assertEqual(event.date, new_date)
+        self.assertEqual(event.description, "updated")
 
 
 class PairingFormViewTests(TestCase):

@@ -46,9 +46,14 @@ urlpatterns = [
         name="events",
     ),
     path(
-        "animals/<uuid>/events/new/",
-        login_required(views.new_event_entry),
-        name="new_event",
+        "animals/<uuid:animal>/events/new/",
+        login_required(views.event_entry),
+        name="event_entry",
+    ),
+    path(
+        r"events/<int:event>/change/",
+        views.event_entry,
+        name="event_entry",
     ),
     path(
         "animals/<uuid:animal>/measurements/",

@@ -2,7 +2,7 @@
 {% load static %}
 {% load widget_tweaks %}
 
-{% block title %} meliza-lab : bird colony : add event {% endblock title%}
+{% block title %} meliza-lab : bird colony : add or change event {% endblock title%}
 
 {% block css %}
     <link href="{% static 'local/css/bootstrap-datetimepicker.min.css' %}" rel="stylesheet">
@@ -23,17 +23,14 @@
 
 <div class="panel panel-default">
   <div class="panel-heading">
-    <h3 class="panel-title">New event: {{ animal }}</h3>
+    <h3 class="panel-title">Add or change event for {{ animal }}</h3>
   </div>
   <div class="panel-body">
-    <form action="{% url 'birds:new_event' animal.uuid %}" class="form-horizontal" method="post" role="form">
+    <form action="{{ form_action }}" class="form-horizontal" method="post" role="form">
       {% csrf_token %}
-      <p><strong>Instructions</strong>: This form is for adding an event to the
-        database. Events track each individual's life history and allow us to
-        determine its current status and location. For convenience, you can only
-        add events on this form for living birds. You can use the
-        <a href="{% url 'admin:birds_event_add' %}">admin interface</a> to add events for
-        other birds, or edit existing events.</p>
+      <p><strong>Instructions</strong>: This form is for adding or changing an
+        event for <a href="{{ animal.get_absolute_url }}">{{ animal }}</a>. Events track each individual's life history and
+        allow us to determine its current status and location.</p>
 
       {% if form.non_field_errors %}
       <div class="alert alert-danger">{{ form.non_field_errors }}</div>
@@ -81,7 +78,7 @@
 
       <div class="form-group">
         <div class="col-sm-offset-2 col-sm-10">
-          <button type="submit" class="btn btn-default">Add event</button>
+          <button type="submit" class="btn btn-default">Save event</button>
         </div>
       </div>
 

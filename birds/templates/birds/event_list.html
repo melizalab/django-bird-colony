@@ -49,7 +49,7 @@
           <td>{{ event.location|link_or_blank }}</td>
           <td>{{ event.description }}</td>
           <td>{{ event.entered_by }}</td>	  
-          <td><a href="{% url 'admin:birds_event_change' event.id %}"
+          <td><a href="{% url 'birds:event_entry' event.id %}"
                  class="glyphicon glyphicon-edit" alt="[edit]" aria-label="[Edit]"></a></td>
         </tr>
     {% endfor %}

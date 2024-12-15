@@ -331,26 +331,34 @@ def event_list(
 
 
 @require_http_methods(["GET", "POST"])
-def new_event_entry(request, uuid: str):
-    animal = get_object_or_404(Animal, pk=uuid)
-    if request.method == "POST":
-        form = EventForm(request.POST)
-        if form.is_valid():
-            data = form.cleaned_data
-            Event.objects.create(
-                animal=animal,
-                date=data["date"],
-                status=data["status"],
-                entered_by=data["entered_by"],
-                location=data["location"],
-                description=data["description"],
-            )
-            return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
-    else:
-        form = EventForm()
+def event_entry(request, event: Optional[int] = None, animal: Optional[str] = None):
+    if event:
+        # editing an existing event
+        event = get_object_or_404(Event, pk=event)
+        animal = event.animal
+        form = EventForm(request.POST or None, instance=event)
+        action = reverse("birds:event_entry", kwargs={"event": event.pk})
+    elif animal:
+        # adding a new event
+        animal = get_object_or_404(Animal, pk=animal)
+        form = EventForm(request.POST or None)
         form.initial["entered_by"] = request.user
+        action = reverse("birds:event_entry", kwargs={"animal": animal.uuid})
+    if request.method == "POST":
+        if form.is_valid():
+            if event:
+                form.save()
+            else:
+                event = form.save(commit=False)
+                event.animal = animal
+                event.save()
+            return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
 
-    return render(request, "birds/event_entry.html", {"form": form, "animal": animal})
+    return render(
+        request,
+        "birds/event_entry.html",
+        {"form": form, "form_action": action, "animal": animal},
+    )
 
 
 # Measurements
