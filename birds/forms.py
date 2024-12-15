@@ -11,6 +11,8 @@ from birds.models import (
     Animal,
     Color,
     Location,
+    Measure,
+    Measurement,
     Pairing,
     Plumage,
     Sample,
@@ -35,6 +37,11 @@ class EventForm(forms.Form):
     location = forms.ModelChoiceField(queryset=Location.objects.all(), required=False)
     description = forms.CharField(widget=forms.Textarea, required=False)
     entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
+
+
+class MeasurementForm(forms.Form):
+    measure = forms.ModelChoiceField(queryset=Measure.objects.all())
+    value = forms.FloatField()
 
 
 class SampleForm(forms.ModelForm):

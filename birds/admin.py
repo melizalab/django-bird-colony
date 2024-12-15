@@ -12,6 +12,11 @@ class ParentInline(admin.TabularInline):
     min_num = 0
 
 
+class MeasurementInline(admin.TabularInline):
+    model = models.Measurement
+    extra = 1
+
+
 class AnimalAdmin(admin.ModelAdmin):
     fields = (
         "species",
@@ -34,6 +39,7 @@ class EventAdmin(admin.ModelAdmin):
     list_display = ("animal", "date", "status", "location", "description", "entered_by")
     list_filter = ("animal", "entered_by", "status", "location")
     search_fields = ("description",)
+    inlines = (MeasurementInline,)
 
 
 class StatusAdmin(admin.ModelAdmin):
