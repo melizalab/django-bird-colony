@@ -11,9 +11,9 @@ from birds import models
 from birds.models import (
     Animal,
     Location,
-    Species,
     Measure,
     Measurement,
+    Species,
 )
 
 warnings.filterwarnings("error")
@@ -125,7 +125,6 @@ class ApiViewTests(APITestCase):
             )
 
     def test_measurement_list_view(self):
-        value = 10.123
         bird = self.children[0]
         event = bird.event_set.first()
         measure = Measure.objects.get(name="weight")
@@ -143,7 +142,7 @@ class ApiViewTests(APITestCase):
                 "animal": bird.uuid,
                 "date": str(event.date),
                 "measure": measure.name,
-                "value": value,
+                "value": measurement.value,
                 "units": measure.unit_sym,
             },
         )

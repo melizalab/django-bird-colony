@@ -4,7 +4,7 @@ import datetime
 
 from rest_framework import serializers
 
-from birds.models import Animal, Event, Status, Measure, Measurement
+from birds.models import Animal, Event, Measure, Measurement, Status
 
 
 class AgeSerializer(serializers.Field):

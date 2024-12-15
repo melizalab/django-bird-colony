@@ -27,7 +27,7 @@ from django.db.models import (
     When,
     Window,
 )
-from django.db.models.functions import Cast, Coalesce, Now, Trunc, TruncDay, RowNumber
+from django.db.models.functions import Cast, Coalesce, Now, RowNumber, Trunc, TruncDay
 from django.urls import reverse
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _

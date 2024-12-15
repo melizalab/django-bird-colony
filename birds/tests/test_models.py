@@ -1602,13 +1602,9 @@ class MeasurementModelTests(TestCase):
         )
         measure_1 = Measure.objects.get(name="weight")
         # succeed
-        measurement = Measurement.objects.create(
-            type=measure_1, event=event_1, value=10.0
-        )
+        _ = Measurement.objects.create(type=measure_1, event=event_1, value=10.0)
         with self.assertRaises(IntegrityError):
-            measurement = Measurement.objects.create(
-                type=measure_1, event=event_1, value=12.0
-            )
+            _ = Measurement.objects.create(type=measure_1, event=event_1, value=12.0)
 
     def test_add_measurements(self):
         species = Species.objects.get(pk=1)
@@ -1644,10 +1640,12 @@ class MeasurementModelTests(TestCase):
         self.assertTrue(measures.count(), 2)
         self.assertTrue(all(measure.measurement_value is None for measure in measures))
 
-        measurement_1 = Measurement.objects.create(
+        measurement = Measurement.objects.create(
             type=measure_1, event=event, value=15.0
         )
-        self.assertEqual(event.measures().get(id=measure_1.id).measurement_value, 15.0)
+        self.assertEqual(
+            event.measures().get(id=measure_1.id).measurement_value, measurement.value
+        )
         self.assertIs(event.measures().get(id=measure_2.id).measurement_value, None)
 
     def test_latest_measurement(self):

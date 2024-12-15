@@ -12,7 +12,6 @@ from birds.models import (
     Color,
     Event,
     Location,
-    Measure,
     Measurement,
     Pairing,
     Plumage,

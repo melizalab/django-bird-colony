@@ -652,7 +652,6 @@ class EventFormViewTests(TestCase):
         self.assertFalse(self.animal.alive())
 
     def test_add_event_with_measurements(self):
-        measurement_data = {}
         self.assertEqual(self.animal.event_set.count(), 1)
         self.assertEqual(self.animal.measurements().count(), 0)
         status = Status.objects.get(name=models.NOTE_EVENT_NAME)
@@ -739,7 +738,7 @@ class EventFormViewTests(TestCase):
     def test_remove_measurement_from_event(self):
         event = self.animal.event_set.first()
         measure = Measure.objects.get(pk=1)
-        measurement = Measurement.objects.create(event=event, type=measure, value=15.0)
+        _ = Measurement.objects.create(event=event, type=measure, value=15.0)
         self.assertEqual(self.animal.event_set.count(), 1)
         self.assertEqual(self.animal.measurements().count(), 1)
         self.client.login(username="testuser1", password="1X<ISRUkw+tuK")

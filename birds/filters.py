@@ -2,7 +2,7 @@
 # -*- mode: python -*-
 from django_filters import rest_framework as filters
 
-from birds.models import Animal, Event, Sample, Measurement
+from birds.models import Animal, Event, Measurement, Sample
 
 
 class AnimalFilter(filters.FilterSet):
