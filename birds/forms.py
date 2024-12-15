@@ -43,9 +43,12 @@ class EventForm(forms.ModelForm):
         fields = ["date", "status", "location", "description", "entered_by"]
 
 
-class MeasurementForm(forms.Form):
-    measure = forms.ModelChoiceField(queryset=Measure.objects.all())
-    value = forms.FloatField()
+class MeasurementForm(forms.ModelForm):
+    value = forms.FloatField(required=False)
+
+    class Meta:
+        model = Measurement
+        fields = ["type", "value"]
 
 
 class SampleForm(forms.ModelForm):

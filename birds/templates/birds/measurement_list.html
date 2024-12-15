@@ -37,15 +37,18 @@
     <th>Measure</th>
     <th>Value</th>
     <th>Entered by</th>
+    <th>Edit event</th>
   </thead>
   <tbody>
-    {% for measure in measurement_list %}
+    {% for measurement in measurement_list %}
         <tr>
-          <td><a href="{{ measure.event.animal.get_absolute_url }}">{{ measure.event.animal }}</a></td>
-          <td>{{ measure.event.date }}</td>
-          <td>{{ measure.type.name }}</td>
-          <td>{{ measure.formatted }}</td>	  	  
-          <td>{{ measure.event.entered_by }}</td>	  
+          <td><a href="{{ measurement.event.animal.get_absolute_url }}">{{ measurement.event.animal }}</a></td>
+          <td>{{ measurement.event.date }}</td>
+          <td>{{ measurement.type.name }}</td>
+          <td>{{ measurement.formatted }}</td>	  	  
+          <td>{{ measurement.event.entered_by }}</td>	  
+          <td><a href="{% url 'birds:event_entry' measurement.event.id %}"
+                 class="glyphicon glyphicon-edit" alt="[edit]" aria-label="[Edit]"></a></td>
         </tr>
     {% endfor %}
   </tbody>

@@ -69,7 +69,6 @@ class BaseColonyTest(TestCase):
             band_color=band_color,
             band_number=2,
         )
-        cls.dam.add_measurements([(measure, 14.0)], today(), user)
         cls.n_children = 10
         cls.n_eggs = 5
         cls.nest = Location.objects.filter(nest=True).first()
@@ -180,11 +179,12 @@ class EventViewTests(BaseColonyTest):
     def test_event_view_contains_all_events(self):
         response = self.client.get(reverse("birds:events"))
         self.assertEqual(response.status_code, 200)
-        # one event per animal + 3 events per parent for pairing start/end + 2
-        # per parent for measurements
+        # one event per animal + 3 events per parent for pairing start/end + 1
+        # event for sire measurement
+        #
         self.assertEqual(
             len(response.context["event_list"]),
-            2 + self.n_children + self.n_eggs + 6 + 2,
+            2 + self.n_children + self.n_eggs + 6 + 1,
         )
 
     def test_bird_events_404_invalid_bird_id(self):
@@ -201,6 +201,9 @@ class EventViewTests(BaseColonyTest):
         response = self.client.get(reverse("birds:events", args=[self.sire.uuid]))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context["event_list"]), 5)
+        response = self.client.get(reverse("birds:events", args=[self.dam.uuid]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["event_list"]), 4)
 
 
 class MeasurmentViewTests(BaseColonyTest):
@@ -211,8 +214,8 @@ class MeasurmentViewTests(BaseColonyTest):
     def test_measurement_view_contains_all_events(self):
         response = self.client.get(reverse("birds:measurements"))
         self.assertEqual(response.status_code, 200)
-        # one event per parent
-        self.assertEqual(len(response.context["measurement_list"]), 2)
+        # one event for sire, none for dam
+        self.assertEqual(len(response.context["measurement_list"]), 1)
 
     def test_bird_measurements_404_invalid_bird_id(self):
         id = uuid.uuid4()
@@ -595,7 +598,7 @@ class NewBandFormViewTests(TestCase):
         self.assertEqual(animal.event_set.count(), 1)
 
 
-class NewEventFormViewTests(TestCase):
+class EventFormViewTests(TestCase):
     fixtures = ["bird_colony_starter_kit"]
 
     def setUp(self):
@@ -648,6 +651,45 @@ class NewEventFormViewTests(TestCase):
         self.assertEqual(self.animal.event_set.count(), 2)
         self.assertFalse(self.animal.alive())
 
+    def test_add_event_with_measurements(self):
+        measurement_data = {}
+        self.assertEqual(self.animal.event_set.count(), 1)
+        self.assertEqual(self.animal.measurements().count(), 0)
+        status = Status.objects.get(name=models.NOTE_EVENT_NAME)
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.post(
+            reverse("birds:event_entry", args=[self.animal.uuid]),
+            {
+                "date": today(),
+                "status": status.pk,
+                "location": 1,
+                "entered_by": self.test_user1.pk,
+                "measurements-TOTAL_FORMS": 1,
+                "measurements-INITIAL_FORMS": 1,
+                "measurements-0-type": 1,
+                "measurements-0-value": 20.0,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("birds:animal", args=[self.animal.uuid]))
+        self.assertEqual(self.animal.event_set.count(), 2)
+        self.assertEqual(
+            self.animal.measurements().count(),
+            1,
+            "wrong number of latest measurements for the animal",
+        )
+        event = self.animal.event_set.latest()
+        self.assertEqual(
+            event.measurement_set.count(),
+            1,
+            "wrong number of measurements associated with the event",
+        )
+        self.assertEqual(
+            event.measurement_set.first().value,
+            20.0,
+            "not the expected measurement value",
+        )
+
     def test_edit_event(self):
         event = self.animal.event_set.first()
         new_date = today()
@@ -667,6 +709,57 @@ class NewEventFormViewTests(TestCase):
         event = self.animal.event_set.first()
         self.assertEqual(event.date, new_date)
         self.assertEqual(event.description, "updated")
+
+    def test_add_measurement_to_event(self):
+        self.assertEqual(self.animal.event_set.count(), 1)
+        self.assertEqual(self.animal.measurements().count(), 0)
+        event = self.animal.event_set.first()
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.post(
+            reverse("birds:event_entry", args=[event.id]),
+            {
+                "date": event.date,
+                "status": event.status.pk,
+                "location": event.location.pk,
+                "entered_by": self.test_user1.pk,
+                "measurements-TOTAL_FORMS": 1,
+                "measurements-INITIAL_FORMS": 1,
+                "measurements-0-type": 1,
+                "measurements-0-value": 20.0,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("birds:animal", args=[self.animal.uuid]))
+        self.assertEqual(self.animal.event_set.count(), 1)
+        self.assertEqual(self.animal.measurements().count(), 1)
+        self.assertEqual(
+            self.animal.event_set.first().measurement_set.first().value, 20.0
+        )
+
+    def test_remove_measurement_from_event(self):
+        event = self.animal.event_set.first()
+        measure = Measure.objects.get(pk=1)
+        measurement = Measurement.objects.create(event=event, type=measure, value=15.0)
+        self.assertEqual(self.animal.event_set.count(), 1)
+        self.assertEqual(self.animal.measurements().count(), 1)
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.post(
+            reverse("birds:event_entry", args=[event.id]),
+            {
+                "date": event.date,
+                "status": event.status.pk,
+                "location": event.location.pk,
+                "entered_by": self.test_user1.pk,
+                "measurements-TOTAL_FORMS": 1,
+                "measurements-INITIAL_FORMS": 1,
+                "measurements-0-type": 1,
+                "measurements-0-value": "",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("birds:animal", args=[self.animal.uuid]))
+        self.assertEqual(self.animal.event_set.count(), 1)
+        self.assertEqual(self.animal.measurements().count(), 0)
 
 
 class PairingFormViewTests(TestCase):

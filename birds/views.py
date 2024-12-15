@@ -36,6 +36,7 @@ from birds.forms import (
     BreedingCheckForm,
     EndPairingForm,
     EventForm,
+    MeasurementForm,
     NestCheckUser,
     NewAnimalForm,
     NewBandForm,
@@ -342,8 +343,10 @@ def event_entry(request, event: Optional[int] = None, animal: Optional[str] = No
         # adding a new event
         animal = get_object_or_404(Animal, pk=animal)
         form = EventForm(request.POST or None)
-        form.initial["entered_by"] = request.user
         action = reverse("birds:event_entry", kwargs={"animal": animal.uuid})
+
+    MeasurementFormSet = formset_factory(MeasurementForm, extra=0, can_delete=False)
+
     if request.method == "POST":
         if form.is_valid():
             if event:
@@ -352,12 +355,42 @@ def event_entry(request, event: Optional[int] = None, animal: Optional[str] = No
                 event = form.save(commit=False)
                 event.animal = animal
                 event.save()
+            formset = MeasurementFormSet(request.POST, prefix="measurements")
+            if formset.is_valid():
+                for measurement_form in formset:
+                    value = measurement_form.cleaned_data["value"]
+                    measure = measurement_form.cleaned_data["type"]
+                    if value is None:
+                        Measurement.objects.filter(event=event, type=measure).delete()
+                    else:
+                        Measurement.objects.update_or_create(
+                            event=event, type=measure, defaults={"value": value}
+                        )
+
             return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
+    else:
+        form.initial["entered_by"] = request.user
+        if event:
+            initial_data = [
+                {"type": measure, "value": measure.measurement_value}
+                for measure in event.measures()
+            ]
+        else:
+            initial_data = [
+                {"type": measure, "value": None} for measure in Measure.objects.all()
+            ]
+        formset = MeasurementFormSet(initial=initial_data, prefix="measurements")
 
     return render(
         request,
         "birds/event_entry.html",
-        {"form": form, "form_action": action, "animal": animal},
+        {
+            "form": form,
+            "measurements": formset,
+            "form_action": action,
+            "animal": animal,
+            "event": event,
+        },
     )
 
 

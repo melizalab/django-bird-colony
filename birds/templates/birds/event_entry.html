@@ -29,8 +29,9 @@
     <form action="{{ form_action }}" class="form-horizontal" method="post" role="form">
       {% csrf_token %}
       <p><strong>Instructions</strong>: This form is for adding or changing an
-        event for <a href="{{ animal.get_absolute_url }}">{{ animal }}</a>. Events track each individual's life history and
-        allow us to determine its current status and location.</p>
+        event for <a href="{{ animal.get_absolute_url }}">{{ animal }}</a>.
+        Events track each individual's life history and allow us to determine
+        its current status and location.</p>
 
       {% if form.non_field_errors %}
       <div class="alert alert-danger">{{ form.non_field_errors }}</div>
@@ -76,12 +77,29 @@
         </div>
       </div>
 
+      <p><strong>Optional</strong>: If any measurements were taken of the animal during the event, they can be added here. Set the value to blank to remove the measurement.</p>
+      
+    {{ measurements.management_form }}
+    {% for form in measurements %}
+      <div class="form-group {% if form.value.errors %}has-error{% endif %}">
+        <label for="id_description" class="col-sm-2 control-label">{{ form.type.initial }} </label>
+	{{ form.type.as_hidden }}
+        <div class="col-sm-3">
+          {% render_field form.value class+="form-control" rows="3"%}
+        </div>
+      </div>
+    {% endfor %}
+      
       <div class="form-group">
         <div class="col-sm-offset-2 col-sm-10">
           <button type="submit" class="btn btn-default">Save event</button>
         </div>
       </div>
 
+      {% if event %}
+      <p>To delete this event, use the <a href="{% url 'admin:birds_event_change' event.id %}">admin interface</a>.</p>
+      {% endif %}
+      
     </form>
   </div>
 </div>

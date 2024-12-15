@@ -23,10 +23,11 @@ from django.db.models import (
     Q,
     Subquery,
     Sum,
+    Value,
     When,
     Window,
 )
-from django.db.models.functions import Cast, Now, Trunc, TruncDay, RowNumber
+from django.db.models.functions import Cast, Coalesce, Now, Trunc, TruncDay, RowNumber
 from django.urls import reverse
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
@@ -817,6 +818,24 @@ class Event(models.Model):
             evt_birth = events.earliest()
             if evt_birth is not None and self.date >= evt_birth.date:
                 return self.date - evt_birth.date
+
+    def measures(self):
+        """Returns a queryset with all defined Measures. Each Measure is
+        annotated with `measurement_value`, which is the value of the
+        measurement if one is defined for this event and None otherwise. Useful
+        for generating forms and tables.
+
+        """
+        return Measure.objects.annotate(
+            measurement_value=Coalesce(
+                Subquery(
+                    Measurement.objects.filter(
+                        event=self.id, type=OuterRef("pk")
+                    ).values("value")[:1]
+                ),
+                Value(None),
+            )
+        )
 
     class Meta:
         ordering = ["-date", "-created"]
