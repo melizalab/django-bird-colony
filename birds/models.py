@@ -942,8 +942,9 @@ class Pairing(models.Model):
     """Represents a pairing of a sire and a dam for breeding.
 
     Pairings start when a male and female bird are placed together and end when
-    they are separated. Any eggs laid and animals that hatch during the period
-    are associated with the pairing.
+    they are separated. The pairing is considered to be active between the date
+    it started (inclusive) and the date it ended (exclusive). Any eggs laid and animals
+    hatched while the pairing is active are associated with the pairing.
 
     """
 
@@ -987,6 +988,7 @@ class Pairing(models.Model):
         return reverse("birds:pairing", kwargs={"pk": self.id})
 
     def active(self, on_date: Optional[datetime.date] = None) -> bool:
+        """True if the pairing is active (as of today or on_date, if supplied)"""
         on_date = on_date or datetime.date.today()
         if on_date < self.began_on:
             return False

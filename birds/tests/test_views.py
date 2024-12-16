@@ -968,6 +968,142 @@ class PairingFormViewTests(TestCase):
         eggs = self.pairing.eggs().existing()
         self.assertEqual(eggs.count(), 0)
 
+    def test_cannot_add_event_to_nonexistent_pairing(self):
+        n_pairings = Pairing.objects.count()
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.get(
+            reverse("birds:new_pairing_event", args=[n_pairings + 1])
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_cannot_add_event_before_or_after_pairing(self):
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        n_events = self.pairing.events().count()
+        move_status = Status.objects.get(name=models.MOVED_EVENT_NAME)
+        response = self.client.post(
+            reverse("birds:new_pairing_event", args=[self.pairing.id]),
+            {
+                "date": self.pairing.began_on - dt_days(1),
+                "entered_by": self.test_user1.pk,
+                "location": 1,
+                "status": move_status.pk,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "birds/pairing_event_entry.html")
+        self.assertEqual(self.pairing.events().count(), n_events)
+        response = self.client.post(
+            reverse("birds:new_pairing_event", args=[self.pairing.id]),
+            {
+                "date": self.pairing.ended_on + dt_days(1),
+                "entered_by": self.test_user1.pk,
+                "location": 1,
+                "status": move_status.pk,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "birds/pairing_event_entry.html")
+        self.assertEqual(self.pairing.events().count(), n_events)
+
+    def test_add_event_to_pairing_with_chicks(self):
+        # add a kid
+        child = self.pairing.create_egg(
+            date=self.pairing.began_on, entered_by=self.test_user1
+        )
+        # hatch the egg
+        hatch_status = models.get_birth_event_type()
+        hatch_date = self.pairing.began_on + dt_days(14)
+        move_status = Status.objects.get(name=models.MOVED_EVENT_NAME)
+        _ = Event.objects.create(
+            animal=child,
+            date=hatch_date,
+            entered_by=self.test_user1,
+            status=hatch_status,
+        )
+        # 2 birthdays, pairing open and close, egg laid and hatched
+        self.assertEqual(self.pairing.events().count(), 6)
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        # first add an event before the egg hatches - should only affect the parents
+        event_date = hatch_date - dt_days(1)
+        response = self.client.post(
+            reverse("birds:new_pairing_event", args=[self.pairing.id]),
+            {
+                "date": event_date,
+                "entered_by": self.test_user1.pk,
+                "location": 1,
+                "status": move_status.pk,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("birds:pairing", args=[self.pairing.id]))
+        # adds two events, one for each parent
+        self.assertEqual(self.pairing.events().count(), 8)
+        self.assertEqual(
+            self.pairing.events()
+            .filter(date=event_date, status=move_status.pk)
+            .count(),
+            2,
+        )
+        # next add an event after the egg hatches but before pairing ends - should affect all 3 birds
+        event_date = self.pairing.ended_on - dt_days(1)
+        response = self.client.post(
+            reverse("birds:new_pairing_event", args=[self.pairing.id]),
+            {
+                "date": event_date,
+                "entered_by": self.test_user1.pk,
+                "location": 1,
+                "status": move_status.pk,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("birds:pairing", args=[self.pairing.id]))
+        # adds two events, one for each parent and one for the chick
+        self.assertEqual(self.pairing.events().count(), 11)
+        self.assertEqual(
+            self.pairing.events()
+            .filter(date=event_date, status=move_status.pk)
+            .count(),
+            3,
+        )
+
+    def test_add_event_to_pairing(self):
+        # add a kid
+        child = self.pairing.create_egg(
+            date=self.pairing.began_on, entered_by=self.test_user1
+        )
+        # hatch the egg
+        hatch_status = models.get_birth_event_type()
+        move_status = Status.objects.get(name=models.MOVED_EVENT_NAME)
+        _ = Event.objects.create(
+            animal=child,
+            date=self.pairing.began_on + dt_days(14),
+            entered_by=self.test_user1,
+            status=hatch_status,
+        )
+        # 2 birthdays, pairing open and close, egg laid and hatched
+        self.assertEqual(self.pairing.events().count(), 6)
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        event_date = self.pairing.ended_on - dt_days(1)
+        response = self.client.post(
+            reverse("birds:new_pairing_event", args=[self.pairing.id]),
+            {
+                "date": event_date,
+                "entered_by": self.test_user1.pk,
+                "location": 1,
+                "status": move_status.pk,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("birds:pairing", args=[self.pairing.id]))
+        # add three events, one for each bird
+        self.assertEqual(self.pairing.events().count(), 9)
+        self.assertEqual(
+            self.pairing.events()
+            .filter(date=event_date, status=move_status.pk)
+            .count(),
+            3,
+        )
+
 
 class BreedingCheckFormViewTests(TestCase):
     fixtures = ["bird_colony_starter_kit"]

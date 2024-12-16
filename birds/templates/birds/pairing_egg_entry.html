@@ -1,0 +1,72 @@
+{% extends "base_view.html" %}
+{% load static %}
+{% load widget_tweaks %}
+
+{% block title %} meliza-lab : bird colony : add egg to pairing {% endblock title%}
+
+{% block css %}
+    <link href="{% static 'local/css/bootstrap-datetimepicker.min.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'local/js/moment.min.js' %}"></script>
+<script src="{% static 'local/js/bootstrap-datetimepicker.min.js' %}"></script>
+<script type="text/javascript">
+  $(function () {
+  $('#datetimepicker1').datetimepicker({ pickTime: false});
+  });
+</script>
+{% endblock %}
+
+
+{% block content %}
+
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h3 class="panel-title">Add egg to {{ pairing }}</h3>
+  </div>
+  <div class="panel-body">
+    <form action="{% url 'birds:new_pairing_egg' pairing.id %}" class="form-horizontal" method="post" role="form">
+      {% csrf_token %}
+      <p><strong>Instructions</strong>: This form is for adding an egg to a pairing. Normally this is done through the <a href="{% url 'birds:breeding-check' %}">nest check form</a>, but it can be helpful to have a manual option. The event for the egg being laid will have the same location as the parents on that date.</p>
+
+      {% if form.non_field_errors %}
+      <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <div class="form-group {% if form.date.errors %}has-error{% endif %}">
+        <label for="id_date" class="col-sm-2 control-label">Date</label>
+        <div class="col-sm-3">
+          <div class="input-group date" id="datetimepicker1">
+            {% render_field form.date class+="form-control" data-format="MM/dd/YYYY" %}
+            <span class="input-group-addon"><span class="glyphicon glyphicon-calendar"></span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group {% if form.comments.errors %}has-error{% endif %}">
+        <label for="id_comments" class="col-sm-2 control-label">Comments</label>
+        <div class="col-sm-5">
+          {% render_field form.comments class+="form-control" rows="3"%}
+        </div>
+      </div>
+
+      <div class="form-group {% if form.user.errors %}has-error{% endif %}">
+        <label for="id_user" class="col-sm-2 control-label">Entered by</label>
+        <div class="col-sm-3">
+          {% render_field form.user class+="form-control" %}
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="col-sm-offset-2 col-sm-10">
+          <button type="submit" class="btn btn-default">Add egg</button>
+        </div>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+{% endblock %}

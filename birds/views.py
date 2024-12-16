@@ -3,7 +3,7 @@
 import calendar
 import datetime
 from collections import Counter, defaultdict
-from itertools import groupby
+from itertools import groupby, chain
 from typing import Optional
 
 from django.contrib.auth.models import User
@@ -651,7 +651,35 @@ def new_pairing_egg(request, pk: int):
 
 @require_http_methods(["GET", "POST"])
 def new_pairing_event(request, pk: int):
-    pass
+    pairing = get_object_or_404(Pairing, pk=pk)
+    if request.method == "POST":
+        form = EventForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            if not pairing.active(data["date"]):
+                form.add_error(
+                    None,
+                    ValidationError(
+                        _("Date must be when the pairing is or was active")
+                    ),
+                )
+            else:
+                if pairing.sire.alive(on_date=data["date"]):
+                    _evt = Event.objects.create(animal=pairing.sire, **data)
+                if pairing.dam.alive(on_date=data["date"]):
+                    _evt = Event.objects.create(animal=pairing.dam, **data)
+                for bird in pairing.eggs().alive(on_date=data["date"]):
+                    _evt = Event.objects.create(animal=bird, **data)
+                return HttpResponseRedirect(
+                    reverse("birds:pairing", args=(pairing.pk,))
+                )
+    else:
+        form = EventForm()
+        form.initial["entered_by"] = request.user
+
+    return render(
+        request, "birds/pairing_event_entry.html", {"form": form, "pairing": pairing}
+    )
 
 
 def close_pairing(request, pk: int):
