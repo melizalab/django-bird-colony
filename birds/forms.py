@@ -298,3 +298,9 @@ class NewAnimalForm(forms.Form):
                 params=data,
             )
         return data
+
+
+class NewEggForm(forms.Form):
+    date = forms.DateField()
+    user = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
+    comments = forms.CharField(widget=forms.Textarea, required=False)

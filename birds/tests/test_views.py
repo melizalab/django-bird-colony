@@ -252,8 +252,19 @@ class PairingViewTests(BaseColonyTest):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context["pairing_list"]), 1)
 
+    def test_pairing_detail_404_invalid_id(self):
+        n_pairings = Pairing.objects.count()
+        response = self.client.get(reverse("birds:pairing", args=[n_pairings + 1]))
+        self.assertEqual(response.status_code, 404)
 
-class LocationViewTest(BaseColonyTest):
+    def test_pairing_detail_view_url_exists_at_desired_location(self):
+        pairing_id = self.pairing.id
+        url = f"/birds/pairings/{pairing_id}/"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+
+class LocationViewTests(BaseColonyTest):
     def test_location_list_url_exists_at_desired_location(self):
         response = self.client.get("/birds/locations/")
         self.assertEqual(response.status_code, 200)
@@ -923,6 +934,38 @@ class PairingFormViewTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, reverse("birds:pairing", args=[new_pairing.pk]))
         eggs = new_pairing.eggs().existing()
+        self.assertEqual(eggs.count(), 0)
+
+    def test_cannot_add_egg_to_nonexistent_pairing(self):
+        n_pairings = Pairing.objects.count()
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.get(
+            reverse("birds:new_pairing_egg", args=[n_pairings + 1])
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_add_egg_to_pairing(self):
+        pairing_id = self.pairing.id
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.post(
+            reverse("birds:new_pairing_egg", args=[pairing_id]),
+            {"date": self.pairing.ended_on - dt_days(1), "user": self.test_user1.pk},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("birds:pairing", args=[pairing_id]))
+        eggs = self.pairing.eggs().existing()
+        self.assertEqual(eggs.count(), 1)
+
+    def test_cannot_add_egg_to_pairing_before_start(self):
+        pairing_id = self.pairing.id
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.post(
+            reverse("birds:new_pairing_egg", args=[pairing_id]),
+            {"date": self.pairing.began_on - dt_days(1), "user": self.test_user1.pk},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "birds/pairing_egg_entry.html")
+        eggs = self.pairing.eggs().existing()
         self.assertEqual(eggs.count(), 0)
 
 

@@ -83,7 +83,7 @@
     {% endfor %}
   </tbody>
 </table>
-
+<a href="{% url 'birds:new_pairing_egg' pairing.id %}">add an egg</a><br/>
 
 <h3>Relevent Events</h3>
 
@@ -109,6 +109,7 @@
     {% endfor %}
   </tbody>
 </table>
+<a href="{% url 'birds:new_pairing_event' pairing.id %}">add an event to all birds</a><br/>
 
 
 <h3>Other Pairings</h3>

@@ -86,6 +86,16 @@ urlpatterns = [
         name="new_pairing",
     ),
     path(
+        "pairings/<int:pk>/new-egg/",
+        login_required(views.new_pairing_egg),
+        name="new_pairing_egg",
+    ),
+    path(
+        "pairings/<int:pk>/new-event/",
+        login_required(views.new_pairing_event),
+        name="new_pairing_event",
+    ),
+    path(
         "pairings/<int:pk>/end/",
         login_required(views.close_pairing),
         name="end_pairing",

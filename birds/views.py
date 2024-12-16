@@ -40,6 +40,7 @@ from birds.forms import (
     NestCheckUser,
     NewAnimalForm,
     NewBandForm,
+    NewEggForm,
     NewPairingForm,
     ReservationForm,
     SampleForm,
@@ -615,6 +616,42 @@ def new_pairing_entry(request, pk: Optional[int] = None):
             form.initial["dam"] = old_pairing.dam
 
     return render(request, "birds/pairing_entry.html", {"form": form})
+
+
+@require_http_methods(["GET", "POST"])
+def new_pairing_egg(request, pk: int):
+    pairing = get_object_or_404(Pairing, pk=pk)
+    if request.method == "POST":
+        form = NewEggForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            date = data["date"]
+            try:
+                pairing.create_egg(
+                    date=date,
+                    entered_by=data["user"],
+                    location=pairing.last_location(on_date=date),
+                    description=data.get("comments")
+                    or f"manually added egg to {pairing.short_name()}",
+                )
+            except ValueError as e:
+                form.add_error(None, ValidationError(_(str(e))))
+            else:
+                return HttpResponseRedirect(
+                    reverse("birds:pairing", args=(pairing.pk,))
+                )
+    else:
+        form = NewEggForm()
+        form.initial["user"] = request.user
+
+    return render(
+        request, "birds/pairing_egg_entry.html", {"form": form, "pairing": pairing}
+    )
+
+
+@require_http_methods(["GET", "POST"])
+def new_pairing_event(request, pk: int):
+    pass
 
 
 def close_pairing(request, pk: int):

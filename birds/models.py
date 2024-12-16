@@ -296,7 +296,7 @@ class AnimalManager(models.Manager):
     ):
         species = sire.species
         if species != dam.species:
-            raise ValueError("sire and dam species do not match")
+            raise ValueError(_("sire and dam species do not match"))
         animal = self.create_with_event(
             species,
             date=date,
@@ -1063,7 +1063,11 @@ class Pairing(models.Model):
         description: Optional[str] = None,
         **animal_properties,
     ):
-        """Create an egg and associated event for the pair"""
+        """Create an egg and associated event for the pair.
+
+        Date must be during the pairing.
+
+        """
         if date < self.began_on:
             raise ValueError(_("Date must be on or after start of pairing"))
         if self.ended_on is not None and date > self.ended_on:
@@ -1097,7 +1101,7 @@ class Pairing(models.Model):
 
         """
         if not self.active():
-            raise ValueError("Pairing is already closed")
+            raise ValueError(_("Pairing is already closed"))
         self.ended_on = ended_on
         self.comment = comment or ""
         self.save()  # will throw integrity error if ended_on <= began_on
