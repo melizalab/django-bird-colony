@@ -36,7 +36,7 @@ urlpatterns = [
         name="update_reservation",
     ),
     path(
-        r"animals/<uuid>/new-band/",
+        "animals/<uuid>/new-band/",
         login_required(views.new_band_entry),
         name="new_band",
     ),
@@ -51,7 +51,7 @@ urlpatterns = [
         name="event_entry",
     ),
     path(
-        r"events/<int:event>/change/",
+        "events/<int:event>/change/",
         views.event_entry,
         name="event_entry",
     ),
@@ -60,15 +60,15 @@ urlpatterns = [
         views.measurement_list,
         name="measurements",
     ),
-    path(r"events/", views.event_list, name="events"),
-    path(r"measurements/", views.measurement_list, name="measurements"),
+    path("events/", views.event_list, name="events"),
+    path("measurements/", views.measurement_list, name="measurements"),
     path("locations/", views.location_list, name="locations"),
     path("locations/<int:pk>/", views.location_view, name="location"),
     path("locations/<int:location>/events/", views.event_list, name="events"),
     path(
         "animals/<uuid:animal>/samples/",
         views.sample_list,
-        name="animal_samples",
+        name="samples",
     ),
     path(
         "animals/<uuid>/samples/new/",
@@ -102,7 +102,7 @@ urlpatterns = [
     ),
     path("pairings/new/", login_required(views.new_pairing_entry), name="new_pairing"),
     path("sampletypes/", views.sample_type_list, name="sampletypes"),
-    path(r"samples/", views.sample_list, name="samples"),
+    path("samples/", views.sample_list, name="samples"),
     path(
         "samples/<uuid>/",
         views.sample_view,

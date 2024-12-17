@@ -19,6 +19,9 @@ from birds.models import (
     Measurement,
     NestCheck,
     Pairing,
+    Sample,
+    SampleType,
+    SampleLocation,
     Species,
     Status,
 )
@@ -121,6 +124,12 @@ class BaseColonyTest(TestCase):
             )
 
 
+class MiscellaneousViewTests(TestCase):
+    def test_index(self):
+        response = self.client.get(reverse("birds:index"))
+        self.assertEqual(response.status_code, 200)
+
+
 class AnimalViewTests(BaseColonyTest):
     def test_list_view_url_exists_at_desired_location(self):
         response = self.client.get("/birds/animals/")
@@ -204,6 +213,11 @@ class EventViewTests(BaseColonyTest):
         response = self.client.get(reverse("birds:events", args=[self.dam.uuid]))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.context["event_list"]), 4)
+
+    def test_location_event_view(self):
+        response = self.client.get(reverse("birds:events", args=[self.nest.id]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["event_list"]), 19)
 
 
 class MeasurmentViewTests(BaseColonyTest):
@@ -476,6 +490,95 @@ class EventSummaryTests(TestCase):
         )
 
 
+class SampleViewTests(TestCase):
+    # fixture gives us a couple sample types and a sample location
+    fixtures = ["bird_colony_starter_kit"]
+
+    @classmethod
+    def setUpTestData(cls):
+        birthday = today() - dt_days(365)
+        status = models.get_birth_event_type()
+        user = models.get_sentinel_user()
+        location = Location.objects.get(pk=1)
+        species = Species.objects.get(pk=1)
+        band_color = Color.objects.get(pk=1)
+        cls.bird = Animal.objects.create_with_event(
+            species=species,
+            status=status,
+            date=birthday,
+            entered_by=user,
+            location=location,
+            sex=Animal.Sex.MALE,
+            band_color=band_color,
+            band_number=1,
+        )
+        cls.sample = Sample.objects.create(
+            type=SampleType.objects.get(pk=1),
+            animal=cls.bird,
+            location=SampleLocation.objects.get(pk=1),
+            attributes={"for testing": True},
+            date=today(),
+            collected_by=user,
+        )
+
+    def setUp(self):
+        self.test_user1 = User.objects.create_user(
+            username="testuser1", password="1X<ISRUkw+tuK"
+        )
+        self.test_user1.save()
+
+    def test_sample_type_list_view(self):
+        response = self.client.get(reverse("birds:sampletypes"))
+        self.assertEqual(response.status_code, 200)
+
+    def test_sample_list_view(self):
+        response = self.client.get(reverse("birds:samples"))
+        self.assertEqual(response.status_code, 200)
+        all_samples = response.context["sample_list"]
+        response = self.client.get(reverse("birds:samples", args=[self.bird.uuid]))
+        self.assertEqual(response.status_code, 200)
+        self.assertCountEqual(all_samples, response.context["sample_list"])
+
+    def test_sample_list_404_invalid_bird_id(self):
+        id = uuid.uuid4()
+        response = self.client.get(reverse("birds:samples", args=[id]))
+        self.assertEqual(response.status_code, 404)
+
+    def test_detail_404_invalid_sample_id(self):
+        id = uuid.uuid4()
+        response = self.client.get(reverse("birds:sample", args=[id]))
+        self.assertEqual(response.status_code, 404)
+
+    def test_new_sample_redirect_if_not_logged_in(self):
+        response = self.client.get(reverse("birds:new_sample", args=[self.bird.uuid]))
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith("/accounts/login/"))
+
+    def test_new_sample_initial_values(self):
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.get(reverse("birds:new_sample", args=[self.bird.uuid]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.context["form"].initial["collected_by"], self.test_user1
+        )
+
+    def test_new_sample(self):
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.post(
+            reverse("birds:new_sample", args=[self.bird.uuid]),
+            {
+                "date": today() - dt_days(1),
+                "location": self.sample.location.id,
+                "type": self.sample.type.id,
+                "collected_by": self.test_user1.id,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("birds:animal", args=[self.bird.uuid]))
+        self.assertEqual(self.bird.sample_set.count(), 2)
+        self.assertEqual(self.sample.type.sample_set.count(), 2)
+
+
 class NewAnimalFormViewTests(TestCase):
     fixtures = ["bird_colony_starter_kit"]
 
@@ -605,6 +708,53 @@ class NewBandFormViewTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, reverse("birds:animal", args=[self.animal.uuid]))
         animal = Animal.objects.get(band_number=10)
+        self.assertEqual(animal.sex, "M")
+        self.assertEqual(animal.event_set.count(), 1)
+
+
+class UpdateSexFormViewTests(TestCase):
+    fixtures = ["bird_colony_starter_kit"]
+
+    def setUp(self):
+        # Create a user
+        self.test_user1 = User.objects.create_user(
+            username="testuser1", password="1X<ISRUkw+tuK"
+        )
+        self.test_user1.save()
+        # Create an unsexed animal
+        species = Species.objects.get(pk=1)
+        self.animal = Animal.objects.create(species=species)
+
+    def test_redirect_if_not_logged_in(self):
+        response = self.client.get(reverse("birds:set_sex", args=[self.animal.uuid]))
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith("/accounts/login/"))
+
+    def test_initial_values_and_options(self):
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.get(reverse("birds:set_sex", args=[self.animal.uuid]))
+        self.assertEqual(response.status_code, 200)
+
+    def test_404_invalid_bird_id(self):
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        id = uuid.uuid4()
+        response = self.client.get(reverse("birds:set_sex", args=[id]))
+        self.assertEqual(response.status_code, 404)
+
+    def test_set_sex(self):
+        self.assertEqual(self.animal.sex, "U")
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.post(
+            reverse("birds:set_sex", args=[self.animal.uuid]),
+            {
+                "date": today(),
+                "sex": "M",
+                "entered_by": self.test_user1.pk,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertRedirects(response, reverse("birds:animal", args=[self.animal.uuid]))
+        animal = Animal.objects.first()
         self.assertEqual(animal.sex, "M")
         self.assertEqual(animal.event_set.count(), 1)
 
@@ -772,7 +922,7 @@ class EventFormViewTests(TestCase):
         self.assertEqual(self.animal.measurements().count(), 0)
 
 
-class PairingFormViewTests(TestCase):
+class PairingTestCase(TestCase):
     fixtures = ["bird_colony_starter_kit"]
 
     @classmethod
@@ -825,6 +975,8 @@ class PairingFormViewTests(TestCase):
         )
         self.test_user1.save()
 
+
+class PairingFormViewTests(PairingTestCase):
     def test_redirect_if_not_logged_in(self):
         response = self.client.get(reverse("birds:new_pairing"))
         self.assertEqual(response.status_code, 302)
@@ -936,6 +1088,15 @@ class PairingFormViewTests(TestCase):
         eggs = new_pairing.eggs().existing()
         self.assertEqual(eggs.count(), 0)
 
+
+class NewPairingEggFormTests(PairingTestCase):
+    def test_initial_values_and_options(self):
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.get(
+            reverse("birds:new_pairing_egg", args=[self.pairing.id])
+        )
+        self.assertEqual(response.status_code, 200)
+
     def test_cannot_add_egg_to_nonexistent_pairing(self):
         n_pairings = Pairing.objects.count()
         self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
@@ -967,6 +1128,15 @@ class PairingFormViewTests(TestCase):
         self.assertTemplateUsed(response, "birds/pairing_egg_entry.html")
         eggs = self.pairing.eggs().existing()
         self.assertEqual(eggs.count(), 0)
+
+
+class NewPairingEventFormTests(PairingTestCase):
+    def test_initial_values_and_options(self):
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.get(
+            reverse("birds:new_pairing_event", args=[self.pairing.id])
+        )
+        self.assertEqual(response.status_code, 200)
 
     def test_cannot_add_event_to_nonexistent_pairing(self):
         n_pairings = Pairing.objects.count()
@@ -1373,3 +1543,8 @@ class BreedingCheckFormNewPairingViewTests(TestCase):
         self.assertCountEqual(form.cleaned_data["lost_eggs"], [])
         self.assertEqual(form.cleaned_data["added_eggs"], 0)
         self.assertCountEqual(form.change_summary(), ["no changes"])
+
+
+# Views we don't test:
+# animal_genealogy - covered well by the model tests
+# reservation_entry - TODO

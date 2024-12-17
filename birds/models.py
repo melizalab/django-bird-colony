@@ -1215,7 +1215,6 @@ class Sample(models.Model):
     comments = models.TextField(blank=True)
 
     date = models.DateField(
-        default=datetime.date.today,
         blank=True,
         null=True,
         help_text="date of sample collection (blank if not known)",

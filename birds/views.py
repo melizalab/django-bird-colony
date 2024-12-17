@@ -3,7 +3,7 @@
 import calendar
 import datetime
 from collections import Counter, defaultdict
-from itertools import groupby, chain
+from itertools import groupby
 from typing import Optional
 
 from django.contrib.auth.models import User
@@ -265,6 +265,7 @@ def update_sex(request, uuid: str):
 
 @require_http_methods(["GET", "POST"])
 def reservation_entry(request, uuid: str):
+    # TODO write tests
     animal = get_object_or_404(Animal, pk=uuid)
     if request.method == "POST":
         form = ReservationForm(request.POST)
@@ -780,6 +781,9 @@ def new_sample_entry(request, uuid: str):
     else:
         form = SampleForm()
         form.fields["source"].queryset = Sample.objects.filter(animal=animal)
+        # this needs to be formatted in a way that's compatible with the
+        # datetime widget
+        # form.initial["date"] = datetime.date.today()
         form.initial["collected_by"] = request.user
 
     return render(request, "birds/sample_entry.html", {"form": form, "animal": animal})
