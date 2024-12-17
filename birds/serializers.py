@@ -151,9 +151,21 @@ class EventSerializer(serializers.ModelSerializer):
             _ = Measurement.objects.create(event=event, **measurement)
         return event
 
+    def update(self, instance, validated_data):
+        measurements = validated_data.pop("measurements")
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        # clear existing measurements
+        instance.measurements.all().delete()
+        for measurement in measurements:
+            _ = Measurement.objects.create(event=instance, **measurement)
+        return instance
+
     class Meta:
         model = Event
         fields = (
+            "id",
             "animal",
             "date",
             "status",

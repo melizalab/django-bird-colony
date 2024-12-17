@@ -1067,11 +1067,24 @@ def api_event_list(request, animal: Optional[str] = None, format=None):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class APIEventsList(generics.ListCreateAPIView):
-    queryset = Event.objects.with_related()
-    serializer_class = EventSerializer
-    filter_backends = (DjangoFilterBackend,)
-    filterset_class = EventFilter
+@api_view(["GET", "PATCH"])
+def api_event_detail(request, pk: int, format=None):
+    event = Event.objects.get(pk=pk)
+    if request.method == "GET":
+        serializer = EventSerializer(event)
+        return Response(serializer.data)
+    elif request.method == "PATCH":
+        if not request.user.is_authenticated:
+            return Response(
+                {"detail": "login required to update events"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        serializer = EventSerializer(event, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class APIMeasurementsList(generics.ListAPIView):

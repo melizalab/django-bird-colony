@@ -137,8 +137,9 @@ urlpatterns = [
         views.APIAnimalChildList.as_view(),
         name="children_api",
     ),
-    path("api/events/", views.api_event_list, name="events_api"),
     path("api/animals/<uuid:animal>/events/", views.api_event_list, name="events_api"),
+    path("api/events/", views.api_event_list, name="events_api"),
+    path("api/events/<int:pk>/", views.api_event_detail, name="event_api"),
     path(
         "api/measurements/",
         views.APIMeasurementsList.as_view(),

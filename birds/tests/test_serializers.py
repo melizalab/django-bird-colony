@@ -8,13 +8,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from birds import models
-from birds.models import (
-    Animal,
-    Location,
-    Measure,
-    Measurement,
-    Species,
-)
+from birds.models import Animal, Event, Location, Measure, Measurement, Species, Status
 from birds.serializers import (
     EventSerializer,
 )
@@ -64,4 +58,19 @@ class EventSerializerTests(TestCase):
         self.assertTrue(serializer.is_valid(), serializer.errors)
 
         event = serializer.save(entered_by=self.user)
+        self.assertEqual(event.measurements.count(), 1)
+
+    def test_update_event_with_measurements(self):
+        measure = Measure.objects.get(pk=1)
+        event = self.bird.add_measurements(
+            [],
+            date=datetime.date.today(),
+            entered_by=self.user,
+        )
+        new_event_data = {
+            "measurements": [{"measure": measure.name, "value": 1234}],
+        }
+        serializer = EventSerializer(event, data=new_event_data, partial=True)
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        event = serializer.save()
         self.assertEqual(event.measurements.count(), 1)

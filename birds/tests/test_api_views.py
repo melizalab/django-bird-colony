@@ -191,6 +191,27 @@ class ApiViewTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
+    def test_update_event(self):
+        bird = self.children[0]
+        event = bird.event_set.first()
+        value = 12.1
+        measure = Measure.objects.get(name="weight")
+        self.client.login(username="testuser1", password="testpass")
+        measurement = {
+            "measure": measure.name,
+            "value": value,
+        }
+        response = self.client.patch(
+            reverse("birds:event_api", args=[event.id]),
+            {"measurements": [measurement]},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertDictEqual(
+            response.data["measurements"][0],
+            response.data["measurements"][0] | measurement,
+        )
+
     def test_measurement_list_view(self):
         bird = self.children[0]
         event = bird.event_set.first()
