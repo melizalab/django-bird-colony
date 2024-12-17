@@ -1619,7 +1619,7 @@ class MeasurementModelTests(TestCase):
             today(),
             entered_by=models.get_sentinel_user(),
         )
-        self.assertEqual(event.measurement_set.count(), len(measurements))
+        self.assertEqual(event.measurements.count(), len(measurements))
         self.assertEqual(
             Measurement.objects.filter(event__animal=bird).count(), len(measurements)
         )

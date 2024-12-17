@@ -67,6 +67,8 @@ This web application allows you to access the animal database. Here are some thi
 
 <p><a href="{% url 'birds:events_api' %}">{% url 'birds:events_api' %}</a> retrieves a list of events. Supported query parameters: <code>animal</code> (uuid), <code>color</code>, <code>band</code>, <code>species</code>, <code>location</code>, <code>entered_by</code>, <code>description</code>.</p>
 
+<p><a href="{% url 'birds:measurements_api' %}">{% url 'birds:measurements_api' %}</a> retrieves a list of measurements. Supported query parameters: <code>animal</code> (uuid), <code>color</code>, <code>band</code>, <code>species</code>, <code>type</code>, <code>entered_by</code>, <code>date</code>, <code>value</code>.</p>
+
 <p><a href="{% url 'birds:pedigree_api' %}">{% url 'birds:pedigree_api' %}</a> retrieves a list of birds and parents with sex and heritable traits (e.g. plumage). By default, this only includes birds that are living (leaves) or that have children (stems). Set <code>restrict=False</code> to include all animals.</p>
 
 <p><a href="{% url 'birds:api_info' %}">{% url 'birds:api_info' %}</a> retrieves information about the API.</p>

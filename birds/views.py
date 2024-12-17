@@ -20,7 +20,7 @@ from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_http_methods
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_link_header_pagination import LinkHeaderPagination
-from rest_framework import generics
+from rest_framework import generics, status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
@@ -845,37 +845,6 @@ def breeding_report(request):
     )
 
 
-@require_http_methods(["GET"])
-def nest_report(request):
-    default_days = 4
-
-    try:
-        until = dateparse.parse_date(request.GET["until"])
-    except (ValueError, KeyError):
-        until = None
-    try:
-        since = dateparse.parse_date(request.GET["since"])
-    except (ValueError, KeyError):
-        since = None
-    until = until or datetime.datetime.now().date()
-    since = since or (until - datetime.timedelta(days=default_days))
-    dates, nest_data = tabulate_nests(since, until)
-    checks = NestCheck.objects.filter(
-        datetime__date__gte=since, datetime__date__lte=until
-    ).order_by("datetime")
-    return render(
-        request,
-        "birds/nest_report.html",
-        {
-            "since": since,
-            "until": until,
-            "dates": dates,
-            "nest_data": nest_data,
-            "nest_checks": checks,
-        },
-    )
-
-
 @require_http_methods(["GET", "POST"])
 def breeding_check(request):
     """Nest check view.
@@ -1073,7 +1042,32 @@ def api_animal_detail(request, pk: str, format=None):
     return Response(serializer.data)
 
 
-class APIEventsList(generics.ListAPIView):
+@api_view(["GET", "POST"])
+def api_event_list(request, animal: Optional[str] = None, format=None):
+    if animal:
+        animal = get_object_or_404(Animal, pk=animal)
+    if request.method == "GET":
+        qs = Event.objects.with_related()
+        if animal:
+            qs = qs.filter(animal=animal)
+        f = EventFilter(request.GET, queryset=qs)
+        serializer = EventSerializer(f.qs, many=True)
+        return Response(serializer.data)
+    elif request.method == "POST":
+        if not request.user.is_authenticated:
+            return Response(
+                {"detail": "login required to create events"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        serializer = EventSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(entered_by=request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class APIEventsList(generics.ListCreateAPIView):
     queryset = Event.objects.with_related()
     serializer_class = EventSerializer
     filter_backends = (DjangoFilterBackend,)

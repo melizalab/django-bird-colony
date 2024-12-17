@@ -4,7 +4,7 @@ import datetime
 
 from rest_framework import serializers
 
-from birds.models import Animal, Event, Measure, Measurement, Status
+from birds.models import Animal, Event, Location, Measure, Measurement, Status
 
 
 class AgeSerializer(serializers.Field):
@@ -120,14 +120,45 @@ class MeasurementSerializer(serializers.ModelSerializer):
         fields = ("event_id", "animal", "date", "measure", "value", "units")
 
 
-class EventSerializer(serializers.ModelSerializer):
-    animal = serializers.PrimaryKeyRelatedField(
-        read_only=False, queryset=Animal.objects.all()
+class MeasurementInlineSerializer(serializers.ModelSerializer):
+    measure = serializers.SlugRelatedField(
+        source="type", slug_field="name", queryset=Measure.objects.all()
     )
+    units = serializers.CharField(source="type.unit_sym", read_only=True)
+
+    class Meta:
+        model = Measurement
+        fields = ("measure", "value", "units")
+
+
+class EventSerializer(serializers.ModelSerializer):
+    animal = serializers.PrimaryKeyRelatedField(queryset=Animal.objects.all())
     entered_by = serializers.StringRelatedField()
-    location = serializers.StringRelatedField()
-    status = serializers.StringRelatedField()
+    location = serializers.SlugRelatedField(
+        slug_field="name",
+        queryset=Location.objects.all(),
+        required=False,
+    )
+    status = serializers.SlugRelatedField(
+        slug_field="name", queryset=Status.objects.all()
+    )
+    measurements = MeasurementInlineSerializer(many=True)
+
+    def create(self, validated_data):
+        measurements = validated_data.pop("measurements")
+        event = Event.objects.create(**validated_data)
+        for measurement in measurements:
+            _ = Measurement.objects.create(event=event, **measurement)
+        return event
 
     class Meta:
         model = Event
-        fields = ("animal", "date", "status", "location", "description", "entered_by")
+        fields = (
+            "animal",
+            "date",
+            "status",
+            "location",
+            "description",
+            "entered_by",
+            "measurements",
+        )

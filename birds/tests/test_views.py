@@ -840,12 +840,12 @@ class EventFormViewTests(TestCase):
         )
         event = self.animal.event_set.latest()
         self.assertEqual(
-            event.measurement_set.count(),
+            event.measurements.count(),
             1,
             "wrong number of measurements associated with the event",
         )
         self.assertEqual(
-            event.measurement_set.first().value,
+            event.measurements.first().value,
             20.0,
             "not the expected measurement value",
         )
@@ -892,9 +892,7 @@ class EventFormViewTests(TestCase):
         self.assertRedirects(response, reverse("birds:animal", args=[self.animal.uuid]))
         self.assertEqual(self.animal.event_set.count(), 1)
         self.assertEqual(self.animal.measurements().count(), 1)
-        self.assertEqual(
-            self.animal.event_set.first().measurement_set.first().value, 20.0
-        )
+        self.assertEqual(self.animal.event_set.first().measurements.first().value, 20.0)
 
     def test_remove_measurement_from_event(self):
         event = self.animal.event_set.first()

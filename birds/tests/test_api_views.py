@@ -3,6 +3,7 @@
 import datetime
 import warnings
 
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -17,6 +18,7 @@ from birds.models import (
 )
 
 warnings.filterwarnings("error")
+User = get_user_model()
 
 
 class ApiViewTests(APITestCase):
@@ -46,6 +48,7 @@ class ApiViewTests(APITestCase):
         self.all_birds = [*self.children, self.sire, self.dam]
         self.uuids = {str(bird.uuid) for bird in self.all_birds}
         self.n_birds = len(self.children) + 2
+        self.user = User.objects.create_user(username="testuser1", password="testpass")
 
     def test_bird_list_view(self):
         response = self.client.get(reverse("birds:animals_api"))
@@ -123,6 +126,70 @@ class ApiViewTests(APITestCase):
                     "location": self.location.name,
                 },
             )
+
+    def test_event_list_with_animal(self):
+        response = self.client.get(
+            reverse("birds:events_api", args=[self.children[0].uuid])
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        ret = response.data[0]
+        self.assertDictEqual(
+            ret,
+            ret
+            | {
+                "date": str(self.birthday),
+                "status": self.event_type.name,
+                "location": self.location.name,
+            },
+        )
+
+    def test_event_list_with_measurements_view(self):
+        bird = self.sire
+        date = datetime.date.today()
+        value = 12.1
+        measure = Measure.objects.get(name="weight")
+        event = bird.add_measurements(
+            [(measure, value)], date=date, entered_by=self.user
+        )
+        response = self.client.get(reverse("birds:events_api"), data={"date": date})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        ret = response.data[0]["measurements"]
+        self.assertCountEqual(
+            ret, [{"measure": "weight", "value": value, "units": "g"}]
+        )
+
+    def test_create_event_requires_login(self):
+        response = self.client.post(
+            reverse("birds:events_api"),
+            {},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_create_event(self):
+        bird = self.sire
+        date = datetime.date.today()
+        value = 12.1
+        measure = Measure.objects.get(name="weight")
+        self.client.login(username="testuser1", password="testpass")
+        response = self.client.post(
+            reverse("birds:events_api"),
+            {
+                "animal": bird.uuid,
+                "date": date,
+                "status": "note",
+                "measurements": [
+                    {
+                        "measure": measure.name,
+                        "value": value,
+                    }
+                ],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
     def test_measurement_list_view(self):
         bird = self.children[0]

@@ -183,7 +183,9 @@ class Measurement(models.Model):
 
     id = models.AutoField(primary_key=True)
     type = models.ForeignKey("Measure", on_delete=models.CASCADE)
-    event = models.ForeignKey("Event", on_delete=models.CASCADE)
+    event = models.ForeignKey(
+        "Event", related_name="measurements", on_delete=models.CASCADE
+    )
     # different measures will require different degrees of precision, so we use
     # FloatField here instead of DecimalField.
     value = models.FloatField(help_text="the value of the measurement")
