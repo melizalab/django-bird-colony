@@ -3,12 +3,10 @@
 import datetime
 import warnings
 
-from django.contrib.auth import get_user_model
 from django.test import TestCase
-from django.urls import reverse
 
 from birds import models
-from birds.models import Animal, Event, Location, Measure, Measurement, Species, Status
+from birds.models import Animal, Location, Measure, Species
 from birds.serializers import (
     EventSerializer,
 )

@@ -66,7 +66,7 @@ from birds.serializers import (
     MeasurementSerializer,
     PedigreeRequestSerializer,
 )
-from birds.tools import tabulate_nests, tabulate_pairs
+from birds.tools import tabulate_pairs
 
 
 class LargeResultsSetPagination(LinkHeaderPagination):

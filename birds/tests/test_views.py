@@ -20,8 +20,8 @@ from birds.models import (
     NestCheck,
     Pairing,
     Sample,
-    SampleType,
     SampleLocation,
+    SampleType,
     Species,
     Status,
 )

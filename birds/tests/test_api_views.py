@@ -149,9 +149,7 @@ class ApiViewTests(APITestCase):
         date = datetime.date.today()
         value = 12.1
         measure = Measure.objects.get(name="weight")
-        event = bird.add_measurements(
-            [(measure, value)], date=date, entered_by=self.user
-        )
+        _ = bird.add_measurements([(measure, value)], date=date, entered_by=self.user)
         response = self.client.get(reverse("birds:events_api"), data={"date": date})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
