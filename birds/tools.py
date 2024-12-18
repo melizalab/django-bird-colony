@@ -2,9 +2,9 @@
 # -*- mode: python -*-
 """ Tools for classifying birds and computing summaries """
 import datetime
-from collections import Counter, defaultdict
+from collections import Counter
 
-from birds.models import ADULT_ANIMAL_NAME, Animal, Event, Location, Pairing
+from birds.models import Pairing
 
 
 def sort_and_group(qs, key):
@@ -19,93 +19,6 @@ def find_first(iterable, predicate):
     for item in iterable:
         if predicate(item):
             return item
-
-
-# old version of this function
-def tabulate_locations(since, until):
-    """Determines which animals are in which nests by date.
-
-    In principle, it would be best to do this by using the database to
-    generate a summary for day 0, then march through the subsequent days and
-    use new events to generate new summaries. However, in practice it's not
-    trivial to update this structure, so we're taking the lazy but probably
-    more inefficient route of querying the database for each day. Consider
-    the other option if it becomes too slow.
-
-    """
-    repdate = since
-    nests = Location.objects.filter(nest=True).order_by("name")
-    dates = []
-    data = {}
-    while repdate <= until:
-        locations = defaultdict(list)
-        alive = Animal.objects.existing(repdate)
-        qs = (
-            Event.objects.has_location()
-            .latest_by_animal()
-            .select_related("location", "animal")
-            .filter(date__lte=repdate, animal__in=alive)
-        )
-        for event in qs:
-            if event.location.nest:
-                locations[event.location].append(event.animal)
-        data[repdate] = locations
-        dates.append(repdate)
-        repdate += datetime.timedelta(days=1)
-    # pivot the structure while tabulating by age group to help the template engine
-    nest_data = []
-    for nest in nests:
-        days = []
-        for date in dates:
-            animals = data[date].get(nest, [])
-            locdata = {"animals": defaultdict(list), "counts": Counter()}
-            for animal in animals:
-                age_group = animal.age_group(date)
-                locdata["animals"][age_group].append(animal)
-                if age_group != ADULT_ANIMAL_NAME:
-                    locdata["counts"][age_group] += 1
-            days.append(locdata)
-        nest_data.append({"location": nest, "days": days})
-    return dates, nest_data
-
-
-def tabulate_nests(since: datetime.date, until: datetime.date):
-    """Determines which animals are in which nests by date.
-
-    In principle, it would be best to do this by using the database to generate
-    a summary for day 0, then march through the subsequent days and use new
-    events to generate new summaries. However, in practice it's not trivial to
-    update this structure, so we're taking the lazy but probably more
-    inefficient route of querying the database for each day and each nest.
-    Consider the other option if it becomes too slow.
-
-    """
-    if since > until:
-        raise ValueError("until must be after since")
-    n_days = (until - since).days + 1
-    dates = [since + datetime.timedelta(days=x) for x in range(n_days)]
-    data = []
-    for nest in Location.objects.filter(nest=True).order_by("name"):
-        days = []
-        for date in dates:
-            by_group = defaultdict(list)
-            counts = Counter()
-            birds = (
-                nest.birds(date)
-                .existing(date)
-                .with_dates(date)
-                .select_related("species", "band_color")
-                .prefetch_related("species__age_set")
-                .order_by("band_color", "band_number")
-            )
-            for bird in birds:
-                age_group = bird.age_group()
-                by_group[age_group].append(bird)
-                if age_group is not None and age_group != ADULT_ANIMAL_NAME:
-                    counts[age_group] += 1
-            days.append({"animals": dict(by_group), "counts": dict(counts)})
-        data.append({"location": nest, "days": days})
-    return dates, data
 
 
 def tabulate_pairs(
