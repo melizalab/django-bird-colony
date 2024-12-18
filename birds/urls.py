@@ -3,7 +3,7 @@
 from django.contrib.auth.decorators import login_required
 from django.urls import path
 
-from birds import views
+from birds import api_views, views
 
 app_name = "birds"
 urlpatterns = [
@@ -125,25 +125,29 @@ urlpatterns = [
         "breeding-check/", login_required(views.breeding_check), name="breeding-check"
     ),
     # api
-    path("api/info/", views.api_info, name="api_info"),
-    path("api/animals/", views.APIAnimalsList.as_view(), name="animals_api"),
+    path("api/info/", api_views.info, name="api_info"),
+    path("api/animals/", api_views.AnimalsList.as_view(), name="animals_api"),
     path(
         "api/animals/<uuid:pk>/",
-        views.api_animal_detail,
+        api_views.animal_detail,
         name="animal_api",
     ),
     path(
         "api/animals/<uuid:pk>/children/",
-        views.APIAnimalChildList.as_view(),
+        api_views.AnimalChildList.as_view(),
         name="children_api",
     ),
-    path("api/animals/<uuid:animal>/events/", views.api_event_list, name="events_api"),
-    path("api/events/", views.api_event_list, name="events_api"),
-    path("api/events/<int:pk>/", views.api_event_detail, name="event_api"),
+    path(
+        "api/animals/<uuid:animal>/events/",
+        api_views.EventList.as_view(),
+        name="events_api",
+    ),
+    path("api/events/", api_views.EventList.as_view(), name="events_api"),
+    path("api/events/<int:pk>/", api_views.event_detail, name="event_api"),
     path(
         "api/measurements/",
-        views.APIMeasurementsList.as_view(),
+        api_views.MeasurementsList.as_view(),
         name="measurements_api",
     ),
-    path("api/pedigree/", views.APIAnimalPedigree.as_view(), name="pedigree_api"),
+    path("api/pedigree/", api_views.AnimalPedigree.as_view(), name="pedigree_api"),
 ]

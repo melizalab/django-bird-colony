@@ -8,7 +8,7 @@ from typing import Optional
 
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
-from django.db.models import Count, F, Q
+from django.db.models import Count, F
 from django.db.utils import IntegrityError
 from django.forms import ValidationError, formset_factory
 from django.http import Http404, HttpResponseRedirect
@@ -18,13 +18,8 @@ from django.utils import dateparse
 from django.utils.timezone import make_aware
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_http_methods
-from django_filters.rest_framework import DjangoFilterBackend
-from drf_link_header_pagination import LinkHeaderPagination
-from rest_framework import generics, status
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
 
-from birds import __version__, api_version
+from birds import __version__
 from birds.filters import (
     AnimalFilter,
     EventFilter,
@@ -58,21 +53,7 @@ from birds.models import (
     Sample,
     SampleType,
 )
-from birds.serializers import (
-    AnimalDetailSerializer,
-    AnimalPedigreeSerializer,
-    AnimalSerializer,
-    EventSerializer,
-    MeasurementSerializer,
-    PedigreeRequestSerializer,
-)
 from birds.tools import tabulate_pairs
-
-
-class LargeResultsSetPagination(LinkHeaderPagination):
-    page_size = 1000
-    page_size_query_param = "page_size"
-    max_page_size = 10000
 
 
 @require_http_methods(["GET"])
@@ -996,129 +977,3 @@ def event_summary(request, year: int, month: int):
             "bird_counts": counts,
         },
     )
-
-
-### API
-@api_view(["GET"])
-def api_info(request, format=None):
-    return Response(
-        {
-            "name": "django-bird-colony",
-            "version": __version__,
-            "api_version": api_version,
-        }
-    )
-
-
-class APIAnimalsList(generics.ListAPIView):
-    queryset = (
-        Animal.objects.with_dates()
-        .select_related("reserved_by", "species", "band_color")
-        .prefetch_related("parents")
-        .order_by("band_color", "band_number")
-    )
-    serializer_class = AnimalSerializer
-    filter_backends = (DjangoFilterBackend,)
-    filterset_class = AnimalFilter
-
-
-class APIAnimalChildList(APIAnimalsList):
-    """List all the children of an animal"""
-
-    def get_queryset(self):
-        animal = get_object_or_404(Animal, uuid=self.kwargs["pk"])
-        return (
-            animal.children.with_dates()
-            .select_related("reserved_by", "species", "band_color")
-            .prefetch_related("parents")
-            .order_by("band_color", "band_number")
-        )
-
-
-@api_view(["GET"])
-def api_animal_detail(request, pk: str, format=None):
-    animal = get_object_or_404(Animal, pk=pk)
-    serializer = AnimalDetailSerializer(animal)
-    return Response(serializer.data)
-
-
-@api_view(["GET", "POST"])
-def api_event_list(request, animal: Optional[str] = None, format=None):
-    if animal:
-        animal = get_object_or_404(Animal, pk=animal)
-    if request.method == "GET":
-        qs = Event.objects.with_related()
-        if animal:
-            qs = qs.filter(animal=animal)
-        f = EventFilter(request.GET, queryset=qs)
-        serializer = EventSerializer(f.qs, many=True)
-        return Response(serializer.data)
-    elif request.method == "POST":
-        if not request.user.is_authenticated:
-            return Response(
-                {"detail": "login required to create events"},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
-        serializer = EventSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save(entered_by=request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(["GET", "PATCH"])
-def api_event_detail(request, pk: int, format=None):
-    event = Event.objects.get(pk=pk)
-    if request.method == "GET":
-        serializer = EventSerializer(event)
-        return Response(serializer.data)
-    elif request.method == "PATCH":
-        if not request.user.is_authenticated:
-            return Response(
-                {"detail": "login required to update events"},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
-        serializer = EventSerializer(event, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class APIMeasurementsList(generics.ListAPIView):
-    queryset = Measurement.objects.all()
-    serializer_class = MeasurementSerializer
-    filter_backends = (DjangoFilterBackend,)
-    filterset_class = MeasurementFilter
-
-
-class APIAnimalPedigree(generics.ListAPIView):
-    """A list of animals and their parents.
-
-    If query param restrict is False, includes all animals, not just
-    the ones useful for constructing a pedigree.
-    """
-
-    serializer_class = AnimalPedigreeSerializer
-    filter_backends = (DjangoFilterBackend,)
-    filterset_class = AnimalFilter
-    pagination_class = LargeResultsSetPagination
-
-    def get_queryset(self):
-        from django.db.models import Count
-
-        queryset = (
-            Animal.objects.with_dates()
-            .select_related("reserved_by", "species", "band_color", "plumage")
-            .prefetch_related("parents__species")
-            .prefetch_related("parents__band_color")
-            .order_by("band_color", "band_number")
-        )
-        request_parsed = PedigreeRequestSerializer(data=self.request.query_params)
-        if request_parsed.is_valid() and request_parsed.data["restrict"]:
-            queryset = queryset.annotate(nchildren=Count("children")).filter(
-                Q(alive__gt=0) | Q(nchildren__gt=0)
-            )
-        return queryset
