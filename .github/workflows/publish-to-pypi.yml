@@ -13,9 +13,9 @@ jobs:
         id: set_version
         run: |
           if [[ ! "${{ github.ref }}" =~ ^refs/tags/ ]]; then
-            BUILD_NUM=$(echo ${{ github.sha }} | cut -c1-8)
+            BUILD_NUM=${{ github.run_number }}
             VERSION=$(grep '^version = ' pyproject.toml | sed -E 's/version = "(.*)"/\1/')
-            sed -i -e "s/^version = \"${VERSION}\"/version = \"${VERSION}+dev${BUILD_NUM}\"/" pyproject.toml
+            sed -i -e "s/^version = \"${VERSION}\"/version = \"${VERSION}.dev${BUILD_NUM}\"/" pyproject.toml
           fi
       - name: Install uv
         uses: astral-sh/setup-uv@v4
