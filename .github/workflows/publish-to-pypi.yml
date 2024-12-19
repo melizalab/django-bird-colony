@@ -14,10 +14,8 @@ jobs:
         run: |
           if [[ ! "${{ github.ref }}" =~ ^refs/tags/ ]]; then
             BUILD_NUM=$(echo ${{ github.sha }} | cut -c1-8)
-            # Get current version from __init__.py
             VERSION=$(grep '^version = ' pyproject.toml | sed -E 's/version = "(.*)"/\1/')
-            # echo "HATCH_VERSION=${VERSION}+dev${BUILD_NUM}" >> $GITHUB_ENV
-            sed -i -e "s/^version = \"$VERSION\"/version = \"$HATCH_VERSION\"/g" pyproject.toml
+            sed -i -e "s/^version = \"${VERSION}\"/version = \"$${VERSION}+dev${BUILD_NUM}\"/" pyproject.toml
           fi
       - name: Install uv
         uses: astral-sh/setup-uv@v4
