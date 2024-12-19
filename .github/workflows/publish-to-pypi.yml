@@ -9,6 +9,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - name: Set version suffix for TestPyPI
+        id: set_version
+        run: |
+          if [[ ! "${{ github.ref }}" =~ ^refs/tags/ ]]; then
+            BUILD_NUM=$(echo ${{ github.sha }} | cut -c1-8)
+            # Get current version from __init__.py
+            VERSION=$(grep -o '".*"' birds/__init__.py | sed 's/"//g')
+            echo "HATCH_VERSION=${VERSION}+dev${BUILD_NUM}" >> $GITHUB_ENV
+          fi
       - name: Install uv
         uses: astral-sh/setup-uv@v4
         with:
@@ -16,6 +25,8 @@ jobs:
           version: "latest"
       - name: Build wheels
         run: uv build
+        env:
+          HATCH_BUILD_HOOK_FORCE_VERSION: ${{ env.HATCH_VERSION }}
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -106,31 +117,8 @@ jobs:
       with:
         name: python-package-distributions
         path: dist/
-    - name: Add build number to filenames
-      if: "!startsWith(github.ref, 'refs/tags/')"
-      run: |
-        cd dist
-        BUILD_NUM=$(echo ${{ github.sha }} | cut -c1-8)
-        for file in *; do
-          # Extract the version number from the filename
-          if [[ $file =~ -([0-9]+\.[0-9]+\.[0-9]+)([.-].*)$ ]]; then
-            VERSION="${BASH_REMATCH[1]}"
-            REST="${BASH_REMATCH[2]}"
-            BASENAME="${file%-$VERSION*}"
-            # Create new filename with build number
-            NEW_NAME="${BASENAME}-${VERSION}+dev${BUILD_NUM}${REST}"
-            mv "$file" "$NEW_NAME"
-          fi
-        done
-        # List files for debugging
-        echo "Files to be uploaded:"
-        ls -la
     - name: Publish distribution 📦 to TestPyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         repository-url: https://test.pypi.org/legacy/
         verbose: true
-      env:
-        # Add these environment variables for more detailed output
-        PYTHONVERBOSE: 1
-        TWINE_VERBOSE: 1
