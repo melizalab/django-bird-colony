@@ -16,7 +16,7 @@ jobs:
             BUILD_NUM=$(echo ${{ github.sha }} | cut -c1-8)
             # Get current version from __init__.py
             VERSION=$(grep '^version = ' pyproject.toml | sed -E 's/version = "(.*)"/\1/')
-            Echo "HATCH_VERSION=${VERSION}+dev${BUILD_NUM}" >> $GITHUB_ENV
+            echo "HATCH_VERSION=${VERSION}+dev${BUILD_NUM}" >> $GITHUB_ENV
           fi
       - name: Install uv
         uses: astral-sh/setup-uv@v4
