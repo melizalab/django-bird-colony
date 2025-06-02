@@ -337,9 +337,9 @@ class AnimalQuerySet(models.QuerySet):
     def with_dates(self, on_date: Optional[datetime.date] = None):
         """Annotate the birds with important dates (born, died, etc)
 
-        Warning: use this before filtering birds on related events (e.g.
-        with alive(), hatched(), or existed_on()), as the annotations depend on having
-        all the events.
+        This method is called by filters that need to use all related events (e.g. with
+        alive(), hatched(), or existing()). Only events on or prior to `on_date` are
+        taken into consideration.
 
         """
         if on_date is None:
@@ -353,6 +353,7 @@ class AnimalQuerySet(models.QuerySet):
                 "event__date", filter=Q(event__status__name="hatched") & q_date
             ),
             died_on=Max("event__date", filter=Q(event__status__removes__isnull=False) & q_date),
+            lost_on=Max("event__date", filter=Q(event__status__removes="unexpected") & q_date),
             acquired_on=Min("event__date", filter=Q(event__status__adds__isnull=False) & q_date),
             alive=Case(
                 When(died_on__isnull=False, then=False),
@@ -367,6 +368,7 @@ class AnimalQuerySet(models.QuerySet):
         )
 
     def with_location(self, on_date: Optional[datetime.date] = None):
+        """Annotate the birds with their location as of `on_date`"""
         refdate = on_date or datetime.date.today()
         # return self.prefetch_related(
         #     Prefetch(
@@ -419,11 +421,15 @@ class AnimalQuerySet(models.QuerySet):
         return self.with_dates(on_date).filter(alive=True)
 
     def existing(self, on_date: Optional[datetime.date] = None):
-        """Only birds that have not been removed"""
+        """Only birds/eggs that have not been removed"""
         return self.with_dates(on_date).filter(
             first_event_on__isnull=False, died_on__isnull=True
         )
 
+    def lost(self, on_date: Optional[datetime.date] = None):
+        """Only birds that were spontaneously lost due to unexpected causes"""
+        return self.with_dates(on_date).filter(born_on__isnull=False, lost_on__isnull=False)
+    
     def ancestors_of(self, animal, generation: int = 1):
         """All ancestors of animal at specified generation"""
         key = "__".join(("children",) * generation)

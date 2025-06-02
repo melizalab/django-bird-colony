@@ -200,6 +200,7 @@ class AnimalModelTests(TestCase):
         )
 
         self.assertEqual(bird.acquisition_event(), event_born)
+        # this status is considered an unexpected removal in the starter kit
         self.assertIs(bird.alive(), False)
         self.assertIs(bird.alive(on_date=died_on - dt_days(1)), True)
         self.assertIs(bird.alive(on_date=born_on - dt_days(1)), False)
@@ -213,6 +214,7 @@ class AnimalModelTests(TestCase):
         self.assertEqual(annotated_bird.born_on, born_on)
         self.assertEqual(annotated_bird.acquired_on, born_on)
         self.assertEqual(annotated_bird.died_on, died_on)
+        self.assertEqual(annotated_bird.lost_on, died_on)
         self.assertIs(annotated_bird.alive, False)
         self.assertEqual(annotated_bird.age, died_on - born_on)
 
