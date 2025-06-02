@@ -22,12 +22,11 @@ from django.db.models import (
     OuterRef,
     Q,
     Subquery,
-    Sum,
     Value,
     When,
     Window,
 )
-from django.db.models.functions import Cast, Coalesce, Now, RowNumber, Trunc, TruncDay
+from django.db.models.functions import Coalesce, Now, RowNumber, Trunc, TruncDay
 from django.urls import reverse
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
@@ -118,19 +117,38 @@ class Plumage(models.Model):
 class Status(models.Model):
     """Represents a type of event in the life of an animal.
 
-    Event types with the `adds` field set to True are for events that add a
-    living animal to the colony (e.g., hatching, transferring in). Event types
-    with the `removes` field set to True are for events that remove the animal
-    from the colony. This allows the database to determine the dates when
-    animals were alive.
+    Event types with the `adds` field set to True are for events that add a living
+    animal to the colony (e.g., hatching, transferring in). The `removes` field is an
+    enum that indicates whether the event removes the animal from the colony and whether
+    it was expected or unexpected. This allows the database to determine the dates when
+    animals were alive and distinguish between different kinds of removal events.
 
     """
+    class AdditionType(models.TextChoices):
+        INTERNAL = ("internal", "Added from within the colony")
+        EXTERNAL = ("external", "Added from outside the colony")
+        __empty__ = "Not an addition"
+
+    class RemovalType(models.TextChoices):
+        EXPECTED = ("expected", "Expected death or removal")
+        UNEXPECTED = ("unexpected", "Unexpected death")
+        __empty__ = "Not a removal"
 
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=16, unique=True)
-    adds = models.BooleanField(default=False, help_text="select for acquisition events")
-    removes = models.BooleanField(
-        default=False, help_text="select for loss/death/removal events"
+    adds = models.CharField(
+        max_length=10,
+        choices=AdditionType.choices,
+        null=True,
+        blank=True,
+        help_text="type of addition event, or None for events that don't add an animal"
+    )
+    removes = models.CharField(
+        max_length=10,
+        choices=RemovalType.choices,
+        null=True,
+        blank=True,
+        help_text="type of removal event, or None for events that don't remove an animal"
     )
     description = models.TextField()
 
@@ -329,13 +347,13 @@ class AnimalQuerySet(models.QuerySet):
         q_date = Q(event__date__lte=on_date)
         return self.annotate(
             first_event_on=Min(
-                "event__date", filter=Q(event__status__removes=False) & q_date
+                "event__date", filter=Q(event__status__removes=None) & q_date
             ),
             born_on=Min(
                 "event__date", filter=Q(event__status__name="hatched") & q_date
             ),
-            died_on=Max("event__date", filter=Q(event__status__removes=True) & q_date),
-            acquired_on=Min("event__date", filter=Q(event__status__adds=True) & q_date),
+            died_on=Max("event__date", filter=Q(event__status__removes__isnull=False) & q_date),
+            acquired_on=Min("event__date", filter=Q(event__status__adds__isnull=False) & q_date),
             alive=Case(
                 When(died_on__isnull=False, then=False),
                 When(acquired_on__isnull=True, then=False),
@@ -518,7 +536,7 @@ class Animal(models.Model):
         Returns None if no acquisition events.
 
         """
-        return self.event_set.filter(status__adds=True).last()
+        return self.event_set.filter(status__adds__isnull=False).last()
 
     def age(self, on_date: Optional[datetime.date] = None):
         """Returns age (as of date).
@@ -530,7 +548,7 @@ class Animal(models.Model):
         refdate = on_date or datetime.date.today()
         events = self.event_set.filter(date__lte=refdate).aggregate(
             born_on=Min("date", filter=Q(status=get_birth_event_type())),
-            died_on=Max("date", filter=Q(status__removes=True)),
+            died_on=Max("date", filter=Q(status__removes__isnull=False)),
         )
         if events["born_on"] is None:
             return None
@@ -545,11 +563,17 @@ class Animal(models.Model):
         This method is masked if with_dates() is used on the queryset.
         """
         refdate = on_date or datetime.date.today()
-        is_alive = self.event_set.filter(date__lte=refdate).aggregate(
-            added=Sum(Cast("status__adds", models.IntegerField())),
-            removed=Sum(Cast("status__removes", models.IntegerField())),
+        # is_alive = self.event_set.filter(date__lte=refdate).aggregate(
+        #     # FIXME for add/remove enum
+        #     added=Sum(Cast("status__adds", models.IntegerField())),
+        #     removed=Sum(Cast("status__removes", models.IntegerField())),
+        # )
+        # return (is_alive["added"] or 0) > (is_alive["removed"] or 0)
+        events = self.event_set.filter(date__lte=refdate).aggregate(
+            added_on=Min("date", filter=Q(status__adds__isnull=False)),
+            died_on=Max("date", filter=Q(status__removes__isnull=False)),
         )
-        return (is_alive["added"] or 0) > (is_alive["removed"] or 0)
+        return events["added_on"] is not None and events["died_on"] is None
 
     def age_group(self, on_date: Optional[datetime.date] = None):
         """Returns the age group of the animal by joining on the Age model.
@@ -599,7 +623,7 @@ class Animal(models.Model):
         if days is None:
             pass
         elif self.event_set.filter(
-            Q(status__adds__gt=0) | Q(status__removes__gt=0)
+            Q(status__adds__isnull=False) | Q(status__removes__isnull=False)
         ).exists():
             pass
         else:

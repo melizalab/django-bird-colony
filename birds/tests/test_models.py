@@ -149,7 +149,7 @@ class AnimalModelTests(TestCase):
         species = Species.objects.get(pk=1)
         bird = Animal.objects.create(species=species)
         status = Status.objects.get(name="transferred in")
-        self.assertEqual(status.adds, 1)
+        self.assertIsNot(status.adds, None)
         acq_on = today() - dt_days(10)
         user = models.get_sentinel_user()
         event = Event.objects.create(
@@ -187,13 +187,13 @@ class AnimalModelTests(TestCase):
         bird = Animal.objects.create(species=species)
         user = models.get_sentinel_user()
         status_born = models.get_birth_event_type()
-        self.assertEqual(status_born.adds, 1)
+        self.assertIsNot(status_born.adds, None)
         born_on = today() - dt_days(10)
         event_born = Event.objects.create(
             animal=bird, status=status_born, date=born_on, entered_by=user
         )
         status_died = Status.objects.get(name="died")
-        self.assertEqual(status_died.removes, 1)
+        self.assertIsNot(status_died.removes, None)
         died_on = today() - dt_days(1)
         Event.objects.create(
             animal=bird, status=status_died, date=died_on, entered_by=user
@@ -231,7 +231,7 @@ class AnimalModelTests(TestCase):
         bird = Animal.objects.create(species=species)
         user = models.get_sentinel_user()
         status_born = models.get_birth_event_type()
-        self.assertEqual(status_born.adds, 1)
+        self.assertIsNot(status_born.adds, None)
         born_on = today() - dt_days(10)
         Event.objects.create(
             animal=bird, status=status_born, date=born_on, entered_by=user
@@ -246,7 +246,7 @@ class AnimalModelTests(TestCase):
         )
 
         status_died = Status.objects.get(name="died")
-        self.assertEqual(status_died.removes, 1)
+        self.assertIsNot(status_died.removes, None)
         died_on = today() - dt_days(1)
         Event.objects.create(
             animal=bird, status=status_died, date=died_on, entered_by=user
@@ -261,7 +261,7 @@ class AnimalModelTests(TestCase):
         egg = Animal.objects.create(species=species)
         user = models.get_sentinel_user()
         status_laid = models.get_unborn_creation_event_type()
-        self.assertEqual(status_laid.adds, 0)
+        self.assertIs(status_laid.adds, None)
         laid_on = today() - dt_days(10)
         Event.objects.create(
             animal=egg, status=status_laid, date=laid_on, entered_by=user

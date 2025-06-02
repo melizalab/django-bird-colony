@@ -252,7 +252,7 @@ class SexForm(forms.Form):
 
 
 class NewAnimalForm(forms.Form):
-    acq_status = forms.ModelChoiceField(queryset=Status.objects.filter(adds=True))
+    acq_status = forms.ModelChoiceField(queryset=Status.objects.filter(adds__isnull=False))
     acq_date = forms.DateField()
     sex = forms.ChoiceField(
         choices=Animal.Sex.choices, initial=Animal.Sex.UNKNOWN_SEX, required=True
