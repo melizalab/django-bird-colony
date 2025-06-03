@@ -5,24 +5,33 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('birds', '0013_auto_20220330_1214'),
+        ("birds", "0013_auto_20220330_1214"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='pairing',
-            options={'ordering': ['-began', '-ended']},
+            name="pairing",
+            options={"ordering": ["-began", "-ended"]},
         ),
         migrations.AlterField(
-            model_name='pairing',
-            name='dam',
-            field=models.ForeignKey(limit_choices_to={'sex': 'F'}, on_delete=django.db.models.deletion.CASCADE, related_name='+', to='birds.animal'),
+            model_name="pairing",
+            name="dam",
+            field=models.ForeignKey(
+                limit_choices_to={"sex": "F"},
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="+",
+                to="birds.animal",
+            ),
         ),
         migrations.AlterField(
-            model_name='pairing',
-            name='sire',
-            field=models.ForeignKey(limit_choices_to={'sex': 'M'}, on_delete=django.db.models.deletion.CASCADE, related_name='+', to='birds.animal'),
+            model_name="pairing",
+            name="sire",
+            field=models.ForeignKey(
+                limit_choices_to={"sex": "M"},
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="+",
+                to="birds.animal",
+            ),
         ),
     ]

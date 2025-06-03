@@ -6,16 +6,15 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('birds', '0001_initial'),
+        ("birds", "0001_initial"),
     ]
 
     operations = [
         migrations.DeleteModel(
-            name='DataCollection',
+            name="DataCollection",
         ),
         migrations.DeleteModel(
-            name='DataType',
+            name="DataType",
         ),
     ]

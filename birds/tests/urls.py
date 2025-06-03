@@ -9,4 +9,3 @@ urlpatterns = [
     re_path(r"^accounts/logout/$", authviews.LogoutView.as_view(), name="logout"),
     re_path(r"^accounts/api-auth/", include("rest_framework.urls")),
 ]
-

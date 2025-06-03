@@ -5,23 +5,26 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('birds', '0004_auto_20180322_1729'),
+        ("birds", "0004_auto_20180322_1729"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='event',
-            options={'get_latest_by': 'date', 'ordering': ['-date']},
+            name="event",
+            options={"get_latest_by": "date", "ordering": ["-date"]},
         ),
         migrations.RemoveField(
-            model_name='status',
-            name='category',
+            model_name="status",
+            name="category",
         ),
         migrations.AddField(
-            model_name='animal',
-            name='attributes',
-            field=django.contrib.postgres.fields.jsonb.JSONField(blank=True, default=dict, help_text='specify additional attributes for the animal'),
+            model_name="animal",
+            name="attributes",
+            field=django.contrib.postgres.fields.jsonb.JSONField(
+                blank=True,
+                default=dict,
+                help_text="specify additional attributes for the animal",
+            ),
         ),
     ]

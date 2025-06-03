@@ -4,42 +4,52 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('birds', '0017_pairing_ended_gt_began'),
+        ("birds", "0017_pairing_ended_gt_began"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='pairing',
-            options={'ordering': ['-began_on', '-ended_on']},
+            name="pairing",
+            options={"ordering": ["-began_on", "-ended_on"]},
         ),
         migrations.RemoveConstraint(
-            model_name='pairing',
-            name='ended_gt_began',
+            model_name="pairing",
+            name="ended_gt_began",
         ),
         migrations.RenameField(
-            model_name='pairing',
-            old_name='began',
-            new_name='began_on',
+            model_name="pairing",
+            old_name="began",
+            new_name="began_on",
         ),
         migrations.RenameField(
-            model_name='pairing',
-            old_name='ended',
-            new_name='ended_on',
+            model_name="pairing",
+            old_name="ended",
+            new_name="ended_on",
         ),
         migrations.AlterField(
-            model_name='animal',
-            name='sex',
-            field=models.CharField(choices=[('M', 'male'), ('F', 'female'), ('U', 'unknown')], default='U', max_length=2),
+            model_name="animal",
+            name="sex",
+            field=models.CharField(
+                choices=[("M", "male"), ("F", "female"), ("U", "unknown")],
+                default="U",
+                max_length=2,
+            ),
         ),
         migrations.AlterField(
-            model_name='nestcheck',
-            name='datetime',
+            model_name="nestcheck",
+            name="datetime",
             field=models.DateTimeField(),
         ),
         migrations.AddConstraint(
-            model_name='pairing',
-            constraint=models.CheckConstraint(check=models.Q(('ended_on__isnull', True), ('ended_on__gt', models.F('began_on')), _connector='OR'), name='ended_on_gt_began_on'),
+            model_name="pairing",
+            constraint=models.CheckConstraint(
+                check=models.Q(
+                    ("ended_on__isnull", True),
+                    ("ended_on__gt", models.F("began_on")),
+                    _connector="OR",
+                ),
+                name="ended_on_gt_began_on",
+            ),
         ),
     ]

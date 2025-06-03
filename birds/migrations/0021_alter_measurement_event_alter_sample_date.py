@@ -5,20 +5,27 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('birds', '0020_measure_alter_age_options_alter_color_options_and_more'),
+        ("birds", "0020_measure_alter_age_options_alter_color_options_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='measurement',
-            name='event',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='measurements', to='birds.event'),
+            model_name="measurement",
+            name="event",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="measurements",
+                to="birds.event",
+            ),
         ),
         migrations.AlterField(
-            model_name='sample',
-            name='date',
-            field=models.DateField(blank=True, help_text='date of sample collection (blank if not known)', null=True),
+            model_name="sample",
+            name="date",
+            field=models.DateField(
+                blank=True,
+                help_text="date of sample collection (blank if not known)",
+                null=True,
+            ),
         ),
     ]

@@ -5,27 +5,39 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('birds', '0007_auto_20190205_1534'),
+        ("birds", "0007_auto_20190205_1534"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Plumage',
+            name="Plumage",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=16, unique=True)),
-                ('description', models.TextField()),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=16, unique=True)),
+                ("description", models.TextField()),
             ],
             options={
-                'verbose_name_plural': 'plumage variants',
-                'ordering': ['name'],
+                "verbose_name_plural": "plumage variants",
+                "ordering": ["name"],
             },
         ),
         migrations.AddField(
-            model_name='animal',
-            name='plumage',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='birds.Plumage'),
+            model_name="animal",
+            name="plumage",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                to="birds.Plumage",
+            ),
         ),
     ]

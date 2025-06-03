@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # -*- mode: python -*-
-""" Tools for classifying birds and computing summaries """
+"""Tools for classifying birds and computing summaries"""
+
 import datetime
 from collections import Counter
 

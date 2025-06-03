@@ -6,15 +6,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('birds', '0006_auto_20190125_1453'),
+        ("birds", "0006_auto_20190125_1453"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='sample',
-            name='date',
-            field=models.DateField(blank=True, default=datetime.date.today, help_text='date of sample collection (blank if not known)', null=True),
+            model_name="sample",
+            name="date",
+            field=models.DateField(
+                blank=True,
+                default=datetime.date.today,
+                help_text="date of sample collection (blank if not known)",
+                null=True,
+            ),
         ),
     ]

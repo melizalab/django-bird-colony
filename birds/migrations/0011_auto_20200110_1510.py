@@ -4,19 +4,21 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('birds', '0010_location_nest'),
+        ("birds", "0010_location_nest"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='event',
-            options={'get_latest_by': ['date', 'created'], 'ordering': ['-date', '-created']},
+            name="event",
+            options={
+                "get_latest_by": ["date", "created"],
+                "ordering": ["-date", "-created"],
+            },
         ),
         migrations.AddField(
-            model_name='species',
-            name='incubation_days',
+            model_name="species",
+            name="incubation_days",
             field=models.PositiveIntegerField(null=True),
         ),
     ]

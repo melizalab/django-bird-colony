@@ -5,7 +5,7 @@ import json
 
 import requests as rq
 
-if __name__=="__main__":
+if __name__ == "__main__":
     import argparse
 
     p = argparse.ArgumentParser()
@@ -14,7 +14,7 @@ if __name__=="__main__":
 
     args = p.parse_args()
 
-    data = json.load(open(args.records, 'r'))
+    data = json.load(open(args.records, "r"))
     for record in data:
         print(record)
         r = rq.post(args.endpoint, json=record)

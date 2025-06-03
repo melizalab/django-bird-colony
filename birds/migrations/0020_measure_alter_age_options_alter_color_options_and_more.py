@@ -5,48 +5,79 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('birds', '0019_location_description'),
+        ("birds", "0019_location_description"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Measure',
+            name="Measure",
             fields=[
-                ('id', models.AutoField(primary_key=True, serialize=False)),
-                ('name', models.CharField(max_length=16, unique=True)),
-                ('unit_sym', models.CharField(help_text='SI symbol for the unit of the measure (including prefix)', max_length=8, verbose_name='SI unit symbol')),
-                ('unit_full', models.CharField(help_text='full SI name for the unit of the measure', max_length=16, verbose_name='SI unit name')),
-                ('format_str', models.CharField(default='{:.1f}', help_text='how to format values for this measure (use Python str.format() mini-language)', max_length=8, verbose_name='Format string')),
+                ("id", models.AutoField(primary_key=True, serialize=False)),
+                ("name", models.CharField(max_length=16, unique=True)),
+                (
+                    "unit_sym",
+                    models.CharField(
+                        help_text="SI symbol for the unit of the measure (including prefix)",
+                        max_length=8,
+                        verbose_name="SI unit symbol",
+                    ),
+                ),
+                (
+                    "unit_full",
+                    models.CharField(
+                        help_text="full SI name for the unit of the measure",
+                        max_length=16,
+                        verbose_name="SI unit name",
+                    ),
+                ),
+                (
+                    "format_str",
+                    models.CharField(
+                        default="{:.1f}",
+                        help_text="how to format values for this measure (use Python str.format() mini-language)",
+                        max_length=8,
+                        verbose_name="Format string",
+                    ),
+                ),
             ],
             options={
-                'verbose_name_plural': 'measurement types',
+                "verbose_name_plural": "measurement types",
             },
         ),
         migrations.AlterModelOptions(
-            name='age',
-            options={'verbose_name_plural': 'age ranges'},
+            name="age",
+            options={"verbose_name_plural": "age ranges"},
         ),
         migrations.AlterModelOptions(
-            name='color',
-            options={'ordering': ['name'], 'verbose_name_plural': 'band colors'},
+            name="color",
+            options={"ordering": ["name"], "verbose_name_plural": "band colors"},
         ),
         migrations.AlterUniqueTogether(
-            name='parent',
-            unique_together={('parent', 'child')},
+            name="parent",
+            unique_together={("parent", "child")},
         ),
         migrations.CreateModel(
-            name='Measurement',
+            name="Measurement",
             fields=[
-                ('id', models.AutoField(primary_key=True, serialize=False)),
-                ('value', models.FloatField(help_text='the value of the measurement')),
-                ('created', models.DateTimeField(auto_now_add=True)),
-                ('event', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='birds.event')),
-                ('type', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='birds.measure')),
+                ("id", models.AutoField(primary_key=True, serialize=False)),
+                ("value", models.FloatField(help_text="the value of the measurement")),
+                ("created", models.DateTimeField(auto_now_add=True)),
+                (
+                    "event",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, to="birds.event"
+                    ),
+                ),
+                (
+                    "type",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, to="birds.measure"
+                    ),
+                ),
             ],
             options={
-                'unique_together': {('type', 'event')},
+                "unique_together": {("type", "event")},
             },
         ),
     ]

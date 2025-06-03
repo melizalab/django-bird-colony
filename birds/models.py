@@ -125,6 +125,7 @@ class Status(models.Model):
     animals were alive and distinguish between different kinds of removal events.
 
     """
+
     class AdditionType(models.TextChoices):
         EGG = ("egg", "Unborn animal generated within the colony")
         BIRTH = ("birth", "Animal born within the colony")
@@ -143,14 +144,14 @@ class Status(models.Model):
         choices=AdditionType.choices,
         null=True,
         blank=True,
-        help_text="type of addition event, or None for events that don't add an animal"
+        help_text="type of addition event, or None for events that don't add an animal",
     )
     removes = models.CharField(
         max_length=10,
         choices=RemovalType.choices,
         null=True,
         blank=True,
-        help_text="type of removal event, or None for events that don't remove an animal"
+        help_text="type of removal event, or None for events that don't remove an animal",
     )
     description = models.TextField()
 
@@ -381,37 +382,63 @@ class AnimalQuerySet(models.QuerySet):
 
         return self.annotate(
             # Core dates needed for age calculation
-            born_on=Min("event__date", filter=Q(event__status__adds=Status.AdditionType.BIRTH) & q_date),
+            born_on=Min(
+                "event__date",
+                filter=Q(event__status__adds=Status.AdditionType.BIRTH) & q_date,
+            ),
             # the animal is no longer alive as far as this colony is concerned
-            died_on=Max("event__date", filter=Q(event__status__removes__isnull=False) & q_date),
-
+            died_on=Max(
+                "event__date", filter=Q(event__status__removes__isnull=False) & q_date
+            ),
             # Minimal flags needed for status determination
-            has_any_event=Exists(Event.objects.filter(animal=OuterRef('pk'), date__lte=on_date)),
-            has_acquisition_event=Exists(Event.objects.filter(animal=OuterRef('pk'), status__adds__in=(Status.AdditionType.BIRTH, Status.AdditionType.TRANSFER), date__lte=on_date)),
-            has_unexpected_removal=Exists(Event.objects.filter(animal=OuterRef('pk'), status__removes=Status.RemovalType.UNEXPECTED, date__lte=on_date)),
-
+            has_any_event=Exists(
+                Event.objects.filter(animal=OuterRef("pk"), date__lte=on_date)
+            ),
+            has_acquisition_event=Exists(
+                Event.objects.filter(
+                    animal=OuterRef("pk"),
+                    status__adds__in=(
+                        Status.AdditionType.BIRTH,
+                        Status.AdditionType.TRANSFER,
+                    ),
+                    date__lte=on_date,
+                )
+            ),
+            has_unexpected_removal=Exists(
+                Event.objects.filter(
+                    animal=OuterRef("pk"),
+                    status__removes=Status.RemovalType.UNEXPECTED,
+                    date__lte=on_date,
+                )
+            ),
             # Derived fields
             alive=Case(
                 When(died_on__isnull=False, then=False),
                 When(has_acquisition_event=False, then=False),
                 default=True,
             ),
-
             status=Case(
                 When(has_any_event=False, then=None),
-                When(Q(has_acquisition_event=False) & Q(has_unexpected_removal=False), then=Value(Animal.Status.GOOD_EGG)),
-                When(Q(has_acquisition_event=False) & Q(has_unexpected_removal=True), then=Value(Animal.Status.BAD_EGG)),
-                When(has_unexpected_removal=True, then=Value(Animal.Status.DIED_UNEXPTD)),
+                When(
+                    Q(has_acquisition_event=False) & Q(has_unexpected_removal=False),
+                    then=Value(Animal.Status.GOOD_EGG),
+                ),
+                When(
+                    Q(has_acquisition_event=False) & Q(has_unexpected_removal=True),
+                    then=Value(Animal.Status.BAD_EGG),
+                ),
+                When(
+                    has_unexpected_removal=True, then=Value(Animal.Status.DIED_UNEXPTD)
+                ),
                 When(died_on__isnull=False, then=Value(Animal.Status.DIED_EXPTD)),
                 default=Value(Animal.Status.ALIVE),
             ),
-
             age=Case(
                 When(born_on__isnull=True, then=None),
                 When(died_on__isnull=True, then=on_date - F("born_on")),
                 default=F("died_on") - F("born_on"),
             ),
-        )        
+        )
 
     def with_annotations(self, on_date: Optional[datetime.date] = None):
         return self.with_dates(on_date).with_location(on_date)
@@ -427,9 +454,7 @@ class AnimalQuerySet(models.QuerySet):
 
     def unhatched(self, on_date: Optional[datetime.date] = None):
         """Only birds that were not born in the colony (includes eggs)"""
-        return self.with_dates(on_date).filter(
-            has_any_event=True, born_on__isnull=True
-        )
+        return self.with_dates(on_date).filter(has_any_event=True, born_on__isnull=True)
 
     def alive(self, on_date: Optional[datetime.date] = None):
         """Only birds that are alive (added but not removed)"""
@@ -437,9 +462,7 @@ class AnimalQuerySet(models.QuerySet):
 
     def existing(self, on_date: Optional[datetime.date] = None):
         """Only birds/eggs that have not been removed"""
-        return self.with_dates(on_date).filter(
-            has_any_event=True, died_on__isnull=True
-        )
+        return self.with_dates(on_date).filter(has_any_event=True, died_on__isnull=True)
 
     def lost(self, on_date: Optional[datetime.date] = None):
         """Only birds/eggs that were spontaneously lost due to unexpected causes"""
@@ -490,12 +513,12 @@ class Animal(models.Model):
 
     class Status(models.TextChoices):
         """Enumeration of statuses an animal can have (inferred)"""
+
         ALIVE = "alive", _("alive")
         GOOD_EGG = "egg", _("unhatched egg")
         BAD_EGG = "bad egg", _("infertile egg")
         DIED_EXPTD = "dead", _("dead (expected)")
         DIED_UNEXPTD = "lost", _("dead (unexpected)")
-
 
     species = models.ForeignKey("Species", on_delete=models.PROTECT)
     sex = models.CharField(max_length=2, choices=Sex.choices, default=Sex.UNKNOWN_SEX)
@@ -566,7 +589,9 @@ class Animal(models.Model):
         events, returns the most recent one.
 
         """
-        return self.event_set.filter(status__adds__in=(Status.AdditionType.BIRTH, Status.AdditionType.TRANSFER)).last()
+        return self.event_set.filter(
+            status__adds__in=(Status.AdditionType.BIRTH, Status.AdditionType.TRANSFER)
+        ).last()
 
     def removal_event(self) -> Optional["Event"]:
         """Returns event when bird was removed/died/etc, or None
@@ -609,7 +634,7 @@ class Animal(models.Model):
             return groups[0].name
         except IndexError:
             pass
-    
+
     def expected_hatch(self):
         """For eggs, expected hatch date. None if not an egg, lost, already
         hatched, or incubation time is not known.
@@ -617,14 +642,14 @@ class Animal(models.Model):
         """
         days = self.species.incubation_days
         if days is None:
-            return         # incubation time not known
+            return  # incubation time not known
         evt_laid = self.event_set.filter(status__adds=Status.AdditionType.EGG)
         if not evt_laid.exists():
-            return         # no egg laid event
+            return  # no egg laid event
         if self.event_set.filter(
             Q(status__adds=Status.AdditionType.BIRTH) | Q(status__removes__isnull=False)
         ).exists():
-            return        # already hatched or removed
+            return  # already hatched or removed
 
         return evt_laid.earliest().date + datetime.timedelta(days=days)
 
@@ -657,7 +682,10 @@ class Animal(models.Model):
             born_on=Min(
                 "date",
                 filter=Q(
-                    status__adds__in=(Status.AdditionType.BIRTH, Status.AdditionType.EGG)
+                    status__adds__in=(
+                        Status.AdditionType.BIRTH,
+                        Status.AdditionType.EGG,
+                    )
                 ),
             )
         )
@@ -1043,7 +1071,11 @@ class Pairing(models.Model):
         if self.ended_on is not None:
             d_query &= Q(laid_on__lte=self.ended_on)
         qs = Animal.objects.filter(parents=self.sire).filter(parents=self.dam)
-        return qs.annotate(laid_on=Min("event__date", filter=Q(event__status__adds=Status.AdditionType.EGG))).filter(d_query)
+        return qs.annotate(
+            laid_on=Min(
+                "event__date", filter=Q(event__status__adds=Status.AdditionType.EGG)
+            )
+        ).filter(d_query)
 
     def events(self):
         """All events for the pair and their progeny during the pairing"""

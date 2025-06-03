@@ -37,7 +37,13 @@ class EventAdmin(admin.ModelAdmin):
     date_hierarchy = "date"
     fields = ("animal", "status", "location", "description", "date", "entered_by")
     list_display = ("animal", "date", "status", "location", "description", "entered_by")
-    list_filter = ("entered_by", "status", "status__adds", "status__removes", "location")
+    list_filter = (
+        "entered_by",
+        "status",
+        "status__adds",
+        "status__removes",
+        "location",
+    )
     search_fields = ("description",)
     inlines = (MeasurementInline,)
 

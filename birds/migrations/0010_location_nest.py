@@ -4,15 +4,16 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('birds', '0009_remove_age_max_days'),
+        ("birds", "0009_remove_age_max_days"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='location',
-            name='nest',
-            field=models.BooleanField(default=False, help_text='select for locations used for breeding'),
+            model_name="location",
+            name="nest",
+            field=models.BooleanField(
+                default=False, help_text="select for locations used for breeding"
+            ),
         ),
     ]

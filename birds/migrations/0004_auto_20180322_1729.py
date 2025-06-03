@@ -6,19 +6,24 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('birds', '0003_auto_20180322_1617'),
+        ("birds", "0003_auto_20180322_1617"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='status',
-            name='count',
+            model_name="status",
+            name="count",
         ),
         migrations.AlterField(
-            model_name='status',
-            name='category',
-            field=models.CharField(blank=True, choices=[('B', 'B'), ('C', 'C'), ('D', 'D'), ('E', 'E')], help_text='category of animal in protocol', max_length=2, null=True),
+            model_name="status",
+            name="category",
+            field=models.CharField(
+                blank=True,
+                choices=[("B", "B"), ("C", "C"), ("D", "D"), ("E", "E")],
+                help_text="category of animal in protocol",
+                max_length=2,
+                null=True,
+            ),
         ),
     ]

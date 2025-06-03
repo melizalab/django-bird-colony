@@ -14,26 +14,33 @@ def set_booleans(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('birds', '0002_auto_20180130_1706'),
+        ("birds", "0002_auto_20180130_1706"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='status',
-            name='adds',
-            field=models.BooleanField(default=False, help_text='select for acquisition events'),
+            model_name="status",
+            name="adds",
+            field=models.BooleanField(
+                default=False, help_text="select for acquisition events"
+            ),
         ),
         migrations.AddField(
-            model_name='status',
-            name='removes',
-            field=models.BooleanField(default=False, help_text='select for loss/death/removal events'),
+            model_name="status",
+            name="removes",
+            field=models.BooleanField(
+                default=False, help_text="select for loss/death/removal events"
+            ),
         ),
         migrations.AlterField(
-            model_name='status',
-            name='count',
-            field=models.SmallIntegerField(choices=[(0, '0'), (-1, '-1'), (1, '+1')], default=0, help_text='1: animal acquired; -1: animal lost/died/removed; 0: no change'),
+            model_name="status",
+            name="count",
+            field=models.SmallIntegerField(
+                choices=[(0, "0"), (-1, "-1"), (1, "+1")],
+                default=0,
+                help_text="1: animal acquired; -1: animal lost/died/removed; 0: no change",
+            ),
         ),
-        migrations.RunPython(set_booleans)
+        migrations.RunPython(set_booleans),
     ]

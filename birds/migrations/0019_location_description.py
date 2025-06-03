@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('birds', '0018_alter_pairing_options_remove_pairing_ended_gt_began_and_more'),
+        ("birds", "0018_alter_pairing_options_remove_pairing_ended_gt_began_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='location',
-            name='description',
-            field=models.TextField(default=''),
+            model_name="location",
+            name="description",
+            field=models.TextField(default=""),
         ),
     ]
