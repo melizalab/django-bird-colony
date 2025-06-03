@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # -*- mode: python -*-
 import datetime
 
@@ -43,7 +42,7 @@ def dt_days(days: int) -> datetime.timedelta:
 
 
 class AnimalModelTests(TestCase):
-    fixtures = ["bird_colony_starter_kit"]
+    fixtures = ("bird_colony_starter_kit",)
 
     def test_create_bird_with_event(self):
         species = Species.objects.get(pk=1)
@@ -526,7 +525,7 @@ class AnimalModelTests(TestCase):
 
 
 class ParentModelTests(TestCase):
-    fixtures = ["bird_colony_starter_kit"]
+    fixtures = ("bird_colony_starter_kit",)
 
     def test_bird_parents(self):
         species = Species.objects.get(pk=1)
@@ -695,7 +694,7 @@ class ParentModelTests(TestCase):
 
 
 class EventModelTests(TestCase):
-    fixtures = ["bird_colony_starter_kit"]
+    fixtures = ("bird_colony_starter_kit",)
 
     def test_age_at_event_time(self):
         species = Species.objects.get(pk=1)
@@ -819,7 +818,7 @@ class EventModelTests(TestCase):
 
 
 class PairingModelTests(TestCase):
-    fixtures = ["bird_colony_starter_kit"]
+    fixtures = ("bird_colony_starter_kit",)
 
     @classmethod
     def setUpTestData(cls):
@@ -1465,7 +1464,7 @@ class PairingModelTests(TestCase):
 
 
 class LocationModelTests(TestCase):
-    fixtures = ["bird_colony_starter_kit"]
+    fixtures = ("bird_colony_starter_kit",)
 
     def test_location_birds(self):
         location = Location.objects.get(pk=2)
@@ -1596,7 +1595,7 @@ class LocationModelTests(TestCase):
 
 
 class MeasurementModelTests(TestCase):
-    fixtures = ["bird_colony_starter_kit"]
+    fixtures = ("bird_colony_starter_kit",)
 
     def test_no_duplicate_measurements(self):
         species = Species.objects.get(pk=1)

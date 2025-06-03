@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # -*- mode: python -*-
 
 import json
@@ -14,7 +13,7 @@ if __name__ == "__main__":
 
     args = p.parse_args()
 
-    data = json.load(open(args.records, "r"))
+    data = json.load(open(args.records))
     for record in data:
         print(record)
         r = rq.post(args.endpoint, json=record)

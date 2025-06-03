@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # -*- mode: python -*-
 from django import template
 from django.utils.html import format_html, format_html_join
@@ -10,7 +9,7 @@ register = template.Library()
 def ageorblank(value):
     try:
         days = value.days
-        return "{}y {:3}d".format(days // 365, days % 365)
+        return f"{days // 365}y {days % 365:3}d"
     except (TypeError, AttributeError):
         return ""
 
@@ -19,7 +18,7 @@ def ageorblank(value):
 def agestr(value):
     try:
         days = value.days
-        return "{}y {:3}d".format(days // 365, days % 365)
+        return f"{days // 365}y {days % 365:3}d"
     except (TypeError, AttributeError):
         return "unknown"
 
@@ -38,7 +37,7 @@ def join_and(value):
 
     # join all but the last element
     all_but_last = ", ".join(value[:-1])
-    return "%s, and %s" % (all_but_last, value[-1])
+    return f"{all_but_last}, and {value[-1]}"
 
 
 @register.filter

@@ -1,10 +1,8 @@
-# -*- coding: utf-8 -*-
 # -*- mode: python -*-
 import calendar
 import datetime
 from collections import Counter, defaultdict
 from itertools import groupby
-from typing import Optional
 
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
@@ -280,7 +278,7 @@ def reservation_entry(request, uuid: str):
 # Events
 @require_http_methods(["GET"])
 def event_list(
-    request, *, animal: Optional[str] = None, location: Optional[int] = None
+    request, *, animal: str | None = None, location: int | None = None
 ):
     qs = Event.objects.with_related().order_by("-date", "-created")
     if animal is not None:
@@ -315,7 +313,7 @@ def event_list(
 
 
 @require_http_methods(["GET", "POST"])
-def event_entry(request, event: Optional[int] = None, animal: Optional[str] = None):
+def event_entry(request, event: int | None = None, animal: str | None = None):
     if event:
         # editing an existing event
         event = get_object_or_404(Event, pk=event)
@@ -382,7 +380,7 @@ def event_entry(request, event: Optional[int] = None, animal: Optional[str] = No
 def measurement_list(
     request,
     *,
-    animal: Optional[str] = None,
+    animal: str | None = None,
 ):
     qs = Measurement.objects.select_related(
         "event", "event__animal", "event__animal__species", "event__animal__band_color"
@@ -561,7 +559,7 @@ def pairing_view(request, pk):
     )
 
 
-def new_pairing_entry(request, pk: Optional[int] = None):
+def new_pairing_entry(request, pk: int | None = None):
     if request.method == "POST":
         form = NewPairingForm(request.POST)
         if form.is_valid():
@@ -707,7 +705,7 @@ def sample_type_list(request):
 
 
 @require_http_methods(["GET"])
-def sample_list(request, animal: Optional[str] = None):
+def sample_list(request, animal: str | None = None):
     qs = Sample.objects.select_related(
         "type",
         "location",
@@ -786,7 +784,7 @@ def location_summary(request):
         for animal in animals:
             age_group = animal.age_group()
             if age_group == ADULT_ANIMAL_NAME:
-                group_name = "{} {}".format(age_group, Animal.Sex(animal.sex).label)
+                group_name = f"{age_group} {Animal.Sex(animal.sex).label}"
                 d[group_name].append(animal)
             else:
                 d[age_group].append(animal)

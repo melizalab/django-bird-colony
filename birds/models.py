@@ -1,11 +1,10 @@
-# -*- coding: utf-8 -*-
 # -*- mode: python -*-
-from __future__ import unicode_literals
 
 import datetime
 import uuid
+from collections.abc import Sequence
 from functools import lru_cache
-from typing import Optional, Sequence, Tuple
+from typing import Optional
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -77,7 +76,7 @@ class Species(models.Model):
         return self.common_name
 
     class Meta:
-        ordering = ["common_name"]
+        ordering = ("common_name",)
         verbose_name_plural = "species"
         unique_together = ("genus", "species")
 
@@ -93,7 +92,7 @@ class Color(models.Model):
         return self.name
 
     class Meta:
-        ordering = ["name"]
+        ordering = ("name",)
         verbose_name_plural = "band colors"
 
 
@@ -111,7 +110,7 @@ class Plumage(models.Model):
         return self.name
 
     class Meta:
-        ordering = ["name"]
+        ordering = ("name",)
         verbose_name_plural = "plumage variants"
 
 
@@ -159,7 +158,7 @@ class Status(models.Model):
         return self.name
 
     class Meta:
-        ordering = ["name"]
+        ordering = ("name",)
         verbose_name_plural = "status codes"
 
 
@@ -242,7 +241,7 @@ class Location(models.Model):
         default=False, help_text="select for locations used for breeding"
     )
 
-    def birds(self, on_date: Optional[datetime.date] = None):
+    def birds(self, on_date: datetime.date | None = None):
         """Returns an AnimalQuerySet with all the birds in this location"""
         return Animal.objects.with_location(on_date=on_date).filter(last_location=self)
 
@@ -253,7 +252,7 @@ class Location(models.Model):
         return reverse("birds:location", kwargs={"pk": self.id})
 
     class Meta:
-        ordering = ["name"]
+        ordering = ("name",)
 
 
 class Age(models.Model):
@@ -274,7 +273,7 @@ class Age(models.Model):
     species = models.ForeignKey("Species", on_delete=models.CASCADE)
 
     def __str__(self):
-        return "%s %s (≥ %d days)" % (self.species, self.name, self.min_days)
+        return f"{self.species} {self.name} (≥ {self.min_days:d} days)"
 
     class Meta:
         unique_together = ("name", "species")
@@ -290,7 +289,7 @@ class AnimalManager(models.Manager):
         status: Status,
         entered_by: settings.AUTH_USER_MODEL,
         location: Location,
-        description: Optional[str] = None,
+        description: str | None = None,
         **animal_properties,
     ):
         """Create a new animal and add a creation event"""
@@ -314,7 +313,7 @@ class AnimalManager(models.Manager):
         status: Status,
         entered_by: settings.AUTH_USER_MODEL,
         location: Location,
-        description: Optional[str] = None,
+        description: str | None = None,
         **animal_properties,
     ):
         species = sire.species
@@ -337,7 +336,7 @@ class AnimalManager(models.Manager):
 class AnimalQuerySet(models.QuerySet):
     """Supports queries based on status that require joining on the event table"""
 
-    def with_location(self, on_date: Optional[datetime.date] = None):
+    def with_location(self, on_date: datetime.date | None = None):
         """Annotate the birds with their location as of `on_date`"""
         refdate = on_date or datetime.date.today()
         # return self.prefetch_related(
@@ -368,7 +367,7 @@ class AnimalQuerySet(models.QuerySet):
             )
         )
 
-    def with_dates(self, on_date: Optional[datetime.date] = None):
+    def with_dates(self, on_date: datetime.date | None = None):
         """Annotate the birds with important dates (born, died, etc) and current status
 
         This method is called by filters that need to use all related events (e.g. with
@@ -440,7 +439,7 @@ class AnimalQuerySet(models.QuerySet):
             ),
         )
 
-    def with_annotations(self, on_date: Optional[datetime.date] = None):
+    def with_annotations(self, on_date: datetime.date | None = None):
         return self.with_dates(on_date).with_location(on_date)
 
     def with_related(self):
@@ -448,23 +447,23 @@ class AnimalQuerySet(models.QuerySet):
             "reserved_by", "species", "band_color"
         ).prefetch_related("species__age_set")
 
-    def hatched(self, on_date: Optional[datetime.date] = None):
+    def hatched(self, on_date: datetime.date | None = None):
         """Only birds that were born in the colony (excludes eggs)."""
         return self.with_dates(on_date).filter(born_on__isnull=False)
 
-    def unhatched(self, on_date: Optional[datetime.date] = None):
+    def unhatched(self, on_date: datetime.date | None = None):
         """Only birds that were not born in the colony (includes eggs)"""
         return self.with_dates(on_date).filter(has_any_event=True, born_on__isnull=True)
 
-    def alive(self, on_date: Optional[datetime.date] = None):
+    def alive(self, on_date: datetime.date | None = None):
         """Only birds that are alive (added but not removed)"""
         return self.with_dates(on_date).filter(alive=True)
 
-    def existing(self, on_date: Optional[datetime.date] = None):
+    def existing(self, on_date: datetime.date | None = None):
         """Only birds/eggs that have not been removed"""
         return self.with_dates(on_date).filter(has_any_event=True, died_on__isnull=True)
 
-    def lost(self, on_date: Optional[datetime.date] = None):
+    def lost(self, on_date: datetime.date | None = None):
         """Only birds/eggs that were spontaneously lost due to unexpected causes"""
         return self.with_dates(on_date).filter(has_unexpected_removal=True)
 
@@ -497,7 +496,7 @@ class Parent(models.Model):
     parent = models.ForeignKey("Animal", related_name="+", on_delete=models.CASCADE)
 
     def __str__(self):
-        return "%s -> %s" % (self.parent, self.child)
+        return f"{self.parent} -> {self.child}"
 
     class Meta:
         unique_together = ("parent", "child")
@@ -653,7 +652,7 @@ class Animal(models.Model):
 
         return evt_laid.earliest().date + datetime.timedelta(days=days)
 
-    def last_location(self, on_date: Optional[datetime.date] = None):
+    def last_location(self, on_date: datetime.date | None = None):
         """Returns the Location recorded in the most recent event before `on_date`
         (today if not specified). This method will be masked if with_location() is used
         on the queryset (note that the annotation is just the name of the location)
@@ -731,7 +730,7 @@ class Animal(models.Model):
         entered_by: settings.AUTH_USER_MODEL,
         date: datetime.date,
         *,
-        description: Optional[str] = None,
+        description: str | None = None,
     ):
         """Update the animal's sex and create an event to note this"""
         status = Status.objects.get(name=NOTE_EVENT_NAME)
@@ -751,10 +750,10 @@ class Animal(models.Model):
         date: datetime.date,
         entered_by: settings.AUTH_USER_MODEL,
         *,
-        band_color: Optional[Color] = None,
-        sex: Optional[Sex] = None,
-        plumage: Optional[Plumage] = None,
-        location: Optional[Location] = None,
+        band_color: Color | None = None,
+        sex: Sex | None = None,
+        plumage: Plumage | None = None,
+        location: Location | None = None,
     ) -> "Event":
         """Update the animal's band and create an event to note this"""
         status = Status.objects.get(name=BANDED_EVENT_NAME)
@@ -777,12 +776,12 @@ class Animal(models.Model):
 
     def add_measurements(
         self,
-        measurements: Sequence[Tuple[Measure, float]],
+        measurements: Sequence[tuple[Measure, float]],
         date: datetime.date,
         entered_by: settings.AUTH_USER_MODEL,
         *,
-        location: Optional[Location] = None,
-        description: Optional[str] = None,
+        location: Location | None = None,
+        description: str | None = None,
     ) -> "Event":
         """Create an event with one or more associated measurements"""
         status = Status.objects.get(name=NOTE_EVENT_NAME)
@@ -823,7 +822,7 @@ class EventQuerySet(models.QuerySet):
     def latest_by_animal(self):
         return self.order_by("animal_id", "-date", "-created").distinct("animal_id")
 
-    def in_month(self, date: Optional[datetime.date] = None):
+    def in_month(self, date: datetime.date | None = None):
         """Only events in a given month (the current one if None)"""
         if date is None:
             date = datetime.date.today()
@@ -856,7 +855,7 @@ class Event(models.Model):
     objects = EventQuerySet.as_manager()
 
     def __str__(self):
-        return "%s: %s on %s" % (self.animal, self.status, self.date)
+        return f"{self.animal}: {self.status} on {self.date}"
 
     def event_date(self):
         """Description of event and date"""
@@ -889,12 +888,12 @@ class Event(models.Model):
         )
 
     class Meta:
-        ordering = ["-date", "-created"]
-        indexes = [
+        ordering = ("-date", "-created")
+        indexes = (
             models.Index(fields=["animal", "status"], name="animal_status_idx"),
             models.Index(fields=["animal", "date"], name="animal_date_idx"),
-        ]
-        get_latest_by = ["date", "created"]
+        )
+        get_latest_by = ("date", "created")
 
 
 class PairingManager(models.Manager):
@@ -933,7 +932,7 @@ class PairingManager(models.Manager):
 
 
 class PairingQuerySet(models.QuerySet):
-    def active(self, on_date: Optional[datetime.date] = None):
+    def active(self, on_date: datetime.date | None = None):
         on_date = on_date or datetime.date.today()
         return self.filter(
             Q(began_on__lte=on_date), Q(ended_on__isnull=True) | Q(ended_on__gt=on_date)
@@ -1038,7 +1037,7 @@ class Pairing(models.Model):
     def get_absolute_url(self):
         return reverse("birds:pairing", kwargs={"pk": self.id})
 
-    def active(self, on_date: Optional[datetime.date] = None) -> bool:
+    def active(self, on_date: datetime.date | None = None) -> bool:
         """True if the pairing is active (as of today or on_date, if supplied)"""
         on_date = on_date or datetime.date.today()
         if on_date < self.began_on:
@@ -1087,7 +1086,7 @@ class Pairing(models.Model):
             qs = qs.filter(date__lte=self.ended_on)
         return qs.order_by("date")
 
-    def last_location(self, on_date: Optional[datetime.date] = None):
+    def last_location(self, on_date: datetime.date | None = None):
         """Returns the location recorded in the most recent event for the sire
         or dam. For an inactive pair, only events between the beginning and
         ending are considered. For an active pair, only dates between the
@@ -1116,8 +1115,8 @@ class Pairing(models.Model):
         date: datetime.date,
         *,
         entered_by: settings.AUTH_USER_MODEL,
-        location: Optional[Location] = None,
-        description: Optional[str] = None,
+        location: Location | None = None,
+        description: str | None = None,
         **animal_properties,
     ):
         """Create an egg and associated event for the pair.
@@ -1145,8 +1144,8 @@ class Pairing(models.Model):
         ended_on: datetime.date,
         entered_by: settings.AUTH_USER_MODEL,
         *,
-        location: Optional[Location] = None,
-        comment: Optional[str] = None,
+        location: Location | None = None,
+        comment: str | None = None,
         remove_unhatched: bool = False,
     ):
         """Close an active pairing. Marks all remaining eggs as lost.
@@ -1202,13 +1201,13 @@ class Pairing(models.Model):
             raise ValidationError(_("End date must be after start date"))
 
     class Meta:
-        ordering = ["-began_on", "-ended_on"]
-        constraints = [
+        ordering = ("-began_on", "-ended_on")
+        constraints = (
             CheckConstraint(
                 check=Q(ended_on__isnull=True) | Q(ended_on__gt=F("began_on")),
                 name="ended_on_gt_began_on",
-            )
-        ]
+            ),
+        )
 
 
 class NestCheck(models.Model):
@@ -1222,7 +1221,7 @@ class NestCheck(models.Model):
     comments = models.TextField(blank=True)
 
     def __str__(self):
-        return "{} at {}".format(self.entered_by, self.datetime)
+        return f"{self.entered_by} at {self.datetime}"
 
 
 class SampleType(models.Model):
@@ -1236,7 +1235,7 @@ class SampleType(models.Model):
         return self.name
 
     class Meta:
-        ordering = ["name"]
+        ordering = ("name",)
 
 
 class SampleLocation(models.Model):
@@ -1249,7 +1248,7 @@ class SampleLocation(models.Model):
         return self.name
 
     class Meta:
-        ordering = ["name"]
+        ordering = ("name",)
 
 
 class Sample(models.Model):
@@ -1282,10 +1281,10 @@ class Sample(models.Model):
         return str(self.uuid).split("-")[0]
 
     def __str__(self):
-        return "%s:%s" % (self.animal.name, self.type.name)
+        return f"{self.animal.name}:{self.type.name}"
 
     def get_absolute_url(self):
         return reverse("birds:sample", kwargs={"uuid": self.uuid})
 
     class Meta:
-        ordering = ["animal", "type"]
+        ordering = ("animal", "type")
