@@ -73,7 +73,7 @@ class AnimalChildList(AnimalsList):
 
 @api_view(["GET"])
 def animal_detail(request, pk: str, format=None):
-    animal = get_object_or_404(Animal.objects.with_dates(), pk=pk)
+    animal = get_object_or_404(Animal, pk=pk)
     serializer = AnimalDetailSerializer(animal)
     return Response(serializer.data)
 
