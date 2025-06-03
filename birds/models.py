@@ -360,6 +360,15 @@ class AnimalQuerySet(models.QuerySet):
                 When(acquired_on__isnull=True, then=False),
                 default=True,
             ),
+            status=Case(
+                When(first_event_on__isnull=True, then=None),
+                When(Q(acquired_on__isnull=True) & Q(lost_on__isnull=True), then=Value(Animal.Status.GOOD_EGG)),
+                When(Q(acquired_on__isnull=True) & Q(lost_on__isnull=False), then=Value(Animal.Status.BAD_EGG)),
+                When(Q(acquired_on__isnull=False) & Q(lost_on__isnull=False), then=Value(Animal.Status.DIED_UNEXPTD)),
+                When(Q(acquired_on__isnull=False) & Q(died_on__isnull=False), then=Value(Animal.Status.DIED_EXPTD)),
+                When(acquired_on__isnull=False, then=Value(Animal.Status.ALIVE)),
+                default=None
+            ),
             age=Case(
                 When(born_on__isnull=True, then=None),
                 When(died_on__isnull=True, then=on_date - F("born_on")),
@@ -427,9 +436,9 @@ class AnimalQuerySet(models.QuerySet):
         )
 
     def lost(self, on_date: Optional[datetime.date] = None):
-        """Only birds that were spontaneously lost due to unexpected causes"""
-        return self.with_dates(on_date).filter(born_on__isnull=False, lost_on__isnull=False)
-    
+        """Only birds/eggs that were spontaneously lost due to unexpected causes"""
+        return self.with_dates(on_date).filter(lost_on__isnull=False)
+
     def ancestors_of(self, animal, generation: int = 1):
         """All ancestors of animal at specified generation"""
         key = "__".join(("children",) * generation)
@@ -473,6 +482,15 @@ class Animal(models.Model):
         FEMALE = "F", _("female")
         UNKNOWN_SEX = "U", _("unknown")
 
+    class Status(models.TextChoices):
+        """Enumeration of statuses an animal can have (inferred)"""
+        ALIVE = "alive", _("alive")
+        GOOD_EGG = "egg", _("unhatched egg")
+        BAD_EGG = "bad egg", _("infertile egg")
+        DIED_EXPTD = "dead", _("dead (expected)")
+        DIED_UNEXPTD = "lost", _("dead (unexpected)")
+
+
     species = models.ForeignKey("Species", on_delete=models.PROTECT)
     sex = models.CharField(max_length=2, choices=Sex.choices, default=Sex.UNKNOWN_SEX)
     band_color = models.ForeignKey(
@@ -511,17 +529,17 @@ class Animal(models.Model):
     def band(self):
         if self.band_number:
             if self.band_color:
-                return "%s_%d" % (self.band_color, self.band_number)
+                return f"{self.band_color}_{self.band_number:d}"
             else:
-                return "%d" % self.band_number
+                return str(self.band_number)
         else:
             return None
 
     @cached_property
-    def name(self):
-        return "%s_%s" % (self.species.code, self.band() or self.short_uuid())
+    def name(self) -> str:
+        return f"{self.species.code}_{self.band() or self.short_uuid()}"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
     def sire(self):
@@ -535,14 +553,21 @@ class Animal(models.Model):
     def sexed(self):
         return self.sex != Animal.Sex.UNKNOWN_SEX
 
-    def acquisition_event(self):
-        """Returns event when bird was acquired.
+    def acquisition_event(self) -> Optional["Event"]:
+        """Returns event when bird was acquired, or None
 
         If there are multiple acquisition events, returns the most recent one.
-        Returns None if no acquisition events.
 
         """
         return self.event_set.filter(status__adds__isnull=False).last()
+
+    def removal_event(self) -> Optional["Event"]:
+        """Returns event when bird was removed/died/etc, or None
+
+        If there are multiple removal events, returns the first one.
+
+        """
+        return self.event_set.filter(status__removes__isnull=False).first()
 
     def age(self, on_date: Optional[datetime.date] = None):
         """Returns age (as of date).
