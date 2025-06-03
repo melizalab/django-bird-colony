@@ -39,7 +39,7 @@
     "pk": 1,
     "fields": {
       "name": "hatched",
-      "adds": "internal",
+      "adds": "birth",
       "removes": null,
       "description": "Acquired by breeding. Ensure sire and dam are specified in bird record."
     }
@@ -59,7 +59,7 @@
     "pk": 3,
     "fields": {
       "name": "transferred in",
-      "adds": "external",
+      "adds": "transfer",
       "removes": null,
       "description": "Acquired by transfer. Use this for birds from other labs/institutions, or for founders with unknown parentage."
     }
@@ -99,7 +99,7 @@
     "pk": 7,
     "fields": {
       "name": "laid",
-      "adds": null,
+      "adds": "egg",
       "removes": null,
       "description": "indicates when an egg was laid"
     }

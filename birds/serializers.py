@@ -45,7 +45,7 @@ class AnimalPedigreeSerializer(serializers.ModelSerializer):
     dam = serializers.StringRelatedField()
     plumage = serializers.StringRelatedField()
     alive = serializers.BooleanField()
-    acquired_on = serializers.DateField(read_only=True)
+    born_on = serializers.DateField(read_only=True)
 
     class Meta:
         model = Animal
@@ -57,7 +57,7 @@ class AnimalPedigreeSerializer(serializers.ModelSerializer):
             "sex",
             "alive",
             "plumage",
-            "acquired_on",
+            "born_on",
         )
 
 

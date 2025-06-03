@@ -16,6 +16,7 @@ from django.db.models import (
     CheckConstraint,
     Count,
     DateField,
+    Exists,
     F,
     Max,
     Min,
@@ -125,8 +126,9 @@ class Status(models.Model):
 
     """
     class AdditionType(models.TextChoices):
-        INTERNAL = ("internal", "Added from within the colony")
-        EXTERNAL = ("external", "Added from outside the colony")
+        EGG = ("egg", "Unborn animal generated within the colony")
+        BIRTH = ("birth", "Animal born within the colony")
+        TRANSFER = ("transfer", "Animal transferred into the colony from outside")
         __empty__ = "Not an addition"
 
     class RemovalType(models.TextChoices):
@@ -334,48 +336,6 @@ class AnimalManager(models.Manager):
 class AnimalQuerySet(models.QuerySet):
     """Supports queries based on status that require joining on the event table"""
 
-    def with_dates(self, on_date: Optional[datetime.date] = None):
-        """Annotate the birds with important dates (born, died, etc)
-
-        This method is called by filters that need to use all related events (e.g. with
-        alive(), hatched(), or existing()). Only events on or prior to `on_date` are
-        taken into consideration.
-
-        """
-        if on_date is None:
-            on_date = datetime.date.today()
-        q_date = Q(event__date__lte=on_date)
-        return self.annotate(
-            first_event_on=Min(
-                "event__date", filter=Q(event__status__removes=None) & q_date
-            ),
-            born_on=Min(
-                "event__date", filter=Q(event__status__name="hatched") & q_date
-            ),
-            died_on=Max("event__date", filter=Q(event__status__removes__isnull=False) & q_date),
-            lost_on=Max("event__date", filter=Q(event__status__removes="unexpected") & q_date),
-            acquired_on=Min("event__date", filter=Q(event__status__adds__isnull=False) & q_date),
-            alive=Case(
-                When(died_on__isnull=False, then=False),
-                When(acquired_on__isnull=True, then=False),
-                default=True,
-            ),
-            status=Case(
-                When(first_event_on__isnull=True, then=None),
-                When(Q(acquired_on__isnull=True) & Q(lost_on__isnull=True), then=Value(Animal.Status.GOOD_EGG)),
-                When(Q(acquired_on__isnull=True) & Q(lost_on__isnull=False), then=Value(Animal.Status.BAD_EGG)),
-                When(Q(acquired_on__isnull=False) & Q(lost_on__isnull=False), then=Value(Animal.Status.DIED_UNEXPTD)),
-                When(Q(acquired_on__isnull=False) & Q(died_on__isnull=False), then=Value(Animal.Status.DIED_EXPTD)),
-                When(acquired_on__isnull=False, then=Value(Animal.Status.ALIVE)),
-                default=None
-            ),
-            age=Case(
-                When(born_on__isnull=True, then=None),
-                When(died_on__isnull=True, then=on_date - F("born_on")),
-                default=F("died_on") - F("born_on"),
-            ),
-        )
-
     def with_location(self, on_date: Optional[datetime.date] = None):
         """Annotate the birds with their location as of `on_date`"""
         refdate = on_date or datetime.date.today()
@@ -407,6 +367,56 @@ class AnimalQuerySet(models.QuerySet):
             )
         )
 
+    def with_dates(self, on_date: Optional[datetime.date] = None):
+        """Annotate the birds with important dates (born, died, etc) and current status
+
+        This method is called by filters that need to use all related events (e.g. with
+        alive(), hatched(), or existing()). Only events on or prior to `on_date` are
+        taken into consideration.
+
+        """
+        if on_date is None:
+            on_date = datetime.date.today()
+        q_date = Q(event__date__lte=on_date)
+
+        return self.annotate(
+            # Core dates needed for age calculation
+            born_on=Min("event__date", filter=Q(event__status__adds=Status.AdditionType.BIRTH) & q_date),
+            # the animal is no longer alive as far as this colony is concerned
+            died_on=Max("event__date", filter=Q(event__status__removes__isnull=False) & q_date),
+
+            # Minimal flags needed for status determination
+            has_any_event=Exists(Event.objects.filter(animal=OuterRef('pk'), date__lte=on_date)),
+            has_acquisition_event=Exists(Event.objects.filter(animal=OuterRef('pk'), status__adds__in=(Status.AdditionType.BIRTH, Status.AdditionType.TRANSFER), date__lte=on_date)),
+            has_unexpected_removal=Exists(Event.objects.filter(animal=OuterRef('pk'), status__removes=Status.RemovalType.UNEXPECTED, date__lte=on_date)),
+
+            # Derived fields
+            alive=Case(
+                When(died_on__isnull=False, then=False),
+                When(has_acquisition_event=False, then=False),
+                default=True,
+            ),
+
+            status=Case(
+                When(has_any_event=False, then=None),
+                When(Q(has_acquisition_event=False) & Q(has_unexpected_removal=False), then=Value(Animal.Status.GOOD_EGG)),
+                When(Q(has_acquisition_event=False) & Q(has_unexpected_removal=True), then=Value(Animal.Status.BAD_EGG)),
+                When(has_unexpected_removal=True, then=Value(Animal.Status.DIED_UNEXPTD)),
+                When(died_on__isnull=False, then=Value(Animal.Status.DIED_EXPTD)),
+                default=Value(Animal.Status.ALIVE),
+                # When(Q(born_on__isnull=False) & Q(has_unexpected_removal=True), then=Value(Animal.Status.DIED_UNEXPTD)),
+                # When(Q(born_on__isnull=False) & Q(died_on__isnull=False), then=Value(Animal.Status.DIED_EXPTD)),
+                # When(born_on__isnull=False, then=Value(Animal.Status.ALIVE)),
+                # default=None
+            ),
+
+            age=Case(
+                When(born_on__isnull=True, then=None),
+                When(died_on__isnull=True, then=on_date - F("born_on")),
+                default=F("died_on") - F("born_on"),
+            ),
+        )        
+
     def with_annotations(self, on_date: Optional[datetime.date] = None):
         return self.with_dates(on_date).with_location(on_date)
 
@@ -422,7 +432,7 @@ class AnimalQuerySet(models.QuerySet):
     def unhatched(self, on_date: Optional[datetime.date] = None):
         """Only birds that were not born in the colony (includes eggs)"""
         return self.with_dates(on_date).filter(
-            first_event_on__isnull=False, born_on__isnull=True
+            has_any_event=True, born_on__isnull=True
         )
 
     def alive(self, on_date: Optional[datetime.date] = None):
@@ -432,12 +442,12 @@ class AnimalQuerySet(models.QuerySet):
     def existing(self, on_date: Optional[datetime.date] = None):
         """Only birds/eggs that have not been removed"""
         return self.with_dates(on_date).filter(
-            first_event_on__isnull=False, died_on__isnull=True
+            has_any_event=True, died_on__isnull=True
         )
 
     def lost(self, on_date: Optional[datetime.date] = None):
         """Only birds/eggs that were spontaneously lost due to unexpected causes"""
-        return self.with_dates(on_date).filter(lost_on__isnull=False)
+        return self.with_dates(on_date).filter(has_unexpected_removal=True)
 
     def ancestors_of(self, animal, generation: int = 1):
         """All ancestors of animal at specified generation"""
@@ -556,10 +566,11 @@ class Animal(models.Model):
     def acquisition_event(self) -> Optional["Event"]:
         """Returns event when bird was acquired, or None
 
-        If there are multiple acquisition events, returns the most recent one.
+        Acqusition does not include eggs being laid. If there are multiple acquisition
+        events, returns the most recent one.
 
         """
-        return self.event_set.filter(status__adds__isnull=False).last()
+        return self.event_set.filter(status__adds__in=(Status.AdditionType.BIRTH, Status.AdditionType.TRANSFER)).last()
 
     def removal_event(self) -> Optional["Event"]:
         """Returns event when bird was removed/died/etc, or None
@@ -569,68 +580,26 @@ class Animal(models.Model):
         """
         return self.event_set.filter(status__removes__isnull=False).first()
 
-    def age(self, on_date: Optional[datetime.date] = None):
-        """Returns age (as of date).
-
-        Age is days since birthdate if alive, age at death if dead, or None if
-        unknown. This method is masked if with_dates() is used on the queryset.
-
-        """
-        refdate = on_date or datetime.date.today()
-        events = self.event_set.filter(date__lte=refdate).aggregate(
-            born_on=Min("date", filter=Q(status=get_birth_event_type())),
-            died_on=Max("date", filter=Q(status__removes__isnull=False)),
-        )
-        if events["born_on"] is None:
-            return None
-        if events["died_on"] is None:
-            return refdate - events["born_on"]
-        else:
-            return events["died_on"] - events["born_on"]
-
-    def alive(self, on_date: Optional[datetime.date] = None):
-        """Returns true if the bird is alive (as of date).
-
-        This method is masked if with_dates() is used on the queryset.
-        """
-        refdate = on_date or datetime.date.today()
-        # is_alive = self.event_set.filter(date__lte=refdate).aggregate(
-        #     # FIXME for add/remove enum
-        #     added=Sum(Cast("status__adds", models.IntegerField())),
-        #     removed=Sum(Cast("status__removes", models.IntegerField())),
-        # )
-        # return (is_alive["added"] or 0) > (is_alive["removed"] or 0)
-        events = self.event_set.filter(date__lte=refdate).aggregate(
-            added_on=Min("date", filter=Q(status__adds__isnull=False)),
-            died_on=Max("date", filter=Q(status__removes__isnull=False)),
-        )
-        return events["added_on"] is not None and events["died_on"] is None
-
-    def age_group(self, on_date: Optional[datetime.date] = None):
+    def age_group(self):
         """Returns the age group of the animal by joining on the Age model.
 
-        Classified as an adult if there was a non-hatch acquisition event.
-        Otherwise, an egg if there was at least one non-acquisition event.
-        Otherwise, None. Returns None if there is no match in the Age
-        table (this can only happen if there is not an object with min_age = 0).
-
-        This method can only be used if the object was retrieved using the
-        with_dates() annotation.
+        This method can only be used if the object was retrieved using the with_dates()
+        annotation. NB: The method may be more performant if age_set is prefetched.
 
         """
-        refdate = on_date or datetime.date.today()
-        if self.born_on is None or self.born_on > refdate:
-            if self.acquired_on is not None and self.acquired_on <= refdate:
-                return ADULT_ANIMAL_NAME
-            elif self.first_event_on is not None and self.first_event_on <= refdate:
-                return UNBORN_ANIMAL_NAME
-            else:
-                return None
-        if self.died_on is None or self.died_on > refdate:
-            age = refdate - self.born_on
-        else:
-            age = self.died_on - self.born_on
-        age_days = age.days
+        # Use status annotation to determine base category
+        if self.status in [Animal.Status.GOOD_EGG, Animal.Status.BAD_EGG]:
+            return UNBORN_ANIMAL_NAME
+        elif self.status is None:
+            return None
+
+        # For animals (alive or dead), calculate age-based group
+        # But need birth date to calculate age
+        if self.born_on is None:
+            # Must be a transferred animal (has status but no birth)
+            return ADULT_ANIMAL_NAME
+
+        age_days = self.age.days
         # faster to do this lookup in python if age_set is prefetched
         groups = sorted(
             filter(
@@ -644,7 +613,7 @@ class Animal(models.Model):
             return groups[0].name
         except IndexError:
             pass
-
+    
     def expected_hatch(self):
         """For eggs, expected hatch date. None if not an egg, lost, already
         hatched, or incubation time is not known.
@@ -652,20 +621,21 @@ class Animal(models.Model):
         """
         days = self.species.incubation_days
         if days is None:
-            pass
-        elif self.event_set.filter(
-            Q(status__adds__isnull=False) | Q(status__removes__isnull=False)
+            return         # incubation time not known
+        evt_laid = self.event_set.filter(status__adds=Status.AdditionType.EGG)
+        if not evt_laid.exists():
+            return         # no egg laid event
+        if self.event_set.filter(
+            Q(status__adds=Status.AdditionType.BIRTH) | Q(status__removes__isnull=False)
         ).exists():
-            pass
-        else:
-            evt_laid = self.event_set.filter(status=get_unborn_creation_event_type())
-            if evt_laid.exists():
-                return evt_laid.earliest().date + datetime.timedelta(days=days)
+            return        # already hatched or removed
+
+        return evt_laid.earliest().date + datetime.timedelta(days=days)
 
     def last_location(self, on_date: Optional[datetime.date] = None):
-        """Returns the location recorded in the most recent event before `on_date`
-        (today if not specified). This method will be masked if with_location()
-        is used on the queryset.
+        """Returns the Location recorded in the most recent event before `on_date`
+        (today if not specified). This method will be masked if with_location() is used
+        on the queryset (note that the annotation is just the name of the location)
 
         """
         refdate = on_date or datetime.date.today()
@@ -691,7 +661,7 @@ class Animal(models.Model):
             born_on=Min(
                 "date",
                 filter=Q(
-                    status__name__in=(UNBORN_CREATION_EVENT_NAME, BIRTH_EVENT_NAME)
+                    status__adds__in=(Status.AdditionType.BIRTH, Status.AdditionType.EGG)
                 ),
             )
         )
@@ -1054,7 +1024,7 @@ class Pairing(models.Model):
     def oldest_living_progeny_age(self):
         # this is slow, but I'm not sure how to do it any faster
         params = {
-            "event__status__name": BIRTH_EVENT_NAME,
+            "event__status__adds": Status.AdditionType.BIRTH,
             "event__date__gte": self.began_on,
         }
         if self.ended_on is not None:
