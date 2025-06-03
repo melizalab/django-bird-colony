@@ -1124,27 +1124,30 @@ class PairingModelTests(TestCase):
         )
 
     def test_pairing_progeny_stats(self):
+        laid_status = models.get_unborn_creation_event_type()
+        hatch_status = models.get_birth_event_type()
+        user = models.get_sentinel_user()
         pairing = Pairing.objects.create(
             sire=self.sire,
             dam=self.dam,
             began_on=today() - dt_days(10),
             ended_on=today(),
         )
-        chick_1 = make_child(self.sire, self.dam, today() - dt_days(5))
-        chick_2 = make_child(self.sire, self.dam, today() - dt_days(4))
-        # chicks count as eggs even if there is no event marking when the egg
-        # was laid
+        chick_1 = Animal.objects.create(species=self.sire.species)
+        chick_1.parents.set([self.sire, self.dam])
+        Event.objects.create(animal=chick_1, status=laid_status, date=today() - dt_days(5), entered_by=user)
+        chick_2 = Animal.objects.create(species=self.sire.species)
+        chick_2.parents.set([self.sire, self.dam])
+        Event.objects.create(animal=chick_2, status=laid_status, date=today() - dt_days(4), entered_by=user)
         self.assertCountEqual(pairing.eggs(), [chick_1, chick_2])
 
-        self.assertEqual(pairing.oldest_living_progeny_age(), chick_1.age())
+        self.assertEqual(pairing.oldest_living_progeny_age(), None)        
+        Event.objects.create(animal=chick_1, status=hatch_status, date=today() - dt_days(2), entered_by=user)
+        self.assertEqual(pairing.oldest_living_progeny_age(), dt_days(2))
 
-        # check that the annotation counts eggs and progeny correctly. But in
-        # this case the chicks do not count as eggs unless there is a laid
-        # event. Should probably try to be consistent, though the discrepancy is
-        # not a huge deal
         annotated_pairing = Pairing.objects.with_progeny_stats().get(pk=pairing.pk)
-        self.assertEqual(annotated_pairing.n_eggs, 0)
-        self.assertEqual(annotated_pairing.n_progeny, 2)
+        self.assertEqual(annotated_pairing.n_eggs, 2)
+        self.assertEqual(annotated_pairing.n_progeny, 1)   # progeny have to have hatched
 
     def test_animal_birth_pairing(self):
         pairing = Pairing.objects.create(

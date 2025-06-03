@@ -404,10 +404,6 @@ class AnimalQuerySet(models.QuerySet):
                 When(has_unexpected_removal=True, then=Value(Animal.Status.DIED_UNEXPTD)),
                 When(died_on__isnull=False, then=Value(Animal.Status.DIED_EXPTD)),
                 default=Value(Animal.Status.ALIVE),
-                # When(Q(born_on__isnull=False) & Q(has_unexpected_removal=True), then=Value(Animal.Status.DIED_UNEXPTD)),
-                # When(Q(born_on__isnull=False) & Q(died_on__isnull=False), then=Value(Animal.Status.DIED_EXPTD)),
-                # When(born_on__isnull=False, then=Value(Animal.Status.ALIVE)),
-                # default=None
             ),
 
             age=Case(
@@ -1043,11 +1039,11 @@ class Pairing(models.Model):
 
     def eggs(self):
         """All the eggs laid during this pairing (hatched and unhatched)"""
-        d_query = Q(first_event_on__gte=self.began_on)
+        d_query = Q(laid_on__gte=self.began_on)
         if self.ended_on is not None:
-            d_query &= Q(first_event_on__lte=self.ended_on)
+            d_query &= Q(laid_on__lte=self.ended_on)
         qs = Animal.objects.filter(parents=self.sire).filter(parents=self.dam)
-        return qs.with_dates().filter(d_query)
+        return qs.annotate(laid_on=Min("event__date", filter=Q(event__status__adds=Status.AdditionType.EGG))).filter(d_query)
 
     def events(self):
         """All events for the pair and their progeny during the pairing"""
