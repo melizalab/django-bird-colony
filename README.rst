@@ -98,15 +98,18 @@ Required steps:
 2. Edit and add locations to the ``Locations`` table. You need to have
    at least one location created. The main use for this field is to
    allow you to find where a bird is by looking at the last event.
-3. Edit and create new event types in the ``Status codes`` table. Common
-   event types include ``hatched``, ``added``, ``moved``, ``died``,
-   ``used for anatomy``, etc. For each status code, indicate whether it
-   adds or removes a bird from the colony. When you create an event that
-   removes a bird, it will appear as no longer alive. The ``hatched``
-   event is special, because if you add a bird to the database using the
-   ``Add new bird`` view using this code, the system will require you to
-   enter the bird’s parents. (If you don’t know the bird’s parents, you
-   can always create it manually in the admin interface)
+3. Edit and create new event types in the ``Status codes`` table. Common event
+   types include ``laid``, ``hatched``, ``added``, ``moved``, ``died``, ``used for
+   anatomy``, etc. For each status code, indicate whether it adds or removes a
+   bird from the colony. Addition event types include eggs being laid, births,
+   and transfers, which are handled differently. Removal event types include
+   expected and unexpected deaths. Unexpected deaths are important to tabulate
+   when looking at family history and breeding success. When you create an event
+   that removes a bird, it will appear as no longer alive. The ``hatched`` event
+   is special, because if you add a bird to the database using the ``Add new
+   bird`` view using this code, the system will require you to enter the bird’s
+   parents. (If you don’t know the bird’s parents, you can always create it
+   manually in the admin interface)
 
 Optional steps:
 ^^^^^^^^^^^^^^^
