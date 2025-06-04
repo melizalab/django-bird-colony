@@ -22,6 +22,7 @@ User = get_user_model()
 
 class ApiViewTests(APITestCase):
     fixtures = ["bird_colony_starter_kit"]
+    maxDiff = None
 
     def setUp(self):
         self.species = Species.objects.get(pk=1)

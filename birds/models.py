@@ -276,6 +276,7 @@ class Age(models.Model):
         return f"{self.species} {self.name} (≥ {self.min_days:d} days)"
 
     class Meta:
+        ordering = ("-min_days",)  # ensure that ages are sorted
         unique_together = ("name", "species")
         verbose_name_plural = "age ranges"
 
@@ -380,28 +381,32 @@ class AnimalQuerySet(models.QuerySet):
         q_date = Q(event__date__lte=on_date)
 
         return self.annotate(
-            # Core dates needed for age calculation
+            # Dates needed for age and age_group calculation
+            laid_on=Min(
+                "event__date",
+                filter=Q(event__status__adds=Status.AdditionType.EGG) & q_date,
+            ),
             born_on=Min(
                 "event__date",
                 filter=Q(event__status__adds=Status.AdditionType.BIRTH) & q_date,
+            ),
+            acquired_on=Min(
+                "event__date",
+                filter=Q(
+                    event__status__adds__in=(
+                        Status.AdditionType.BIRTH,
+                        Status.AdditionType.TRANSFER,
+                    )
+                )
+                & q_date,
             ),
             # the animal is no longer alive as far as this colony is concerned
             died_on=Max(
                 "event__date", filter=Q(event__status__removes__isnull=False) & q_date
             ),
-            # Minimal flags needed for status determination
+            # Flags for status determination - should be faster than Min
             has_any_event=Exists(
                 Event.objects.filter(animal=OuterRef("pk"), date__lte=on_date)
-            ),
-            has_acquisition_event=Exists(
-                Event.objects.filter(
-                    animal=OuterRef("pk"),
-                    status__adds__in=(
-                        Status.AdditionType.BIRTH,
-                        Status.AdditionType.TRANSFER,
-                    ),
-                    date__lte=on_date,
-                )
             ),
             has_unexpected_removal=Exists(
                 Event.objects.filter(
@@ -413,17 +418,17 @@ class AnimalQuerySet(models.QuerySet):
             # Derived fields
             alive=Case(
                 When(died_on__isnull=False, then=False),
-                When(has_acquisition_event=False, then=False),
+                When(acquired_on__isnull=True, then=False),
                 default=True,
             ),
             status=Case(
                 When(has_any_event=False, then=None),
                 When(
-                    Q(has_acquisition_event=False) & Q(has_unexpected_removal=False),
+                    Q(laid_on__isnull=False) & Q(has_unexpected_removal=False),
                     then=Value(Animal.Status.GOOD_EGG),
                 ),
                 When(
-                    Q(has_acquisition_event=False) & Q(has_unexpected_removal=True),
+                    Q(laid_on__isnull=False) & Q(has_unexpected_removal=True),
                     then=Value(Animal.Status.BAD_EGG),
                 ),
                 When(
@@ -600,39 +605,55 @@ class Animal(models.Model):
         """
         return self.event_set.filter(status__removes__isnull=False).first()
 
-    def age_group(self):
-        """Returns the age group of the animal by joining on the Age model.
+    def alive(self, on_date: datetime.date | None = None) -> bool:
+        """Returns true if the animal is alive on this date.
 
-        This method can only be used if the object was retrieved using the with_dates()
-        annotation. NB: The method may be more performant if age_set is prefetched.
+        Uses the queryset under the hood to avoid code duplication. The method
+        will be masked if the object is retrieved as part of a queryset.
 
         """
-        # Use status annotation to determine base category
-        if self.status in [Animal.Status.GOOD_EGG, Animal.Status.BAD_EGG]:
-            return UNBORN_ANIMAL_NAME
-        elif self.status is None:
-            return None
+        annotated = Animal.objects.with_dates(on_date).get(pk=self.pk)
+        return annotated.alive
 
-        # For animals (alive or dead), calculate age-based group
-        # But need birth date to calculate age
-        if self.born_on is None:
-            # Must be a transferred animal (has status but no birth)
-            return ADULT_ANIMAL_NAME
+    def age_group(self, on_date: datetime.date | None = None):
+        """Returns the age group of the animal by joining on the Age model.
 
-        age_days = self.age.days
-        # faster to do this lookup in python if age_set is prefetched
-        groups = sorted(
-            filter(
-                lambda ag: ag.min_days <= age_days,
-                self.species.age_set.all(),
-            ),
-            key=lambda ag: ag.min_days,
-            reverse=True,
-        )
-        try:
-            return groups[0].name
-        except IndexError:
-            pass
+        Age group is calculated relative to on_date, which allows us to use a
+        single database query to determine the animal's age group at different dates.
+
+        Classified as an adult if there was a non-hatch acquisition event.
+        Otherwise, an egg if there was at least one non-acquisition event.
+        Otherwise, None. Returns None if there is no match in the Age table
+        (this can only happen if there is not an object with min_age = 0).
+
+        This method can only be used if the object was retrieved using the
+        with_dates() annotation, and it will be more performant if age_set is
+        prefetched.
+
+        """
+        refdate = on_date or datetime.date.today()
+
+        # Handle special cases
+        if self.born_on is None or self.born_on > refdate:
+            if self.acquired_on is not None and self.acquired_on <= refdate:
+                return ADULT_ANIMAL_NAME
+            elif self.laid_on is not None and self.laid_on <= refdate:
+                return UNBORN_ANIMAL_NAME
+            else:
+                return None
+
+        # age at death otherwise today
+        if self.died_on is None or self.died_on > refdate:
+            age = refdate - self.born_on
+        else:
+            age = self.died_on - self.born_on
+        age_days = age.days
+
+        # Age groups are now pre-sorted by the model's Meta.ordering
+        # First match is automatically the best match
+        for age_group in self.species.age_set.all():
+            if age_group.min_days <= age_days:
+                return age_group.name
 
     def expected_hatch(self):
         """For eggs, expected hatch date. None if not an egg, lost, already

@@ -277,9 +277,7 @@ def reservation_entry(request, uuid: str):
 
 # Events
 @require_http_methods(["GET"])
-def event_list(
-    request, *, animal: str | None = None, location: int | None = None
-):
+def event_list(request, *, animal: str | None = None, location: int | None = None):
     qs = Event.objects.with_related().order_by("-date", "-created")
     if animal is not None:
         animal = get_object_or_404(Animal, uuid=animal)

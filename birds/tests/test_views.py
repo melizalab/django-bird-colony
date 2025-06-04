@@ -619,8 +619,8 @@ class NewAnimalFormViewTests(TestCase):
             },
         )
         self.assertEqual(response.status_code, 302)
-        animal = Animal.objects.get(band_number=10)
-        self.assertTrue(animal.alive())
+        animal = Animal.objects.with_dates().get(band_number=10)
+        self.assertTrue(animal.alive)
         # one event for transfer and one for banding
         self.assertEqual(animal.event_set.count(), 2)
         self.assertRedirects(response, reverse("birds:animal", args=[animal.uuid]))
@@ -663,8 +663,8 @@ class NewAnimalFormViewTests(TestCase):
             },
         )
         self.assertEqual(response.status_code, 302)
-        animal = Animal.objects.get(band_number=10)
-        self.assertTrue(animal.alive())
+        animal = Animal.objects.with_dates().get(band_number=10)
+        self.assertTrue(animal.alive)
         # one event for transfer and one for banding
         self.assertEqual(animal.event_set.count(), 2)
         self.assertRedirects(response, reverse("birds:animal", args=[animal.uuid]))
@@ -1337,13 +1337,19 @@ class BreedingCheckFormViewTests(TestCase):
         user = models.get_sentinel_user()
         status_laid = models.get_unborn_creation_event_type()
         status_hatched = models.get_birth_event_type()
-        Animal.objects.create_from_parents(
+        chick = Animal.objects.create_from_parents(
             sire=self.sire,
             dam=self.dam,
-            date=today(),
-            status=status_hatched,
+            date=today() - dt_days(9),
+            status=status_laid,
             entered_by=user,
             location=self.nest,
+        )
+        Event.objects.create(
+            animal=chick,
+            status=status_hatched,
+            date=today(),
+            entered_by=user,
         )
         Animal.objects.create_from_parents(
             sire=self.sire,
@@ -1433,7 +1439,7 @@ class BreedingCheckFormViewTests(TestCase):
         egg = eggs.first()
         self.assertEqual(egg.sire(), self.sire)
         self.assertEqual(egg.dam(), self.dam)
-        self.assertEqual(egg.first_event_on, today())
+        self.assertEqual(egg.laid_on, today())
         self.assertEqual(egg.age_group(), "egg")
         nest_checks = NestCheck.objects.all()
         self.assertEqual(nest_checks.count(), 1)
