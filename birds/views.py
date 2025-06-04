@@ -17,8 +17,6 @@ from django.utils.timezone import make_aware
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_http_methods
 
-# from silk.profiling.profiler import silk_profile
-
 from birds import __version__
 from birds.filters import (
     AnimalFilter,
@@ -106,10 +104,15 @@ def animal_list(request, *, parent: str | None = None):
         },
     )
 
+
 @require_http_methods(["GET"])
 def animal_child_list(request, uuid: str):
     animal = get_object_or_404(Animal, uuid=uuid)
-    qs = animal.children.with_annotations().with_related().order_by("-alive", F("age").desc(nulls_last=True))
+    qs = (
+        animal.children.with_annotations()
+        .with_related()
+        .order_by("-alive", F("age").desc(nulls_last=True))
+    )
     query = request.GET.copy()
     try:
         page_number = query.pop("page")[-1]

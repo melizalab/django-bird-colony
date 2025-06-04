@@ -4,18 +4,17 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('birds', '0024_add_status_constraint_and_indices'),
+        ("birds", "0024_add_status_constraint_and_indices"),
     ]
 
     operations = [
         migrations.AddIndex(
-            model_name='parent',
-            index=models.Index(fields=['parent'], name='parent_idx'),
+            model_name="parent",
+            index=models.Index(fields=["parent"], name="parent_idx"),
         ),
         migrations.AddIndex(
-            model_name='parent',
-            index=models.Index(fields=['child'], name='child_idx'),
+            model_name="parent",
+            index=models.Index(fields=["child"], name="child_idx"),
         ),
     ]

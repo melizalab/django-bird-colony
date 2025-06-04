@@ -363,65 +363,17 @@ class AnimalQuerySet(models.QuerySet):
         )
 
     def with_child_counts(self):
+        """Annotate the birds with child counts.
+
+        This is usually not worth it because of how deep the joins are.
+
+        """
         return self.annotate(
             n_hatched=Count(
-                'children', 
+                "children",
                 filter=Q(children__event__status__adds=Status.AdditionType.BIRTH),
-                distinct=True  # Important: prevents duplicate counting
+                distinct=True,  # Important: prevents duplicate counting
             )
-        )
-
-    def with_child_counts_v1(self):
-        """Annotate animals with count of hatched children using subquery"""
-        return self.annotate(
-            hatched_children_count=Subquery(
-                Animal.objects.filter(
-                    parents=OuterRef('pk')
-                ).annotate(
-                    has_birth_event=Exists(
-                        Event.objects.filter(
-                            animal=OuterRef('pk'),
-                            status__adds=Status.AdditionType.BIRTH
-                        )
-                    )
-                ).filter(
-                    has_birth_event=True
-                ).aggregate(
-                    count=Count('pk')
-                ).values('count'),
-                output_field=models.IntegerField()
-            )
-        )
-
-    def with_child_counts_v2(self):
-        """Most efficient version using direct subquery count"""
-        return self.annotate(
-            n_hatched=Subquery(
-                Event.objects.filter(
-                    animal__parents=OuterRef('pk'),
-                    status__adds=Status.AdditionType.BIRTH
-                ).aggregate(
-                    count=Count('animal', distinct=True)
-                ).values('count'),
-                output_field=models.IntegerField()
-            )
-        )
-
-    def with_child_counts_raw(self):
-        """Use raw SQL for optimal performance"""
-        return self.extra(
-            select={
-                'n_hatched': '''
-                SELECT COUNT(*)
-                FROM birds_animal child
-                INNER JOIN birds_parent p ON child.uuid = p.child_id
-                INNER JOIN birds_event e ON child.uuid = e.animal_id
-                INNER JOIN birds_status s ON e.status_id = s.id
-                WHERE p.parent_id = birds_animal.uuid 
-                AND s.adds = %s
-                '''
-            },
-            select_params=[Status.AdditionType.BIRTH]
         )
 
     def with_dates(self, on_date: datetime.date | None = None):
@@ -479,11 +431,16 @@ class AnimalQuerySet(models.QuerySet):
             ),
             status=Case(
                 When(has_any_event=False, then=None),
-                When(Q(acquired_on__isnull=True) & Q(laid_on__isnull=False) & Q(has_unexpected_removal=False),
+                When(
+                    Q(acquired_on__isnull=True)
+                    & Q(laid_on__isnull=False)
+                    & Q(has_unexpected_removal=False),
                     then=Value(Animal.Alive.GOOD_EGG),
                 ),
                 When(
-                    Q(acquired_on__isnull=True) & Q(laid_on__isnull=False) & Q(has_unexpected_removal=True),
+                    Q(acquired_on__isnull=True)
+                    & Q(laid_on__isnull=False)
+                    & Q(has_unexpected_removal=True),
                     then=Value(Animal.Alive.BAD_EGG),
                 ),
                 When(

@@ -1723,11 +1723,15 @@ class MeasurementModelTests(TestCase):
             "measurement list, two measures, two dates, one repeated, as of before any measurements",
         )
 
-class StatusModelTests(TestCase):
 
+class StatusModelTests(TestCase):
     def test_add_remove_constraint(self):
         Status.objects.create(name="note", adds=None, removes=None)
         Status.objects.create(name="laid", adds=Status.AdditionType.EGG)
         Status.objects.create(name="died", removes=Status.RemovalType.EXPECTED)
         with self.assertRaises(IntegrityError):
-            Status.objects.create(name="bad", adds=Status.AdditionType.EGG, removes=Status.RemovalType.EXPECTED)
+            Status.objects.create(
+                name="bad",
+                adds=Status.AdditionType.EGG,
+                removes=Status.RemovalType.EXPECTED,
+            )

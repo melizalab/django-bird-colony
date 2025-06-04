@@ -4,76 +4,104 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('birds', '0023_alter_status_adds_alter_status_removes'),
+        ("birds", "0023_alter_status_adds_alter_status_removes"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='age',
-            options={'ordering': ('-min_days',), 'verbose_name_plural': 'age ranges'},
+            name="age",
+            options={"ordering": ("-min_days",), "verbose_name_plural": "age ranges"},
         ),
         migrations.AlterModelOptions(
-            name='color',
-            options={'ordering': ('name',), 'verbose_name_plural': 'band colors'},
+            name="color",
+            options={"ordering": ("name",), "verbose_name_plural": "band colors"},
         ),
         migrations.AlterModelOptions(
-            name='event',
-            options={'get_latest_by': ('date', 'created'), 'ordering': ('-date', '-created')},
+            name="event",
+            options={
+                "get_latest_by": ("date", "created"),
+                "ordering": ("-date", "-created"),
+            },
         ),
         migrations.AlterModelOptions(
-            name='location',
-            options={'ordering': ('name',)},
+            name="location",
+            options={"ordering": ("name",)},
         ),
         migrations.AlterModelOptions(
-            name='pairing',
-            options={'ordering': ('-began_on', '-ended_on')},
+            name="pairing",
+            options={"ordering": ("-began_on", "-ended_on")},
         ),
         migrations.AlterModelOptions(
-            name='plumage',
-            options={'ordering': ('name',), 'verbose_name_plural': 'plumage variants'},
+            name="plumage",
+            options={"ordering": ("name",), "verbose_name_plural": "plumage variants"},
         ),
         migrations.AlterModelOptions(
-            name='sample',
-            options={'ordering': ('animal', 'type')},
+            name="sample",
+            options={"ordering": ("animal", "type")},
         ),
         migrations.AlterModelOptions(
-            name='samplelocation',
-            options={'ordering': ('name',)},
+            name="samplelocation",
+            options={"ordering": ("name",)},
         ),
         migrations.AlterModelOptions(
-            name='sampletype',
-            options={'ordering': ('name',)},
+            name="sampletype",
+            options={"ordering": ("name",)},
         ),
         migrations.AlterModelOptions(
-            name='species',
-            options={'ordering': ('common_name',), 'verbose_name_plural': 'species'},
+            name="species",
+            options={"ordering": ("common_name",), "verbose_name_plural": "species"},
         ),
         migrations.AlterModelOptions(
-            name='status',
-            options={'ordering': ('name',), 'verbose_name_plural': 'status codes'},
+            name="status",
+            options={"ordering": ("name",), "verbose_name_plural": "status codes"},
         ),
         migrations.AlterField(
-            model_name='status',
-            name='adds',
-            field=models.CharField(blank=True, choices=[(None, 'Not an addition'), ('egg', 'Unborn animal generated within the colony'), ('birth', 'Animal born within the colony'), ('transfer', 'Animal transferred into the colony from outside')], help_text="type of addition event, or None for events that don't add an animal", max_length=10, null=True),
+            model_name="status",
+            name="adds",
+            field=models.CharField(
+                blank=True,
+                choices=[
+                    (None, "Not an addition"),
+                    ("egg", "Unborn animal generated within the colony"),
+                    ("birth", "Animal born within the colony"),
+                    ("transfer", "Animal transferred into the colony from outside"),
+                ],
+                help_text="type of addition event, or None for events that don't add an animal",
+                max_length=10,
+                null=True,
+            ),
         ),
         migrations.AlterField(
-            model_name='status',
-            name='removes',
-            field=models.CharField(blank=True, choices=[(None, 'Not a removal'), ('expected', 'Expected death or removal'), ('unexpected', 'Unexpected death')], help_text="type of removal event, or None for events that don't remove an animal", max_length=10, null=True),
+            model_name="status",
+            name="removes",
+            field=models.CharField(
+                blank=True,
+                choices=[
+                    (None, "Not a removal"),
+                    ("expected", "Expected death or removal"),
+                    ("unexpected", "Unexpected death"),
+                ],
+                help_text="type of removal event, or None for events that don't remove an animal",
+                max_length=10,
+                null=True,
+            ),
         ),
         migrations.AddIndex(
-            model_name='status',
-            index=models.Index(fields=['adds'], name='add_type_idx'),
+            model_name="status",
+            index=models.Index(fields=["adds"], name="add_type_idx"),
         ),
         migrations.AddIndex(
-            model_name='status',
-            index=models.Index(fields=['removes'], name='remove_type_idx'),
+            model_name="status",
+            index=models.Index(fields=["removes"], name="remove_type_idx"),
         ),
         migrations.AddConstraint(
-            model_name='status',
-            constraint=models.CheckConstraint(check=models.Q(('adds__isnull', True), ('removes__isnull', True), _connector='OR'), name='adds_or_removes_null'),
+            model_name="status",
+            constraint=models.CheckConstraint(
+                check=models.Q(
+                    ("adds__isnull", True), ("removes__isnull", True), _connector="OR"
+                ),
+                name="adds_or_removes_null",
+            ),
         ),
     ]
