@@ -364,7 +364,7 @@ class AnimalQuerySet(models.QuerySet):
         # TODO fix me - slow
         return self.annotate(
             n_children=Count(
-                "children", filter=Q(children__event__status=get_birth_event_type())
+                "children", filter=Q(children__event__status__adds=Status.AdditionType.BIRTH)
             )
         )
 
@@ -423,12 +423,11 @@ class AnimalQuerySet(models.QuerySet):
             ),
             status=Case(
                 When(has_any_event=False, then=None),
-                When(
-                    Q(laid_on__isnull=False) & Q(has_unexpected_removal=False),
+                When(Q(acquired_on__isnull=True) & Q(laid_on__isnull=False) & Q(has_unexpected_removal=False),
                     then=Value(Animal.Status.GOOD_EGG),
                 ),
                 When(
-                    Q(laid_on__isnull=False) & Q(has_unexpected_removal=True),
+                    Q(acquired_on__isnull=True) & Q(laid_on__isnull=False) & Q(has_unexpected_removal=True),
                     then=Value(Animal.Status.BAD_EGG),
                 ),
                 When(
@@ -982,13 +981,13 @@ class PairingQuerySet(models.QuerySet):
         return self.annotate(
             n_progeny=Count(
                 "sire__children",
-                filter=Q(sire__children__event__status=get_birth_event_type())
+                filter=Q(sire__children__event__status__adds=Status.AdditionType.BIRTH)
                 & qq_after_began
                 & qq_before_ended,
             ),
             n_eggs=Count(
                 "sire__children",
-                filter=Q(sire__children__event__status=get_unborn_creation_event_type())
+                filter=Q(sire__children__event__status__adds=Status.AdditionType.EGG)
                 & qq_after_began
                 & qq_before_ended,
             ),

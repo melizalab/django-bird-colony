@@ -5,8 +5,7 @@
     <th>Species</th>
     <th>Sex</th>
     <th>Age</th>
-    <th>Alive</th>
-    <th>Lost</th>
+    <th>Status</th>
     <th>Location</th>
     <th>Children</th>
     <th>UUID</th>
@@ -19,8 +18,7 @@
           <td>{{ animal.species }}</td>
           <td>{{ animal.sex }}</td>
           <td>{{ animal.age|agestr }} ({{ animal.age_group }})</td>
-          <td>{{ animal.alive|yesno:"yes,," }}</td>
-	  <td>{{ animal.lost_on|yesno:"yes,," }}</td>
+          <td>{{ animal.status }}</td>
           <td>{{ animal.last_location|default_if_none:"" }}</td>
           <td>{{ animal.children.hatched.count}}</td>
           <td>{{ animal.uuid }}</td>

@@ -352,6 +352,7 @@ class AnimalModelTests(TestCase):
         self.assertEqual(annotated_bird.acquired_on, birthday)
         self.assertEqual(annotated_bird.died_on, today())
         self.assertEqual(annotated_bird.age, age)
+        self.assertEqual(annotated_bird.status, Animal.Status.DIED_UNEXPTD)
 
         self.assertTrue(bird.alive(birthday))
         annotated_bird = Animal.objects.with_dates(birthday).get(pk=bird.pk)
@@ -360,6 +361,7 @@ class AnimalModelTests(TestCase):
         self.assertEqual(annotated_bird.acquired_on, birthday)
         self.assertIs(annotated_bird.died_on, None)
         self.assertEqual(annotated_bird.age, dt_days(0))
+        self.assertEqual(annotated_bird.status, Animal.Status.ALIVE)
 
         self.assertFalse(bird.alive(birthday - dt_days(1)))
         annotated_bird = Animal.objects.with_dates(birthday - dt_days(1)).get(
@@ -370,6 +372,7 @@ class AnimalModelTests(TestCase):
         self.assertIs(annotated_bird.acquired_on, None)
         self.assertIs(annotated_bird.died_on, None)
         self.assertIs(annotated_bird.age, None)
+        self.assertEqual(annotated_bird.status, Animal.Status.GOOD_EGG)
 
         annotated_bird = Animal.objects.with_dates(laid_on - dt_days(1)).get(pk=bird.pk)
         self.assertIs(annotated_bird.laid_on, None)
@@ -377,6 +380,7 @@ class AnimalModelTests(TestCase):
         self.assertIs(annotated_bird.acquired_on, None)
         self.assertIs(annotated_bird.died_on, None)
         self.assertIs(annotated_bird.age, None)
+        self.assertIs(annotated_bird.status, None)
 
     def test_age_grouping(self):
         species = Species.objects.get(pk=1)
