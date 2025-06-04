@@ -160,6 +160,16 @@ class Status(models.Model):
     class Meta:
         ordering = ("name",)
         verbose_name_plural = "status codes"
+        indexes = (
+            models.Index(fields=("adds",), name="add_type_idx"),
+            models.Index(fields=("removes",), name="remove_type_idx"),
+        )
+        constraints = (
+            CheckConstraint(
+                check=Q(adds__isnull=True) | Q(removes__isnull=True),
+                name="adds_or_removes_null",
+            ),
+        )
 
 
 class Measure(models.Model):
