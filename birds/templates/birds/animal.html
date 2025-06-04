@@ -13,7 +13,7 @@
   <dt>sex</dt><dd>{{ animal.sex }}</dd>
   <dt>plumage</dt><dd>{{ animal.plumage }}</dd>
   <dt>uuid</dt><dd>{{ animal.uuid }}</dd>
-  <dt>status</dt><dd>{{ animal.status }}</dd>
+  <dt>alive</dt><dd>{{ animal.status }}</dd>
   <dt>age</dt><dd>{{ animal.age|agestr }} ({{ animal.age_group }})</dd>
   {% for measurement in animal_measurements %}
   <dt>{{ measurement.type.name }} </dt><dd>{{ measurement.formatted }} (as of {{measurement.event.date}})</dd>
@@ -94,7 +94,9 @@
 
 
 <h3>Children</h3>
+
 {% include "birds/animal_table.html" %}
 
-<p><a href="{% url 'birds:genealogy' animal.uuid %}">view genealogy</a> (may take a while)</p>
+<a href="{% url 'birds:animal_kids' animal.uuid %}">all children</a> (including eggs)&nbsp;&nbsp;
+<a href="{% url 'birds:genealogy' animal.uuid %}">full genealogy</a> (may take a while)<br/>
 {% endblock %}

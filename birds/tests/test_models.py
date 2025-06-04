@@ -129,7 +129,7 @@ class AnimalModelTests(TestCase):
         self.assertEqual(annotated_bird.acquired_on, birthday)
         self.assertIs(annotated_bird.died_on, None)
         self.assertIs(annotated_bird.alive, True)
-        self.assertEqual(annotated_bird.status, Animal.Status.ALIVE)
+        self.assertEqual(annotated_bird.status, Animal.Alive.ALIVE)
         self.assertEqual(annotated_bird.age, age)
 
         self.assertIn(bird, Animal.objects.alive())
@@ -162,7 +162,7 @@ class AnimalModelTests(TestCase):
         self.assertIs(annotated_bird.died_on, None)
         self.assertIs(annotated_bird.age, None)
         self.assertIs(annotated_bird.alive, True)
-        self.assertEqual(annotated_bird.status, Animal.Status.ALIVE)
+        self.assertEqual(annotated_bird.status, Animal.Alive.ALIVE)
         self.assertEqual(annotated_bird.age_group(), models.ADULT_ANIMAL_NAME)
 
         self.assertIn(bird, Animal.objects.alive())
@@ -202,7 +202,7 @@ class AnimalModelTests(TestCase):
         self.assertEqual(annotated_bird.died_on, died_on)
         self.assertIs(annotated_bird.alive, False)
         # this status is considered an unexpected removal in the starter kit
-        self.assertEqual(annotated_bird.status, Animal.Status.DIED_UNEXPTD)
+        self.assertEqual(annotated_bird.status, Animal.Alive.DIED_UNEXPTD)
         self.assertEqual(annotated_bird.age, died_on - born_on)
 
         self.assertNotIn(bird, Animal.objects.alive())
@@ -271,7 +271,7 @@ class AnimalModelTests(TestCase):
         self.assertIs(annotated_egg.died_on, None)
         self.assertIs(annotated_egg.age, None)
         self.assertIs(annotated_egg.alive, False, "an egg is not alive")
-        self.assertEqual(annotated_egg.status, Animal.Status.GOOD_EGG)
+        self.assertEqual(annotated_egg.status, Animal.Alive.GOOD_EGG)
         self.assertEqual(annotated_egg.age_group(), models.UNBORN_ANIMAL_NAME)
 
         self.assertNotIn(egg, Animal.objects.alive())
@@ -308,7 +308,7 @@ class AnimalModelTests(TestCase):
         self.assertEqual(annotated_egg.died_on, lost_on)
         self.assertIs(annotated_egg.age, None)
         self.assertIs(annotated_egg.alive, False, "an egg is not alive")
-        self.assertEqual(annotated_egg.status, Animal.Status.BAD_EGG)
+        self.assertEqual(annotated_egg.status, Animal.Alive.BAD_EGG)
         self.assertEqual(annotated_egg.age_group(), models.UNBORN_ANIMAL_NAME)
 
         self.assertNotIn(egg, Animal.objects.alive())
@@ -352,7 +352,7 @@ class AnimalModelTests(TestCase):
         self.assertEqual(annotated_bird.acquired_on, birthday)
         self.assertEqual(annotated_bird.died_on, today())
         self.assertEqual(annotated_bird.age, age)
-        self.assertEqual(annotated_bird.status, Animal.Status.DIED_UNEXPTD)
+        self.assertEqual(annotated_bird.status, Animal.Alive.DIED_UNEXPTD)
 
         self.assertTrue(bird.alive(birthday))
         annotated_bird = Animal.objects.with_dates(birthday).get(pk=bird.pk)
@@ -361,7 +361,7 @@ class AnimalModelTests(TestCase):
         self.assertEqual(annotated_bird.acquired_on, birthday)
         self.assertIs(annotated_bird.died_on, None)
         self.assertEqual(annotated_bird.age, dt_days(0))
-        self.assertEqual(annotated_bird.status, Animal.Status.ALIVE)
+        self.assertEqual(annotated_bird.status, Animal.Alive.ALIVE)
 
         self.assertFalse(bird.alive(birthday - dt_days(1)))
         annotated_bird = Animal.objects.with_dates(birthday - dt_days(1)).get(
@@ -372,7 +372,7 @@ class AnimalModelTests(TestCase):
         self.assertIs(annotated_bird.acquired_on, None)
         self.assertIs(annotated_bird.died_on, None)
         self.assertIs(annotated_bird.age, None)
-        self.assertEqual(annotated_bird.status, Animal.Status.GOOD_EGG)
+        self.assertEqual(annotated_bird.status, Animal.Alive.GOOD_EGG)
 
         annotated_bird = Animal.objects.with_dates(laid_on - dt_days(1)).get(pk=bird.pk)
         self.assertIs(annotated_bird.laid_on, None)
@@ -1169,7 +1169,7 @@ class PairingModelTests(TestCase):
 
         annotated_pairing = Pairing.objects.with_progeny_stats().get(pk=pairing.pk)
         self.assertEqual(annotated_pairing.n_eggs, 2)
-        self.assertEqual(annotated_pairing.n_progeny, 1)  # progeny have to have hatched
+        self.assertEqual(annotated_pairing.n_hatched, 1)  # progeny have to have hatched
 
     def test_animal_birth_pairing(self):
         pairing = Pairing.objects.create(

@@ -161,7 +161,7 @@ class AnimalViewTests(BaseColonyTest):
         response = self.client.get(reverse("birds:animal", args=[self.sire.uuid]))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
-            len(response.context["animal_list"]), self.n_children + self.n_eggs
+            len(response.context["animal_list"]), self.n_children
         )
         # one hatch, old pairing started and ended, new pairing started, measurement
         self.assertEqual(len(response.context["event_list"]), 5)

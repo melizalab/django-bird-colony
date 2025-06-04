@@ -25,6 +25,11 @@ urlpatterns = [
         name="genealogy",
     ),
     path(
+        "animals/<uuid:parent>/children/",
+        views.animal_list,
+        name="animal_kids",
+    ),
+    path(
         "animals/<uuid>/set-sex/",
         login_required(views.update_sex),
         name="set_sex",

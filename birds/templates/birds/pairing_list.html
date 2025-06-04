@@ -25,8 +25,8 @@
     <th>Dates</th>
     <th>Purpose</th>
     <th>Eggs Laid</th>
-    <th>Progeny</th>
-    <th>Oldest Living Progeny</th>
+    <th>Eggs Hatched</th>
+    <th>Oldest Living Child</th>
     <th>Comment</th>
   </thead>
   <tbody>
@@ -37,7 +37,7 @@
           <td><a href="{% url 'birds:pairing' pairing.id %}">{{ pairing.began_on }} — {{ pairing.ended_on|default_if_none:"" }}</a></td>
           <td>{{ pairing.purpose|default_if_none:"" }}</td>
           <td>{{ pairing.n_eggs }}</td>
-          <td>{{ pairing.n_progeny }}</td>
+          <td>{{ pairing.n_hatched }}</td>
           <td>{{ pairing.oldest_living_progeny_age|ageorblank }}</td>
       <td>{{ pairing.comment }}</td>
         </tr>

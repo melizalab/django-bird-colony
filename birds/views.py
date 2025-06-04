@@ -17,6 +17,8 @@ from django.utils.timezone import make_aware
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_http_methods
 
+# from silk.profiling.profiler import silk_profile
+
 from birds import __version__
 from birds.filters import (
     AnimalFilter,
@@ -70,12 +72,44 @@ def index(request):
 
 # Animals
 @require_http_methods(["GET"])
-def animal_list(request):
+def animal_list(request, *, parent: str | None = None):
     qs = (
         Animal.objects.with_annotations()
         .with_related()
         .order_by("band_color", "band_number")
     )
+    if parent is not None:
+        animal = get_object_or_404(Animal, uuid=parent)
+        qs = qs.descendents_of(animal)
+        header_text = f"Children of {animal}"
+    else:
+        header_text = "Birds"
+
+    query = request.GET.copy()
+    try:
+        page_number = query.pop("page")[-1]
+    except (KeyError, IndexError):
+        page_number = None
+    f = AnimalFilter(query, queryset=qs)
+    paginator = Paginator(f.qs, 25)
+    page_obj = paginator.get_page(page_number)
+
+    return render(
+        request,
+        "birds/animal_list.html",
+        {
+            "header_text": header_text,
+            "filter": f,
+            "query": query,
+            "page_obj": page_obj,
+            "animal_list": page_obj.object_list,
+        },
+    )
+
+@require_http_methods(["GET"])
+def animal_child_list(request, uuid: str):
+    animal = get_object_or_404(Animal, uuid=uuid)
+    qs = animal.children.with_annotations().with_related().order_by("-alive", F("age").desc(nulls_last=True))
     query = request.GET.copy()
     try:
         page_number = query.pop("page")[-1]
@@ -104,6 +138,7 @@ def animal_view(request, uuid: str):
     kids = (
         animal.children.with_annotations()
         .with_related()
+        .hatched()
         .order_by("-alive", F("age").desc(nulls_last=True))
     )
     events = animal.event_set.with_related().order_by("-date", "-created")

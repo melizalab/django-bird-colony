@@ -350,13 +350,6 @@ class AnimalQuerySet(models.QuerySet):
     def with_location(self, on_date: datetime.date | None = None):
         """Annotate the birds with their location as of `on_date`"""
         refdate = on_date or datetime.date.today()
-        # return self.prefetch_related(
-        #     Prefetch(
-        #         "event_set",
-        #         queryset=Event.objects.has_location().order_by("-date", "-created"),
-        #         to_attr="locations",
-        #     )
-        # )
         return self.annotate(
             last_location=Subquery(
                 Event.objects.filter(
@@ -366,16 +359,69 @@ class AnimalQuerySet(models.QuerySet):
                 )
                 .order_by("-date", "-created")
                 .values("location__name")[:1]
-                # .values(data=JSONObject(id="location__pk", name="location__name"))[:1]
             ),
         )
 
     def with_child_counts(self):
-        # TODO fix me - slow
         return self.annotate(
-            n_children=Count(
-                "children", filter=Q(children__event__status__adds=Status.AdditionType.BIRTH)
+            n_hatched=Count(
+                'children', 
+                filter=Q(children__event__status__adds=Status.AdditionType.BIRTH),
+                distinct=True  # Important: prevents duplicate counting
             )
+        )
+
+    def with_child_counts_v1(self):
+        """Annotate animals with count of hatched children using subquery"""
+        return self.annotate(
+            hatched_children_count=Subquery(
+                Animal.objects.filter(
+                    parents=OuterRef('pk')
+                ).annotate(
+                    has_birth_event=Exists(
+                        Event.objects.filter(
+                            animal=OuterRef('pk'),
+                            status__adds=Status.AdditionType.BIRTH
+                        )
+                    )
+                ).filter(
+                    has_birth_event=True
+                ).aggregate(
+                    count=Count('pk')
+                ).values('count'),
+                output_field=models.IntegerField()
+            )
+        )
+
+    def with_child_counts_v2(self):
+        """Most efficient version using direct subquery count"""
+        return self.annotate(
+            n_hatched=Subquery(
+                Event.objects.filter(
+                    animal__parents=OuterRef('pk'),
+                    status__adds=Status.AdditionType.BIRTH
+                ).aggregate(
+                    count=Count('animal', distinct=True)
+                ).values('count'),
+                output_field=models.IntegerField()
+            )
+        )
+
+    def with_child_counts_raw(self):
+        """Use raw SQL for optimal performance"""
+        return self.extra(
+            select={
+                'n_hatched': '''
+                SELECT COUNT(*)
+                FROM birds_animal child
+                INNER JOIN birds_parent p ON child.uuid = p.child_id
+                INNER JOIN birds_event e ON child.uuid = e.animal_id
+                INNER JOIN birds_status s ON e.status_id = s.id
+                WHERE p.parent_id = birds_animal.uuid 
+                AND s.adds = %s
+                '''
+            },
+            select_params=[Status.AdditionType.BIRTH]
         )
 
     def with_dates(self, on_date: datetime.date | None = None):
@@ -434,17 +480,17 @@ class AnimalQuerySet(models.QuerySet):
             status=Case(
                 When(has_any_event=False, then=None),
                 When(Q(acquired_on__isnull=True) & Q(laid_on__isnull=False) & Q(has_unexpected_removal=False),
-                    then=Value(Animal.Status.GOOD_EGG),
+                    then=Value(Animal.Alive.GOOD_EGG),
                 ),
                 When(
                     Q(acquired_on__isnull=True) & Q(laid_on__isnull=False) & Q(has_unexpected_removal=True),
-                    then=Value(Animal.Status.BAD_EGG),
+                    then=Value(Animal.Alive.BAD_EGG),
                 ),
                 When(
-                    has_unexpected_removal=True, then=Value(Animal.Status.DIED_UNEXPTD)
+                    has_unexpected_removal=True, then=Value(Animal.Alive.DIED_UNEXPTD)
                 ),
-                When(died_on__isnull=False, then=Value(Animal.Status.DIED_EXPTD)),
-                default=Value(Animal.Status.ALIVE),
+                When(died_on__isnull=False, then=Value(Animal.Alive.DIED_EXPTD)),
+                default=Value(Animal.Alive.ALIVE),
             ),
             age=Case(
                 When(born_on__isnull=True, then=None),
@@ -513,6 +559,10 @@ class Parent(models.Model):
         return f"{self.parent} -> {self.child}"
 
     class Meta:
+        indexes = (
+            models.Index(fields=("parent",), name="parent_idx"),
+            models.Index(fields=("child",), name="child_idx"),
+        )
         unique_together = ("parent", "child")
 
 
@@ -524,13 +574,13 @@ class Animal(models.Model):
         FEMALE = "F", _("female")
         UNKNOWN_SEX = "U", _("unknown")
 
-    class Status(models.TextChoices):
-        """Enumeration of statuses an animal can have (inferred)"""
+    class Alive(models.TextChoices):
+        """Enumeration of aliveness statuses an animal can have (inferred)"""
 
-        ALIVE = "alive", _("alive")
+        ALIVE = "yes", _("alive")
+        DIED_EXPTD = "no", _("dead (expected)")
         GOOD_EGG = "egg", _("unhatched egg")
         BAD_EGG = "bad egg", _("infertile egg")
-        DIED_EXPTD = "dead", _("dead (expected)")
         DIED_UNEXPTD = "lost", _("dead (unexpected)")
 
     species = models.ForeignKey("Species", on_delete=models.PROTECT)
@@ -989,7 +1039,7 @@ class PairingQuerySet(models.QuerySet):
         )
         qq_after_began = Q(sire__children__event__date__gte=F("began_on"))
         return self.annotate(
-            n_progeny=Count(
+            n_hatched=Count(
                 "sire__children",
                 filter=Q(sire__children__event__status__adds=Status.AdditionType.BIRTH)
                 & qq_after_began
