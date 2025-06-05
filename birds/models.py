@@ -435,19 +435,19 @@ class AnimalQuerySet(models.QuerySet):
                     Q(acquired_on__isnull=True)
                     & Q(laid_on__isnull=False)
                     & Q(has_unexpected_removal=False),
-                    then=Value(Animal.Alive.GOOD_EGG),
+                    then=Value(Animal.Status.GOOD_EGG),
                 ),
                 When(
                     Q(acquired_on__isnull=True)
                     & Q(laid_on__isnull=False)
                     & Q(has_unexpected_removal=True),
-                    then=Value(Animal.Alive.BAD_EGG),
+                    then=Value(Animal.Status.BAD_EGG),
                 ),
                 When(
-                    has_unexpected_removal=True, then=Value(Animal.Alive.DIED_UNEXPTD)
+                    has_unexpected_removal=True, then=Value(Animal.Status.DIED_UNEXPTD)
                 ),
-                When(died_on__isnull=False, then=Value(Animal.Alive.DIED_EXPTD)),
-                default=Value(Animal.Alive.ALIVE),
+                When(died_on__isnull=False, then=Value(Animal.Status.DIED_EXPTD)),
+                default=Value(Animal.Status.ALIVE),
             ),
             age=Case(
                 When(born_on__isnull=True, then=None),
@@ -531,14 +531,14 @@ class Animal(models.Model):
         FEMALE = "F", _("female")
         UNKNOWN_SEX = "U", _("unknown")
 
-    class Alive(models.TextChoices):
-        """Enumeration of aliveness statuses an animal can have (inferred)"""
+    class Status(models.TextChoices):
+        """Enumeration of status an animal can have (inferred)"""
 
-        ALIVE = "yes", _("alive")
-        DIED_EXPTD = "no", _("died (expected)")
-        GOOD_EGG = "egg", _("unhatched egg")
-        BAD_EGG = "bad egg", _("infertile egg")
-        DIED_UNEXPTD = "lost", _("died (unexpected)")
+        ALIVE = "alive", _("Alive")
+        DIED_EXPTD = "dead", _("Expected death/removal")
+        GOOD_EGG = "egg", _("Unhatched egg")
+        BAD_EGG = "bad egg", _("Infertile egg")
+        DIED_UNEXPTD = "lost", _("Unexpected death")
 
     species = models.ForeignKey("Species", on_delete=models.PROTECT)
     sex = models.CharField(max_length=2, choices=Sex.choices, default=Sex.UNKNOWN_SEX)
@@ -622,20 +622,24 @@ class Animal(models.Model):
         return self.event_set.filter(status__removes__isnull=False).first()
 
     def history(self) -> str:
-        """Summarizes the status of the animal for family history"""
-        born = self.event_set.filter(status__adds=Status.AdditionType.BIRTH).first()
-        removed = self.removal_event()
-        if born is not None:
-            refdate = removed.date if removed is not None else datetime.date.today()
-            age_days = (refdate - born.date).days
-            age_str = f"{age_days // 365}y {age_days % 365:3}d old"
-        else:
+        """Summarizes the status of the animal for family history
+
+        This method requires the born_on, acquired_on, laid_on, and died_on
+        annotations provided by the with_dates() queryset method.
+
+        Returns "unknown" if the status cannot be determined (i.e., an animal with no events)
+        """
+        try:
+            lbl = Animal.Status(self.status).label
+        except (ValueError, AttributeError):
+            return "unknown"
+        if self.age is None:
             age_str = "unknown age"
-        if removed is not None:
-            lbl = Status.RemovalType(removed.status.removes).label
-            return f"{lbl} on {removed.date} at {age_str}"
         else:
+            age_str = f"{self.age.days // 365}y {self.age.days % 365:3}d old"
+        if self.status == Animal.Status.ALIVE:
             return f"alive, {age_str}"
+        return f"{lbl} on {self.died_on} at {age_str}"
 
     def alive(self, on_date: datetime.date | None = None) -> bool:
         """Returns true if the animal is alive on this date.

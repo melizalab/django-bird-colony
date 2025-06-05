@@ -104,14 +104,17 @@ def animal_list(request, *, parent: str | None = None):
         },
     )
 
+
 @require_http_methods(["GET"])
 def animal_view(request, uuid: str):
-    qs = Animal.objects.with_annotations().with_related().prefetch_related(
-            Prefetch(
-                'parents',
-                queryset=Animal.objects.all()
-            )
+    qs = (
+        Animal.objects.with_annotations()
+        .with_related()
+        .prefetch_related(
+            Prefetch("parents", queryset=Animal.objects.with_dates()),
+            Prefetch("parents__parents", queryset=Animal.objects.with_dates()),
         )
+    )
     animal = get_object_or_404(qs, uuid=uuid)
     kids = (
         animal.children.with_annotations()
@@ -137,9 +140,9 @@ def animal_view(request, uuid: str):
             "animal_measurements": animal.measurements(),
             "kids": kids,
             # "breeding_stats": {
-            #     "infertile_eggs": counts[Animal.Alive.BAD_EGG],
-            #     "unexpectedly_died": counts[Animal.Alive.DIED_UNEXPTD],
-            #     "currently_alive": counts[Animal.Alive.ALIVE],
+            #     "infertile_eggs": counts[Animal.Status.BAD_EGG],
+            #     "unexpectedly_died": counts[Animal.Status.DIED_UNEXPTD],
+            #     "currently_alive": counts[Animal.Status.ALIVE],
             # },
             "event_list": events,
             "sample_list": samples,
@@ -633,7 +636,7 @@ def new_pairing_egg(request, pk: int):
                     entered_by=data["user"],
                     location=pairing.last_location(on_date=date),
                     description=data.get("comments")
-                    or f"manually added egg to {pairing.short_name()}",
+                    or f"manually added egg to {pairing.short_name}",
                 )
             except ValueError as e:
                 form.add_error(None, ValidationError(_(str(e))))

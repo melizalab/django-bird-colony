@@ -13,7 +13,7 @@
   <dt>sex</dt><dd>{{ animal.sex }}</dd>
   <dt>plumage</dt><dd>{{ animal.plumage }}</dd>
   <dt>uuid</dt><dd>{{ animal.uuid }}</dd>
-  <dt>alive</dt><dd>{{ animal.status }}</dd>
+  <dt>status</dt><dd>{{ animal.status|default_if_none:"unknown" }}</dd>
   <dt>age</dt><dd>{{ animal.age|agestr }} ({{ animal.age_group }})</dd>
   {% for measurement in animal_measurements %}
   <dt>{{ measurement.type.name }} </dt><dd>{{ measurement.formatted }} (as of {{measurement.event.date}})</dd>
