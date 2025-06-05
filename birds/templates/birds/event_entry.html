@@ -31,7 +31,8 @@
       <p><strong>Instructions</strong>: This form is for adding or changing an
         event for <a href="{{ animal.get_absolute_url }}">{{ animal }}</a>.
         Events track each individual's life history and allow us to determine
-        its current status and location.</p>
+        its current status and location. It's important to choose the right
+        event type; see below for descriptions of all the options.</p>
 
       {% if form.non_field_errors %}
       <div class="alert alert-danger">{{ form.non_field_errors }}</div>
@@ -104,4 +105,30 @@
   </div>
 </div>
 
+<div class="panel panel-default">
+  <div class="panel-heading">
+    <h3 class="panel-title">Event Type Reference</h3>
+  </div>
+  <div class="panel-body">
+<p>Some event types have effects on what the database infers about an animal's life history. When entering an event that marks
+  an animal as removed or deceased, be sure to choose an event type that reflects whether the death was expected (experimental use, culling, transfer out, or sequelae from an accident) or unexpected (natural death or euthanasia related to illness or untreatable distress)</p>
+      
+<table class="table table-striped table-condensed">
+  <thead>
+    <th>Name</th>
+    <th>Effect</th>
+    <th>Description</th>
+  </thead>
+  <tbody>
+    {% for event_type in event_types %}
+    <tr>
+      <td> {{ event_type.name }} </td>
+      <td> {{ event_type.effect|default_if_none:"-" }} </td>
+      <td> {{ event_type.description }} </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+  </div>
+  </div>
 {% endblock %}

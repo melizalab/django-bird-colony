@@ -126,9 +126,9 @@ class Status(models.Model):
     """
 
     class AdditionType(models.TextChoices):
-        EGG = ("egg", "Unborn animal generated within the colony")
-        BIRTH = ("birth", "Animal born within the colony")
-        TRANSFER = ("transfer", "Animal transferred into the colony from outside")
+        EGG = ("egg", "Adds an unborn animal")
+        BIRTH = ("birth", "Adds a living animal")
+        TRANSFER = ("transfer", "Transfers animal into the colony")
         __empty__ = "Not an addition"
 
     class RemovalType(models.TextChoices):
@@ -156,6 +156,13 @@ class Status(models.Model):
 
     def __str__(self):
         return self.name
+
+    def effect(self) -> str | None:
+        """Summarize the effect of the event"""
+        if self.adds is not None:
+            return Status.AdditionType(self.adds).label
+        elif self.removes is not None:
+            return Status.RemovalType(self.removes).label
 
     class Meta:
         ordering = ("name",)
@@ -630,7 +637,7 @@ class Animal(models.Model):
         Returns "unknown" if the status cannot be determined (i.e., an animal with no events)
         """
         try:
-            lbl = Animal.Status(self.status).label
+            lbl = Animal.Status(self.status).label.lower()
         except (ValueError, AttributeError):
             return "unknown"
         if self.age is None:

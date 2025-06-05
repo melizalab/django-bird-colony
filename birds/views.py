@@ -50,6 +50,7 @@ from birds.models import (
     Pairing,
     Sample,
     SampleType,
+    Status,
 )
 from birds.tools import tabulate_pairs
 
@@ -385,6 +386,7 @@ def event_entry(request, event: int | None = None, animal: str | None = None):
                 {"type": measure, "value": None} for measure in Measure.objects.all()
             ]
         formset = MeasurementFormSet(initial=initial_data, prefix="measurements")
+        event_types = Status.objects.all().order_by("-removes", "-adds", "name")
 
     return render(
         request,
@@ -395,6 +397,7 @@ def event_entry(request, event: int | None = None, animal: str | None = None):
             "form_action": action,
             "animal": animal,
             "event": event,
+            "event_types": event_types,
         },
     )
 
@@ -407,7 +410,12 @@ def measurement_list(
     animal: str | None = None,
 ):
     qs = Measurement.objects.select_related(
-        "event", "event__animal", "event__animal__species", "event__animal__band_color"
+        "type",
+        "event",
+        "event__animal",
+        "event__animal__species",
+        "event__animal__band_color",
+        "event__entered_by",
     ).order_by("-event__date", "-created")
     if animal is not None:
         animal = get_object_or_404(Animal, uuid=animal)
@@ -464,16 +472,24 @@ def location_list(request):
 @require_http_methods(["GET"])
 def location_view(request, pk):
     location = get_object_or_404(Location, pk=pk)
-    birds = location.birds().with_dates().with_related().alive().order_by("-created")
-    eggs = location.birds().unhatched().existing().order_by("-created")
+    birds = list(
+        location.birds()
+        .with_dates()
+        .with_related()
+        .existing()
+        .order_by("status", "-created")
+    )
+    alive_birds = [bird for bird in birds if bird.status == Animal.Status.ALIVE]
+    eggy_birds = [bird for bird in birds if bird.status == Animal.Status.GOOD_EGG]
     events = location.event_set.with_related()
+
     return render(
         request,
         "birds/location.html",
         {
             "location": location,
-            "animal_list": birds,
-            "egg_list": eggs,
+            "animal_list": alive_birds,
+            "egg_list": eggy_birds,
             "event_list": events,
         },
     )
