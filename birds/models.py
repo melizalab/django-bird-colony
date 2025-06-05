@@ -535,10 +535,10 @@ class Animal(models.Model):
         """Enumeration of aliveness statuses an animal can have (inferred)"""
 
         ALIVE = "yes", _("alive")
-        DIED_EXPTD = "no", _("dead (expected)")
+        DIED_EXPTD = "no", _("died (expected)")
         GOOD_EGG = "egg", _("unhatched egg")
         BAD_EGG = "bad egg", _("infertile egg")
-        DIED_UNEXPTD = "lost", _("dead (unexpected)")
+        DIED_UNEXPTD = "lost", _("died (unexpected)")
 
     species = models.ForeignKey("Species", on_delete=models.PROTECT)
     sex = models.CharField(max_length=2, choices=Sex.choices, default=Sex.UNKNOWN_SEX)
@@ -621,6 +621,22 @@ class Animal(models.Model):
         """
         return self.event_set.filter(status__removes__isnull=False).first()
 
+    def history(self) -> str:
+        """Summarizes the status of the animal for family history"""
+        born = self.event_set.filter(status__adds=Status.AdditionType.BIRTH).first()
+        removed = self.removal_event()
+        if born is not None:
+            refdate = removed.date if removed is not None else datetime.date.today()
+            age_days = (refdate - born.date).days
+            age_str = f"{age_days // 365}y {age_days % 365:3}d old"
+        else:
+            age_str = "unknown age"
+        if removed is not None:
+            lbl = Status.RemovalType(removed.status.removes).label
+            return f"{lbl} on {removed.date} at {age_str}"
+        else:
+            return f"alive, {age_str}"
+
     def alive(self, on_date: datetime.date | None = None) -> bool:
         """Returns true if the animal is alive on this date.
 
@@ -637,14 +653,16 @@ class Animal(models.Model):
         Age group is calculated relative to on_date, which allows us to use a
         single database query to determine the animal's age group at different dates.
 
-        Classified as an adult if there was a non-hatch acquisition event.
-        Otherwise, an egg if there was at least one non-acquisition event.
-        Otherwise, None. Returns None if there is no match in the Age table
-        (this can only happen if there is not an object with min_age = 0).
+        If the animal was hatched in the colony, uses the hatch date to
+        determine age and then group. Animals acquired through transfer are
+        always classified as adults, and as eggs if there is an "egg" type
+        event. Otherwise, None. Will also return None if there is no match in
+        the Age table (this can only happen if there is not an object with
+        min_age = 0).
 
-        This method can only be used if the object was retrieved using the
-        with_dates() annotation, and it will be more performant if age_set is
-        prefetched.
+        This method requires the born_on, acquired_on, laid_on, and died_on
+        annotations provided by the with_dates() queryset method, and it will be
+        more performant if age_set is prefetched.
 
         """
         refdate = on_date or datetime.date.today()
@@ -1066,10 +1084,14 @@ class Pairing(models.Model):
     objects = PairingManager.from_queryset(PairingQuerySet)()
 
     def __str__(self):
-        return f"{self.short_name()} ({self.began_on} - {self.ended_on})"
+        return f"{self.short_name} ({self.date_range()})"
 
+    @cached_property
     def short_name(self):
         return f"♂{self.sire} × ♀{self.dam}"  # noqa: RUF001
+
+    def date_range(self) -> str:
+        return f"{self.began_on} - {self.ended_on or ''}"
 
     def get_absolute_url(self):
         return reverse("birds:pairing", kwargs={"pk": self.id})

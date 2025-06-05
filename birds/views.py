@@ -6,7 +6,7 @@ from itertools import groupby
 
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
-from django.db.models import Count, F
+from django.db.models import Count, F, Prefetch
 from django.db.utils import IntegrityError
 from django.forms import ValidationError, formset_factory
 from django.http import Http404, HttpResponseRedirect
@@ -104,46 +104,26 @@ def animal_list(request, *, parent: str | None = None):
         },
     )
 
-
-@require_http_methods(["GET"])
-def animal_child_list(request, uuid: str):
-    animal = get_object_or_404(Animal, uuid=uuid)
-    qs = (
-        animal.children.with_annotations()
-        .with_related()
-        .order_by("-alive", F("age").desc(nulls_last=True))
-    )
-    query = request.GET.copy()
-    try:
-        page_number = query.pop("page")[-1]
-    except (KeyError, IndexError):
-        page_number = None
-    f = AnimalFilter(query, queryset=qs)
-    paginator = Paginator(f.qs, 25)
-    page_obj = paginator.get_page(page_number)
-
-    return render(
-        request,
-        "birds/animal_list.html",
-        {
-            "filter": f,
-            "query": query,
-            "page_obj": page_obj,
-            "animal_list": page_obj.object_list,
-        },
-    )
-
-
 @require_http_methods(["GET"])
 def animal_view(request, uuid: str):
-    qs = Animal.objects.with_annotations()
+    qs = Animal.objects.with_annotations().with_related().prefetch_related(
+            Prefetch(
+                'parents',
+                queryset=Animal.objects.all()
+            )
+        )
     animal = get_object_or_404(qs, uuid=uuid)
     kids = (
         animal.children.with_annotations()
         .with_related()
-        .hatched()
         .order_by("-alive", F("age").desc(nulls_last=True))
     )
+    # family history
+
+    # consider counting some breeding outcomes to avoid extra hits on DB
+    # counts = defaultdict(int)
+    # for kid in kids:
+    #     counts[kid.status] += 1
     events = animal.event_set.with_related().order_by("-date", "-created")
     samples = animal.sample_set.order_by("-date")
     pairings = (
@@ -155,7 +135,12 @@ def animal_view(request, uuid: str):
         {
             "animal": animal,
             "animal_measurements": animal.measurements(),
-            "animal_list": kids,
+            "kids": kids,
+            # "breeding_stats": {
+            #     "infertile_eggs": counts[Animal.Alive.BAD_EGG],
+            #     "unexpectedly_died": counts[Animal.Alive.DIED_UNEXPTD],
+            #     "currently_alive": counts[Animal.Alive.ALIVE],
+            # },
             "event_list": events,
             "sample_list": samples,
             "pairing_list": pairings,

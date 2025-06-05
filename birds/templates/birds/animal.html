@@ -24,17 +24,21 @@
 <dl class="dl-horizontal">
   <dt><u>family history</u></dt><dd/>
   <dt>acquired</dt><dd>{{ animal.acquisition_event.event_date }}</dd>
-  <dt>birth pairing</dt><dd> {% if animal.birth_pairing %}<a href="{{ animal.birth_pairing.get_absolute_url }}">{{ animal.birth_pairing }}</a>{% endif %}</dd>
-  <dt>sire</dt><dd>{% if animal.sire %}<a href="{{ animal.sire.get_absolute_url }}">{{ animal.sire }}</a>{% endif %}</dd>
-  <dt>dam</dt><dd>{% if animal.dam %}<a href="{{ animal.dam.get_absolute_url }}">{{ animal.dam }}</a>{% endif %}</dd>
+  <dt>birth pairing</dt><dd> {% if animal.birth_pairing %}<a href="{{ animal.birth_pairing.get_absolute_url }}">{{ animal.birth_pairing.began_on}} - {{ animal.birth_pairing.ended_on|default_if_none:""}}</a>{% endif %}</dd>
+  <dt>sire</dt><dd>{% if animal.sire %}<a href="{{ animal.sire.get_absolute_url }}">{{ animal.sire }}</a>: {{ animal.sire.history }}{% endif %}</dd>
+  <dt>paternal grandsire</dt><dd>{% if animal.sire.sire %}<a href="{{ animal.sire.sire.get_absolute_url }}">{{ animal.sire.sire }}</a>: {{ animal.sire.sire.history }}{% endif %}</dd>
+  <dt>paternal granddam</dt><dd>{% if animal.sire.dam %}<a href="{{ animal.sire.dam.get_absolute_url }}">{{ animal.sire.dam }}</a>: {{ animal.sire.dam.history }}{% endif %}</dd>
+  <dt>dam</dt><dd>{% if animal.dam %}<a href="{{ animal.dam.get_absolute_url }}">{{ animal.dam }}</a>: {{ animal.dam.history }}{% endif %}</dd>
+  <dt>maternal grandsire</dt><dd>{% if animal.dam.sire %}<a href="{{ animal.dam.sire.get_absolute_url }}">{{ animal.dam.sire }}</a>: {{ animal.dam.sire.history }}{% endif %}</dd>
+  <dt>maternal granddam</dt><dd>{% if animal.dam.dam %}<a href="{{ animal.dam.dam.get_absolute_url }}">{{ animal.dam.dam }}</a>: {{ animal.dam.dam.history }}{% endif %}</dd>
 </dl>
 
 <dl class="dl-horizontal">
-  <dt><u>progeny</u></dt><dd/>
-  <dt>infertile eggs</dt><dd> {{ animal.children.unhatched.lost.count }}</dd>
-  <dt>successfully hatched</dt><dd>{{ animal.children.hatched.count }}</dd>
-  <dt>unexpectedly died</dt><dd>{{ animal.children.hatched.lost.count }}</dd>
-  <dt>currently alive</dt><dd>{{ animal.children.alive.count }}</dd>
+  <dt><u>breeding outcomes</u></dt><dd/>
+  <dt>infertile eggs</dt><dd> {{ kids.unhatched.lost.count }}</dd>
+  <dt>successfully hatched</dt><dd>{{ kids.hatched.count }}</dd>
+  <dt>unexpectedly died</dt><dd>{{ kids.hatched.lost.count }}</dd>
+  <dt>currently alive</dt><dd>{{ kids.alive.count }}</dd>
 </dl>
 
 {% if not animal.sexed %}
@@ -95,7 +99,7 @@
 
 <h3>Children</h3>
 
-{% include "birds/animal_table.html" %}
+{% include "birds/animal_table.html" with animal_list=kids.hatched only %}
 
 <a href="{% url 'birds:animal_kids' animal.uuid %}">all children</a> (including eggs)&nbsp;&nbsp;
 <a href="{% url 'birds:genealogy' animal.uuid %}">full genealogy</a> (may take a while)<br/>
