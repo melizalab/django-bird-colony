@@ -448,7 +448,7 @@ def measurement_list(
 # Locations
 @require_http_methods(["GET"])
 def location_list(request):
-    # faster to query by bird and annotate with location (as in location_summary)
+    # Alternative:
     # qs = (
     #     Animal.objects.with_annotations()
     #     .with_related()
@@ -458,6 +458,7 @@ def location_list(request):
     # counts = {}
     # for location, animals in groupby(qs, key=lambda animal: animal.last_location):
     #     counts[location] = len(animals)
+    # This is usually faster:
     qs = Location.objects.order_by("name")
     paginator = Paginator(qs, 25)
     page_number = request.GET.get("page")

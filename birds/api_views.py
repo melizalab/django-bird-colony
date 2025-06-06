@@ -1,11 +1,13 @@
 # -*- mode: python -*-
 
 from django.db.models import Count, Q
+from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_link_header_pagination import LinkHeaderPagination
 from rest_framework import generics, permissions, status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, renderer_classes
+from rest_framework.renderers import BrowsableAPIRenderer, JSONRenderer
 from rest_framework.response import Response
 
 from birds import __version__, api_version
@@ -25,7 +27,6 @@ from birds.serializers import (
     AnimalSerializer,
     EventSerializer,
     MeasurementSerializer,
-    PedigreeRequestSerializer,
 )
 
 
@@ -33,6 +34,22 @@ class LargeResultsSetPagination(LinkHeaderPagination):
     page_size = 1000
     page_size_query_param = "page_size"
     max_page_size = 10000
+
+
+class JSONLRenderer(JSONRenderer):
+    media_type = "application/x-jsonlines"
+    format = "jsonl"
+
+    def render(self, data, accepted_media_type=None, renderer_context=None):
+        out = super().render(data, accepted_media_type, renderer_context)
+        return out + b"\n"
+
+    @classmethod
+    def requested_by(cls, request):
+        return (
+            request.accepted_renderer.format == cls.format
+            or cls.media_type in request.META.get("HTTP_ACCEPT", "")
+        )
 
 
 @api_view(["GET"])
@@ -115,36 +132,39 @@ def event_detail(request, pk: int, format=None):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class MeasurementsList(generics.ListAPIView):
-    queryset = Measurement.objects.all()
-    serializer_class = MeasurementSerializer
-    filter_backends = (DjangoFilterBackend,)
-    filterset_class = MeasurementFilter
+@api_view(["GET"])
+@renderer_classes([JSONRenderer, BrowsableAPIRenderer, JSONLRenderer])
+def measurement_list(request, format=None):
+    """Get measurements attached to events as streamed line-delimited JSON or as standard JSON"""
+    qs = Measurement.objects.select_related("type")
+    f = MeasurementFilter(request.GET, queryset=qs)
+    if format == "jsonl" or JSONLRenderer.requested_by(request):
+        renderer = JSONLRenderer()
+        gen = (renderer.render(MeasurementSerializer(obj).data) for obj in f.qs)
+        return StreamingHttpResponse(gen)
+    else:
+        serializer = MeasurementSerializer(f.qs, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class AnimalPedigree(generics.ListAPIView):
-    """A list of animals and their parents.
-
-    If query param restrict is False, includes all animals, not just
-    the ones useful for constructing a pedigree.
-    """
-
-    serializer_class = AnimalPedigreeSerializer
-    filter_backends = (DjangoFilterBackend,)
-    filterset_class = AnimalFilter
-    pagination_class = LargeResultsSetPagination
-
-    def get_queryset(self):
-        queryset = (
-            Animal.objects.with_dates()
-            .select_related("reserved_by", "species", "band_color", "plumage")
-            .prefetch_related("parents__species")
-            .prefetch_related("parents__band_color")
-            .order_by("band_color", "band_number")
-        )
-        request_parsed = PedigreeRequestSerializer(data=self.request.query_params)
-        if request_parsed.is_valid() and request_parsed.data["restrict"]:
-            queryset = queryset.annotate(nchildren=Count("children")).filter(
-                Q(alive__gt=0) | Q(nchildren__gt=0)
-            )
-        return queryset
+@api_view(["GET"])
+def animal_pedigree(request, format=None):
+    """Streams a list of animals with their parents and various statistics important for breeding"""
+    qs = (
+        Animal.objects.with_dates()
+        .annotate(nchildren=Count("children"))
+        .filter(Q(alive__gt=0) | Q(nchildren__gt=0))
+        .select_related("species", "band_color", "plumage")
+        .prefetch_related("children")
+        .prefetch_related("parents__species")
+        .prefetch_related("parents__band_color")
+        .order_by("band_color", "band_number")
+    )
+    f = AnimalFilter(request.GET, queryset=qs)
+    if format == "jsonl" or JSONLRenderer.requested_by(request):
+        renderer = JSONLRenderer()
+        gen = (renderer.render(AnimalPedigreeSerializer(obj).data) for obj in f.qs)
+        return StreamingHttpResponse(gen)
+    else:
+        serializer = AnimalPedigreeSerializer(f.qs, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

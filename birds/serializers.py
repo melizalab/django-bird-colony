@@ -39,25 +39,25 @@ class AnimalSerializer(serializers.ModelSerializer):
         )
 
 
-class AnimalPedigreeSerializer(serializers.ModelSerializer):
+class AnimalPedigreeSerializer(serializers.Serializer):
+    uuid = serializers.UUIDField()
+    name = serializers.CharField()
     sire = serializers.StringRelatedField()
     dam = serializers.StringRelatedField()
+    sex = serializers.CharField()
     plumage = serializers.StringRelatedField()
     alive = serializers.BooleanField()
-    born_on = serializers.DateField(read_only=True)
-
-    class Meta:
-        model = Animal
-        fields = (
-            "uuid",
-            "name",
-            "sire",
-            "dam",
-            "sex",
-            "alive",
-            "plumage",
-            "born_on",
-        )
+    unexpectedly_died = serializers.BooleanField(source="has_unexpected_removal")
+    age_days = serializers.IntegerField(source="age.days", default=None)
+    n_eggs_infertile = serializers.IntegerField(
+        source="children.unhatched.lost.count", default=0
+    )
+    n_eggs_hatched = serializers.IntegerField(
+        source="children.hatched.count", default=0
+    )
+    n_kids_unexpectedly_died = serializers.IntegerField(
+        source="children.hatched.lost.count", default=0
+    )
 
 
 class PedigreeRequestSerializer(serializers.Serializer):

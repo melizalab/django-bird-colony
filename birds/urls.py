@@ -148,10 +148,6 @@ urlpatterns = [
     ),
     path("api/events/", api_views.EventList.as_view(), name="events_api"),
     path("api/events/<int:pk>/", api_views.event_detail, name="event_api"),
-    path(
-        "api/measurements/",
-        api_views.MeasurementsList.as_view(),
-        name="measurements_api",
-    ),
-    path("api/pedigree/", api_views.AnimalPedigree.as_view(), name="pedigree_api"),
+    path("api/measurements/", api_views.measurement_list, name="measurements_api"),
+    path("api/pedigree/", api_views.animal_pedigree, name="pedigree_api"),
 ]
