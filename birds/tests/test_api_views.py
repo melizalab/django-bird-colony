@@ -1,8 +1,10 @@
 # -*- mode: python -*-
 import datetime
+import json
 import warnings
 
 from django.contrib.auth import get_user_model
+from django.http import StreamingHttpResponse
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -235,11 +237,15 @@ class ApiViewTests(APITestCase):
 
     def test_pedigree_view(self):
         response = self.client.get(reverse("birds:pedigree_api"))
+        self.assertIsInstance(response, StreamingHttpResponse)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = list(response.streaming_content)
         # pedigree will include parents even though they aren't alive
-        self.assertEqual(len(response.data), self.n_birds)
-        self.assertEqual(
-            {bird["uuid"] for bird in response.data},
-            self.uuids,
-        )
-        # needs more testing
+        self.assertEqual(len(data), self.n_birds)
+        uuids = set()
+        for line in data:
+            bird = json.loads(line)
+            self.assertEqual(bird["inbreeding"], 0.0)
+            uuids.add(bird["uuid"])
+        self.assertEqual(uuids, self.uuids)
+        # needs more testing - should be in creation order, with correct relationships

@@ -2,8 +2,12 @@
 """Functions for computing inbreeding and relatedness coefficients"""
 from typing import Optional, Tuple, List
 
+from django.db.models import F, Q, OuterRef, Subquery, Window, Count
+from django.db.models.functions import RowNumber
 import numpy as np
 import numpy.typing as npt
+
+from birds.models import Animal
 
 def inbreeding_coeffs(sire_ids: npt.ArrayLike, dam_ids: npt.ArrayLike) -> np.ndarray:
     """Calculate inbreeding coefficients using LAP-based modification of 
@@ -27,6 +31,9 @@ def inbreeding_coeffs(sire_ids: npt.ArrayLike, dam_ids: npt.ArrayLike) -> np.nda
     numpy.ndarray
         Array of inbreeding coefficients
 
+    Notes:
+    ------
+    - Animals must be sorted so that parents appear before offspring
     """
     sire_ids = np.asarray(sire_ids, dtype=np.int32)
     dam_ids = np.asarray(dam_ids, dtype=np.int32)
@@ -128,6 +135,15 @@ def inbreeding_coeffs(sire_ids: npt.ArrayLike, dam_ids: npt.ArrayLike) -> np.nda
     
     # Return inbreeding coefficients (dropping the placeholder)
     return F[1:]
+
+def get_pedigree():
+    """Retrieves a sorted pedigree from the database"""
+    qs = Animal.objects.annotate(
+        sire=Subquery(Animal.objects.filter(children=OuterRef("uuid"), sex="M").values("uuid")[:1]),
+        dam=Subquery(Animal.objects.filter(children=OuterRef("uuid"), sex="F").values("uuid")[:1]),
+        idx=Window(expression=RowNumber(), order_by=['created', 'uuid']),
+    )
+    return tuple(qs.order_by("idx").values("idx", "uuid", "sire", "dam"))
 
 
 def calculate_inbreeding(sire_ids, dam_ids, missing_parent=-1):

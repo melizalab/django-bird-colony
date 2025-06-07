@@ -1,6 +1,7 @@
 # -*- mode: python -*-
 
-from django.db.models import Count, Q
+from django.db.models import F, Q, OuterRef, Subquery, Window, Count
+from django.db.models.functions import RowNumber
 from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
@@ -11,6 +12,7 @@ from rest_framework.renderers import BrowsableAPIRenderer, JSONRenderer
 from rest_framework.response import Response
 
 from birds import __version__, api_version
+from birds import pedigree
 from birds.filters import (
     AnimalFilter,
     EventFilter,
@@ -148,23 +150,39 @@ def measurement_list(request, format=None):
 
 
 @api_view(["GET"])
+@renderer_classes([JSONLRenderer])
 def animal_pedigree(request, format=None):
-    """Streams a list of animals with their parents and various statistics important for breeding"""
+    """Streams a list of animals with their parents and various statistics important for breeding. 
+
+    Only animals that are currently alive or have descendents are included in
+    the pedigree. The results can be further filtered using standard Animal query
+    params.
+
+    """
     qs = (
         Animal.objects.with_dates()
-        .annotate(nchildren=Count("children"))
+        .annotate(nchildren=Count("children"),
+                  sire=Subquery(Animal.objects.filter(children=OuterRef("uuid"), sex="M").values("uuid")[:1]),
+                  dam=Subquery(Animal.objects.filter(children=OuterRef("uuid"), sex="F").values("uuid")[:1]),
+                  idx=Window(expression=RowNumber(), order_by=['created', 'uuid']))
         .filter(Q(alive__gt=0) | Q(nchildren__gt=0))
         .select_related("species", "band_color", "plumage")
         .prefetch_related("children")
-        .prefetch_related("parents__species")
-        .prefetch_related("parents__band_color")
-        .order_by("band_color", "band_number")
+        .order_by("idx")
     )
-    f = AnimalFilter(request.GET, queryset=qs)
-    if format == "jsonl" or JSONLRenderer.requested_by(request):
+    # convert uuids to indices for inbreeding calculation
+    uuid_to_idx = {a.uuid: a.idx for a in qs}
+    uuid_to_idx[None] = 0
+    sires = [uuid_to_idx[a.sire] for a in qs]
+    dams = [uuid_to_idx[a.dam] for a in qs]
+    inbreeding = pedigree.inbreeding_coeffs(sires, dams)
+    # allow user to filter the results
+    f = AnimalFilter(request.GET, qs)
+    def stream():
         renderer = JSONLRenderer()
-        gen = (renderer.render(AnimalPedigreeSerializer(obj).data) for obj in f.qs)
-        return StreamingHttpResponse(gen)
-    else:
-        serializer = AnimalPedigreeSerializer(f.qs, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        for bird in f.qs:
+            data = AnimalPedigreeSerializer(bird).data
+            data["inbreeding"] = float(inbreeding[uuid_to_idx[bird.uuid] - 1])
+            yield renderer.render(data)
+
+    return StreamingHttpResponse(stream())
