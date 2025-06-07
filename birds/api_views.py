@@ -1,6 +1,6 @@
 # -*- mode: python -*-
 
-from django.db.models import F, Q, OuterRef, Subquery, Window, Count
+from django.db.models import Count, OuterRef, Q, Subquery, Window
 from django.db.models.functions import RowNumber
 from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
@@ -11,8 +11,7 @@ from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.renderers import BrowsableAPIRenderer, JSONRenderer
 from rest_framework.response import Response
 
-from birds import __version__, api_version
-from birds import pedigree
+from birds import __version__, api_version, pedigree
 from birds.filters import (
     AnimalFilter,
     EventFilter,
@@ -152,7 +151,7 @@ def measurement_list(request, format=None):
 @api_view(["GET"])
 @renderer_classes([JSONLRenderer])
 def animal_pedigree(request, format=None):
-    """Streams a list of animals with their parents and various statistics important for breeding. 
+    """Streams a list of animals with their parents and various statistics important for breeding.
 
     Only animals that are currently alive or have descendents are included in
     the pedigree. The results can be further filtered using standard Animal query
@@ -161,10 +160,20 @@ def animal_pedigree(request, format=None):
     """
     qs = (
         Animal.objects.with_dates()
-        .annotate(nchildren=Count("children"),
-                  sire=Subquery(Animal.objects.filter(children=OuterRef("uuid"), sex="M").values("uuid")[:1]),
-                  dam=Subquery(Animal.objects.filter(children=OuterRef("uuid"), sex="F").values("uuid")[:1]),
-                  idx=Window(expression=RowNumber(), order_by=['created', 'uuid']))
+        .annotate(
+            nchildren=Count("children"),
+            sire=Subquery(
+                Animal.objects.filter(children=OuterRef("uuid"), sex="M").values(
+                    "uuid"
+                )[:1]
+            ),
+            dam=Subquery(
+                Animal.objects.filter(children=OuterRef("uuid"), sex="F").values(
+                    "uuid"
+                )[:1]
+            ),
+            idx=Window(expression=RowNumber(), order_by=["created", "uuid"]),
+        )
         .filter(Q(alive__gt=0) | Q(nchildren__gt=0))
         .select_related("species", "band_color", "plumage")
         .prefetch_related("children")
@@ -178,6 +187,7 @@ def animal_pedigree(request, format=None):
     inbreeding = pedigree.inbreeding_coeffs(sires, dams)
     # allow user to filter the results
     f = AnimalFilter(request.GET, qs)
+
     def stream():
         renderer = JSONLRenderer()
         for bird in f.qs:
