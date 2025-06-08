@@ -149,7 +149,7 @@ def measurement_list(request, format=None):
 
 
 @api_view(["GET"])
-@renderer_classes([JSONLRenderer])
+@renderer_classes([JSONRenderer, BrowsableAPIRenderer, JSONLRenderer])
 def animal_pedigree(request, format=None):
     """Streams a list of animals with their parents and various statistics important for breeding.
 
@@ -183,11 +183,11 @@ def animal_pedigree(request, format=None):
     # allow user to filter the results
     f = AnimalFilter(request.GET, qs)
 
-    def stream():
+    ctx = {"bird_to_idx": bird_to_idx, "inbreeding": inbreeding}
+    if format == "jsonl" or JSONLRenderer.requested_by(request):
         renderer = JSONLRenderer()
-        for bird in f.qs:
-            data = AnimalPedigreeSerializer(bird).data
-            data["inbreeding"] = float(inbreeding[bird_to_idx[bird]])
-            yield renderer.render(data)
-
-    return StreamingHttpResponse(stream())
+        gen = (renderer.render(AnimalPedigreeSerializer(obj, context=ctx).data) for obj in f.qs)
+        return StreamingHttpResponse(gen)
+    else:
+        serializer = AnimalPedigreeSerializer(f.qs, context=ctx, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

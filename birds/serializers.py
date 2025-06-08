@@ -173,6 +173,7 @@ class AnimalPedigreeSerializer(serializers.Serializer):
     grandparent_lifespans = serializers.SerializerMethodField()
     parent_breeding_outcomes = BreedingOutcomesSerializer(source="full_siblings")
     breeding_outcomes = BreedingOutcomesSerializer(source="children")
+    inbreeding = serializers.SerializerMethodField()
 
     # some queries that are too specialized to go on the model
     def get_weight(self, obj):
@@ -199,3 +200,7 @@ class AnimalPedigreeSerializer(serializers.Serializer):
             )
             if age is not None
         ]
+
+    def get_inbreeding(self, obj):
+        idx = self.context["bird_to_idx"][obj]
+        return float(self.context["inbreeding"][idx])
