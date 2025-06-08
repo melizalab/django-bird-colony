@@ -23,11 +23,12 @@ def inbreeding_coeffs(sire_ids: npt.ArrayLike, dam_ids: npt.ArrayLike) -> np.nda
     Returns:
     --------
     numpy.ndarray
-        Array of inbreeding coefficients
+        Array of inbreeding coefficients (1-indexed)
 
     Notes:
     ------
     - Animals must be sorted so that parents appear before offspring
+    - First element of the returned array should be ignored
     """
     sire_ids = np.asarray(sire_ids, dtype=np.int32)
     dam_ids = np.asarray(dam_ids, dtype=np.int32)
@@ -127,5 +128,5 @@ def inbreeding_coeffs(sire_ids: npt.ArrayLike, dam_ids: npt.ArrayLike) -> np.nda
             if MI[t] == SI[t]:
                 t -= 1
 
-    # Return inbreeding coefficients (dropping the placeholder)
-    return F[1:]
+    # Return inbreeding coefficients (leaving placeholder so that indices will work)
+    return F

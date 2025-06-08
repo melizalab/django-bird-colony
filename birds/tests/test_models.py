@@ -542,6 +542,7 @@ class ParentModelTests(TestCase):
         child = make_child(sire, dam)
         self.assertEqual(child.sire(), sire)
         self.assertEqual(child.dam(), dam)
+        self.assertEqual(child.full_siblings().count(), 0)
         self.assertTrue(sire.children.contains(child))
         self.assertTrue(dam.children.contains(child))
         self.assertEqual(
@@ -589,6 +590,7 @@ class ParentModelTests(TestCase):
         self.assertEqual(bird.dam(), dam)
         self.assertTrue(sire.children.contains(bird))
         self.assertTrue(dam.children.contains(bird))
+        self.assertEqual(bird.full_siblings().count(), 0)
 
     def test_bird_child_counts(self):
         species = Species.objects.get(pk=1)
@@ -693,6 +695,12 @@ class ParentModelTests(TestCase):
         self.assertCountEqual(
             Animal.objects.descendents_of(son, generation=1),
             [grandson, granddaughter_1, granddaughter_2],
+        )
+        self.assertCountEqual(
+            grandson.full_siblings(), [granddaughter_1, granddaughter_2]
+        )
+        self.assertCountEqual(
+            granddaughter_1.full_siblings(), [grandson, granddaughter_2]
         )
         parents = Animal.objects.ancestors_of(grandson, generation=1)
         self.assertCountEqual(parents, [son, wife])

@@ -1,6 +1,6 @@
 # -*- mode: python -*-
 
-from django.db.models import Count, OuterRef, Q, Subquery, Window
+from django.db.models import Count, Prefetch, Q, Window
 from django.db.models.functions import RowNumber
 from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
@@ -160,30 +160,25 @@ def animal_pedigree(request, format=None):
     """
     qs = (
         Animal.objects.with_dates()
+        .annotate(nchildren=Count("children"))
+        .filter(Q(alive__gt=0) | Q(nchildren__gt=0))
         .annotate(
-            nchildren=Count("children"),
-            sire=Subquery(
-                Animal.objects.filter(children=OuterRef("uuid"), sex="M").values(
-                    "uuid"
-                )[:1]
-            ),
-            dam=Subquery(
-                Animal.objects.filter(children=OuterRef("uuid"), sex="F").values(
-                    "uuid"
-                )[:1]
-            ),
             idx=Window(expression=RowNumber(), order_by=["created", "uuid"]),
         )
-        .filter(Q(alive__gt=0) | Q(nchildren__gt=0))
+        .prefetch_related(
+            Prefetch("parents", queryset=Animal.objects.with_dates()),
+            Prefetch("parents__parents", queryset=Animal.objects.with_dates()),
+            Prefetch("parents__children", queryset=Animal.objects.with_dates()),
+            Prefetch("children", queryset=Animal.objects.with_dates()),
+        )
         .select_related("species", "band_color", "plumage")
-        .prefetch_related("children")
         .order_by("idx")
     )
     # convert uuids to indices for inbreeding calculation
-    uuid_to_idx = {a.uuid: a.idx for a in qs}
-    uuid_to_idx[None] = 0
-    sires = [uuid_to_idx[a.sire] for a in qs]
-    dams = [uuid_to_idx[a.dam] for a in qs]
+    bird_to_idx = {a: a.idx for a in qs}
+    bird_to_idx[None] = 0
+    sires = [bird_to_idx[a.sire()] for a in qs]
+    dams = [bird_to_idx[a.dam()] for a in qs]
     inbreeding = pedigree.inbreeding_coeffs(sires, dams)
     # allow user to filter the results
     f = AnimalFilter(request.GET, qs)
@@ -192,7 +187,7 @@ def animal_pedigree(request, format=None):
         renderer = JSONLRenderer()
         for bird in f.qs:
             data = AnimalPedigreeSerializer(bird).data
-            data["inbreeding"] = float(inbreeding[uuid_to_idx[bird.uuid] - 1])
+            data["inbreeding"] = float(inbreeding[bird_to_idx[bird]])
             yield renderer.render(data)
 
     return StreamingHttpResponse(stream())

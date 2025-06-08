@@ -606,6 +606,24 @@ class Animal(models.Model):
     def dam(self):
         return next((p for p in self.parents.all() if p.sex == Animal.Sex.FEMALE), None)
 
+    def full_siblings(self):
+        """Queryset with all the full siblings of this animal (sharing both parents).
+
+        Empty if the bird does not have exactly two parents.
+        """
+        parents = self.parents.all()
+        if parents.count() != 2:
+            return Animal.objects.none()
+        # we're assuming all the matches have exactly two parents. This isn't
+        # enforced in the database but it should be the case if every animal is
+        # created using forms that only allow two parents. Could filter on
+        # parent count but I don't think it's worth it.
+        return (
+            Animal.objects.filter(parents=parents[0])
+            .filter(parents=parents[1])
+            .exclude(uuid=self.uuid)
+        )
+
     def sexed(self):
         return self.sex != Animal.Sex.UNKNOWN_SEX
 

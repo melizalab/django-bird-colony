@@ -124,6 +124,7 @@ urlpatterns = [
         views.event_summary,
         name="event_summary",
     ),
+    # path("summary/breeding-stats/", views.breeding_stats_list, name="breeding-stats"),
     # forms
     path(
         "breeding-check/", login_required(views.breeding_check), name="breeding-check"

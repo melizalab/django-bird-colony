@@ -6,7 +6,8 @@ from itertools import groupby
 
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
-from django.db.models import Count, F, Prefetch
+from django.db.models import Count, F, Prefetch, Q, Window
+from django.db.models.functions import RowNumber
 from django.db.utils import IntegrityError
 from django.forms import ValidationError, formset_factory
 from django.http import Http404, HttpResponseRedirect
@@ -17,7 +18,7 @@ from django.utils.timezone import make_aware
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_http_methods
 
-from birds import __version__
+from birds import __version__, pedigree
 from birds.filters import (
     AnimalFilter,
     EventFilter,
@@ -1014,5 +1015,58 @@ def event_summary(request, year: int, month: int):
             "prev": date - datetime.timedelta(days=1),
             "event_totals": event_counts.order_by(),
             "bird_counts": counts,
+        },
+    )
+
+
+@require_http_methods(["GET"])
+def breeding_stats_list(request):
+    """A table of animals with statistics relevant to breeding strength"""
+    # monster query to pull in everything we need. Only look at birds that are
+    # alive or that have descendents. Latter are needed to calculate inbreeding.
+    # Each bird gets a 1-based index based on creation timestamp to use in
+    # calculating inbreeding. If parents are ever entered after children (which
+    # can happen if placeholder parents are created when importing animals),
+    # this will really mess up the inbreeding calculation, but I think it's
+    # worth avoiding the topological sort.
+    qs = (
+        Animal.objects.with_dates()
+        .annotate(nchildren=Count("children"))
+        .filter(Q(alive__gt=0) | Q(nchildren__gt=0))
+        .annotate(idx=Window(expression=RowNumber(), order_by=["created", "uuid"]))
+        .select_related("species", "band_color")
+        .prefetch_related(
+            Prefetch("parents", queryset=Animal.objects.with_dates()),
+            Prefetch("parents__parents", queryset=Animal.objects.with_dates()),
+            Prefetch("children", queryset=Animal.objects.with_dates()),
+        )
+        .order_by("idx")
+    )
+    # lookup dict from uuids to indices for inbreeding calculation
+    bird_to_idx = {a: a.idx for a in qs}
+    bird_to_idx[None] = 0
+    sires = [bird_to_idx[a.sire()] for a in qs]
+    dams = [bird_to_idx[a.dam()] for a in qs]
+    inbreeding = pedigree.inbreeding_coeffs(sires, dams)
+
+    # filtering and pagination
+    query = request.GET.copy()
+    try:
+        page_number = query.pop("page")[-1]
+    except (KeyError, IndexError):
+        page_number = None
+    f = AnimalFilter(query, queryset=qs.alive())  # only living birds
+    paginator = Paginator(f.qs, 25)
+    page_obj = paginator.get_page(page_number)
+
+    return render(
+        request,
+        "birds/breeding_stats.html",
+        {
+            "filter": f,
+            "query": query,
+            "page_obj": page_obj,
+            "animal_list": page_obj.object_list,
+            "inbreeding": inbreeding,
         },
     )

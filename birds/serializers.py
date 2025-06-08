@@ -39,33 +39,6 @@ class AnimalSerializer(serializers.ModelSerializer):
         )
 
 
-class AnimalPedigreeSerializer(serializers.Serializer):
-    uuid = serializers.UUIDField()
-    name = serializers.CharField()
-    sire = serializers.StringRelatedField()
-    dam = serializers.StringRelatedField()
-    sex = serializers.CharField()
-    plumage = serializers.StringRelatedField()
-    alive = serializers.BooleanField()
-    unexpectedly_died = serializers.BooleanField(source="has_unexpected_removal")
-    age_days = serializers.IntegerField(source="age.days", default=None)
-    n_eggs_infertile = serializers.IntegerField(
-        source="children.unhatched.lost.count", default=0
-    )
-    n_eggs_hatched = serializers.IntegerField(
-        source="children.hatched.count", default=0
-    )
-    n_kids_unexpectedly_died = serializers.IntegerField(
-        source="children.hatched.lost.count", default=0
-    )
-
-
-class PedigreeRequestSerializer(serializers.Serializer):
-    """Used to parse requests for pedigree"""
-
-    restrict = serializers.BooleanField(default=True)
-
-
 class AnimalDetailSerializer(AnimalSerializer):
     species = serializers.StringRelatedField()
     band_color = serializers.StringRelatedField()
@@ -173,3 +146,56 @@ class EventSerializer(serializers.ModelSerializer):
             "entered_by",
             "measurements",
         )
+
+
+class BreedingOutcomesSerializer(serializers.Serializer):
+    n_eggs_infertile = serializers.IntegerField(
+        source="unhatched.lost.count", default=0
+    )
+    n_eggs_hatched = serializers.IntegerField(source="hatched.count", default=0)
+    n_kids_unexpectedly_died = serializers.IntegerField(
+        source="hatched.lost.count", default=0
+    )
+
+
+class AnimalPedigreeSerializer(serializers.Serializer):
+    uuid = serializers.UUIDField()
+    name = serializers.CharField()
+    sire = serializers.StringRelatedField()
+    dam = serializers.StringRelatedField()
+    sex = serializers.CharField()
+    plumage = serializers.StringRelatedField()
+    alive = serializers.BooleanField()
+    unexpectedly_died = serializers.BooleanField(source="has_unexpected_removal")
+    age_days = serializers.IntegerField(source="age.days", default=None)
+    weight = serializers.SerializerMethodField()
+    parent_lifespans = serializers.SerializerMethodField()
+    grandparent_lifespans = serializers.SerializerMethodField()
+    parent_breeding_outcomes = BreedingOutcomesSerializer(source="full_siblings")
+    breeding_outcomes = BreedingOutcomesSerializer(source="children")
+
+    # some queries that are too specialized to go on the model
+    def get_weight(self, obj):
+        try:
+            return obj.measurements().get(type__name="weight").value
+        except Measurement.DoesNotExist:
+            pass
+
+    def get_parent_lifespans(self, obj):
+        return [
+            age.days
+            for age in obj.parents.filter(has_unexpected_removal=True).values_list(
+                "age", flat=True
+            )
+            if age is not None
+        ]
+
+    def get_grandparent_lifespans(self, obj):
+        return [
+            age.days
+            for parent in obj.parents.all()
+            for age in parent.parents.filter(has_unexpected_removal=True).values_list(
+                "age", flat=True
+            )
+            if age is not None
+        ]

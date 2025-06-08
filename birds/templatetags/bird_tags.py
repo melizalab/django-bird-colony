@@ -69,3 +69,12 @@ def count_summary(counter, join_by=", "):
 def count_total(counter):
     """Call the total() method on a Counter"""
     return f"{counter.total()}"
+
+
+@register.filter
+def item_at(arr, index):
+    """Return an item from a sequence by index"""
+    try:
+        return arr[int(index)]
+    except (ValueError, IndexError, TypeError):
+        return None

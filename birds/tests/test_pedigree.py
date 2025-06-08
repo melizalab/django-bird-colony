@@ -9,7 +9,7 @@ def test_inbreeding_mrode_2005():
     sires = np.asarray([0, 0, 1, 1, 4, 5])
     dams = np.asarray([0, 0, 2, 0, 3, 2])
     F = pedigree.inbreeding_coeffs(sires, dams)
-    assert_allclose(F, [0.0, 0.0, 0.0, 0.0, 0.125, 0.125])
+    assert_allclose(F[1:], [0.0, 0.0, 0.0, 0.0, 0.125, 0.125])
 
 
 def test_inbreeding_inbred_common_ancestor():
@@ -65,8 +65,8 @@ def test_inbreeding_inbred_common_ancestor():
         == 0
     ), "sires and dams are not disjoint"
     F = pedigree.inbreeding_coeffs(sires, dams)
-    assert_allclose(F[names.find("I")], 0.0625)
-    assert_allclose(F[names.find("Q")], 0.06445, rtol=1e-4)
+    assert_allclose(F[names.find("I") + 1], 0.0625)
+    assert_allclose(F[names.find("Q") + 1], 0.06445, rtol=1e-4)
 
 
 def test_inbreeding_without_inbred_common_ancestor():
@@ -116,7 +116,7 @@ def test_inbreeding_without_inbred_common_ancestor():
         == 0
     ), "sires and dams are not disjoint"
     F = pedigree.inbreeding_coeffs(sires, dams)
-    assert_allclose(F[names.find("O")], 0.0703125)
+    assert_allclose(F[names.find("O") + 1], 0.0703125)
 
 
 def test_inbreeding_closely_inbred():
@@ -134,8 +134,8 @@ def test_inbreeding_closely_inbred():
         == 0
     ), "sires and dams are not disjoint"
     F = pedigree.inbreeding_coeffs(sires, dams)
-    assert_allclose(F[names.find("E")], 0.25)
-    assert_allclose(F[names.find("I")], 0.50)
+    assert_allclose(F[names.find("E") + 1], 0.25)
+    assert_allclose(F[names.find("I") + 1], 0.50)
 
 
 def test_inbreeding_18th_dynasty():
@@ -186,7 +186,7 @@ def test_inbreeding_18th_dynasty():
         == 0
     ), "sires and dams are not disjoint"
     F = pedigree.inbreeding_coeffs(sires, dams)
-    assert_allclose(F, [0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.25, 0.0, 0.375, 0.25])
+    assert_allclose(F[1:], [0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.25, 0.0, 0.375, 0.25])
 
 
 def test_inbreeding_double_grandchildren():
@@ -254,7 +254,7 @@ def test_inbreeding_direct_collateral():
         == 0
     ), "sires and dams are not disjoint"
     F = pedigree.inbreeding_coeffs(sires, dams)
-    assert_allclose(F[names.find("B")], 0.0)
-    assert_allclose(F[names.find("J")], 0.125)
-    assert_allclose(F[names.find("L")], 0.03125)
-    assert_allclose(F[names.find("O")], 0.33203125)
+    assert_allclose(F[names.find("B") + 1], 0.0)
+    assert_allclose(F[names.find("J") + 1], 0.125)
+    assert_allclose(F[names.find("L") + 1], 0.03125)
+    assert_allclose(F[names.find("O") + 1], 0.33203125)
