@@ -1,21 +1,40 @@
 # -*- mode: python -*-
+from dataclasses import dataclass
+from typing import Sequence, Optional
+
 import numpy as np
+import pytest
 from numpy.testing import assert_allclose
+
 
 from birds import pedigree
 
 
-def test_inbreeding_mrode_2005():
-    sires = np.asarray([0, 0, 1, 1, 4, 5])
-    dams = np.asarray([0, 0, 2, 0, 3, 2])
-    F = pedigree.inbreeding_coeffs(sires, dams)
-    assert_allclose(F[1:], [0.0, 0.0, 0.0, 0.0, 0.125, 0.125])
+@dataclass
+class Pedigree:
+    names: Sequence[str]
+    sires: Sequence[Optional[str]]
+    dams: Sequence[Optional[str]]
+
+    def __post_init__(self):
+        sire_set = {sire for sire in self.sires if sire is not None}
+        dam_set = {dam for dam in self.dams if dam is not None}
+        assert sire_set.isdisjoint(dam_set), "sires and dams are not disjoint"
+
+    def idx(self, name):
+        return self.names.index(name) + 1 if name is not None else 0
+
+    def sire_idx(self):
+        return np.asarray([self.idx(x) for x in self.sires])
+
+    def dam_idx(self):
+        return np.asarray([self.idx(x) for x in self.dams])
 
 
-def test_inbreeding_inbred_common_ancestor():
-    # from https://genetic-genealogy.co.uk/Toc115570144.html, figure 64
-    names = "ABCDEFGHIJKLMNOPQR"
-    sire_names = [
+# from https://genetic-genealogy.co.uk/Toc115570144.html, figure 64
+inbred_common_ancestor = Pedigree(
+    list("ABCDEFGHIJKLMNOPQR"),
+    [
         None,
         None,
         None,
@@ -34,8 +53,8 @@ def test_inbreeding_inbred_common_ancestor():
         "M",
         "O",
         "O",
-    ]
-    dam_names = [
+    ],
+    [
         None,
         None,
         None,
@@ -55,24 +74,12 @@ def test_inbreeding_inbred_common_ancestor():
         "P",
         "P",
     ]
-    sires = np.asarray([names.find(x) + 1 if x is not None else 0 for x in sire_names])
-    dams = np.asarray([names.find(x) + 1 if x is not None else 0 for x in dam_names])
-    assert (
-        len(
-            {sire for sire in sire_names if sire is not None}
-            & {dam for dam in dam_names if dam is not None}
-        )
-        == 0
-    ), "sires and dams are not disjoint"
-    F = pedigree.inbreeding_coeffs(sires, dams)
-    assert_allclose(F[names.find("I") + 1], 0.0625)
-    assert_allclose(F[names.find("Q") + 1], 0.06445, rtol=1e-4)
+)
 
-
-def test_inbreeding_without_inbred_common_ancestor():
-    # from https://genetic-genealogy.co.uk/Toc115570144.html, figure 65
-    names = "ABCDEFGHIJKLMNO"
-    sire_names = [
+# from https://genetic-genealogy.co.uk/Toc115570144.html, figure 65
+no_inbred_common_ancestor = Pedigree(
+    list("ABCDEFGHIJKLMNO"),
+    [
         None,
         None,
         None,
@@ -88,8 +95,8 @@ def test_inbreeding_without_inbred_common_ancestor():
         None,
         "K",
         "M",
-    ]
-    dam_names = [
+    ],
+    [
         None,
         None,
         None,
@@ -106,41 +113,19 @@ def test_inbreeding_without_inbred_common_ancestor():
         "L",
         "N",
     ]
-    sires = np.asarray([names.find(x) + 1 if x is not None else 0 for x in sire_names])
-    dams = np.asarray([names.find(x) + 1 if x is not None else 0 for x in dam_names])
-    assert (
-        len(
-            {sire for sire in sire_names if sire is not None}
-            & {dam for dam in dam_names if dam is not None}
-        )
-        == 0
-    ), "sires and dams are not disjoint"
-    F = pedigree.inbreeding_coeffs(sires, dams)
-    assert_allclose(F[names.find("O") + 1], 0.0703125)
+)
+
+# from https://genetic-genealogy.co.uk/Toc115570144.html, figure 66
+closely_inbred = Pedigree(
+    list("ABCDEFGHI"),
+    [None, None, "A", "A", "C", "C", "E", "E", "G"],
+    [None, None, "B", "B", "D", "D", "F", "F", "H"],
+)
 
 
-def test_inbreeding_closely_inbred():
-    # from https://genetic-genealogy.co.uk/Toc115570144.html, figure 66
-    names = "ABCDEFGHI"
-    sire_names = [None, None, "A", "A", "C", "C", "E", "E", "G"]
-    dam_names = [None, None, "B", "B", "D", "D", "F", "F", "H"]
-    sires = np.asarray([names.find(x) + 1 if x is not None else 0 for x in sire_names])
-    dams = np.asarray([names.find(x) + 1 if x is not None else 0 for x in dam_names])
-    assert (
-        len(
-            {sire for sire in sire_names if sire is not None}
-            & {dam for dam in dam_names if dam is not None}
-        )
-        == 0
-    ), "sires and dams are not disjoint"
-    F = pedigree.inbreeding_coeffs(sires, dams)
-    assert_allclose(F[names.find("E") + 1], 0.25)
-    assert_allclose(F[names.find("I") + 1], 0.50)
-
-
-def test_inbreeding_18th_dynasty():
-    # from https://genetic-genealogy.co.uk/Toc115570144.html, figure 67
-    names = [
+# from https://genetic-genealogy.co.uk/Toc115570144.html, figure 67
+ped_18th_dynasty = Pedigree(
+    [
         "Sequenenra III",
         "Aahotep I",
         "Aahmes",
@@ -151,8 +136,8 @@ def test_inbreeding_18th_dynasty():
         "Thotmes I",
         "Aames",
         "Hatsheput",
-    ]
-    sire_names = [
+    ],
+    [
         None,
         None,
         "Sequenenra III",
@@ -163,8 +148,8 @@ def test_inbreeding_18th_dynasty():
         "Amenhotep I",
         "Amenhotep I",
         "Thotmes I",
-    ]
-    dam_names = [
+    ],
+    [
         None,
         None,
         "Aahotep I",
@@ -176,41 +161,21 @@ def test_inbreeding_18th_dynasty():
         "Aahotep II",
         "Aames",
     ]
-    sires = np.asarray([names.index(x) + 1 if x is not None else 0 for x in sire_names])
-    dams = np.asarray([names.index(x) + 1 if x is not None else 0 for x in dam_names])
-    assert (
-        len(
-            {sire for sire in sire_names if sire is not None}
-            & {dam for dam in dam_names if dam is not None}
-        )
-        == 0
-    ), "sires and dams are not disjoint"
-    F = pedigree.inbreeding_coeffs(sires, dams)
-    assert_allclose(F[1:], [0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.25, 0.0, 0.375, 0.25])
+)
 
 
-def test_inbreeding_double_grandchildren():
-    # from https://genetic-genealogy.co.uk/Toc115570144.html, figure 69
-    names = "ABCDEFGH"
-    sire_names = [None, None, "A", "A", "C", None, "E", "E"]
-    dam_names = [None, None, "B", "B", "D", None, "F", "G"]
-    sires = np.asarray([names.find(x) + 1 if x is not None else 0 for x in sire_names])
-    dams = np.asarray([names.find(x) + 1 if x is not None else 0 for x in dam_names])
-    assert (
-        len(
-            {sire for sire in sire_names if sire is not None}
-            & {dam for dam in dam_names if dam is not None}
-        )
-        == 0
-    ), "sires and dams are not disjoint"
-    F = pedigree.inbreeding_coeffs(sires, dams)
-    assert_allclose(F[-1], 0.3125)
+# from https://genetic-genealogy.co.uk/Toc115570144.html, figure 69
+double_grandchildren = Pedigree(
+    list("ABCDEFGH"),
+    [None, None, "A", "A", "C", None, "E", "E"],
+    [None, None, "B", "B", "D", None, "F", "G"],
+)
 
 
-def test_inbreeding_direct_collateral():
-    # from https://genetic-genealogy.co.uk/Toc115570144.html, figure 70
-    names = "ABCDEFGHIJKLMNO"
-    sire_names = [
+# from https://genetic-genealogy.co.uk/Toc115570144.html, figure 70
+direct_collateral = Pedigree(
+    list("ABCDEFGHIJKLMNO"),
+    [
         None,
         None,
         None,
@@ -226,8 +191,8 @@ def test_inbreeding_direct_collateral():
         "J",
         "L",
         "L",
-    ]
-    dam_names = [
+    ],
+    [
         None,
         None,
         None,
@@ -244,17 +209,52 @@ def test_inbreeding_direct_collateral():
         "M",
         "N",
     ]
-    sires = np.asarray([names.find(x) + 1 if x is not None else 0 for x in sire_names])
-    dams = np.asarray([names.find(x) + 1 if x is not None else 0 for x in dam_names])
-    assert (
-        len(
-            {sire for sire in sire_names if sire is not None}
-            & {dam for dam in dam_names if dam is not None}
-        )
-        == 0
-    ), "sires and dams are not disjoint"
+)
+
+
+def test_inbreeding_mrode_2005():
+    sires = np.asarray([0, 0, 1, 1, 4, 5])
+    dams = np.asarray([0, 0, 2, 0, 3, 2])
     F = pedigree.inbreeding_coeffs(sires, dams)
-    assert_allclose(F[names.find("B") + 1], 0.0)
-    assert_allclose(F[names.find("J") + 1], 0.125)
-    assert_allclose(F[names.find("L") + 1], 0.03125)
-    assert_allclose(F[names.find("O") + 1], 0.33203125)
+    assert_allclose(F[1:], [0.0, 0.0, 0.0, 0.0, 0.125, 0.125])
+
+
+def test_inbreeding_inbred_common_ancestor():
+    ped = inbred_common_ancestor
+    F = pedigree.inbreeding_coeffs(ped.sire_idx(), ped.dam_idx())
+    assert_allclose(F[ped.idx("I")], 0.0625)
+    assert_allclose(F[ped.idx("Q")], 0.06445, rtol=1e-4)
+
+
+def test_inbreeding_without_inbred_common_ancestor():
+    ped = no_inbred_common_ancestor
+    F = pedigree.inbreeding_coeffs(ped.sire_idx(), ped.dam_idx())
+    assert_allclose(F[ped.idx("O")], 0.0703125)
+
+
+def test_inbreeding_closely_inbred():
+    ped = closely_inbred
+    F = pedigree.inbreeding_coeffs(ped.sire_idx(), ped.dam_idx())
+    assert_allclose(F[ped.idx("E")], 0.25)
+    assert_allclose(F[ped.idx("I")], 0.50)
+
+
+def test_inbreeding_18th_dynasty():
+    ped = ped_18th_dynasty
+    F = pedigree.inbreeding_coeffs(ped.sire_idx(), ped.dam_idx())
+    assert_allclose(F[1:], [0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.25, 0.0, 0.375, 0.25])
+
+
+def test_inbreeding_double_grandchildren():
+    ped = double_grandchildren
+    F = pedigree.inbreeding_coeffs(ped.sire_idx(), ped.dam_idx())
+    assert_allclose(F[-1], 0.3125)
+
+
+def test_inbreeding_direct_collateral():
+    ped = direct_collateral
+    F = pedigree.inbreeding_coeffs(ped.sire_idx(), ped.dam_idx())
+    assert_allclose(F[ped.idx("B")], 0.0)
+    assert_allclose(F[ped.idx("J")], 0.125)
+    assert_allclose(F[ped.idx("L")], 0.03125)
+    assert_allclose(F[ped.idx("O")], 0.33203125)
