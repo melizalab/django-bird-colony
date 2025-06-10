@@ -14,6 +14,7 @@ from birds.models import (
     Measure,
     Measurement,
     Pairing,
+    Parent,
     Plumage,
     Species,
     Status,
@@ -534,6 +535,7 @@ class AnimalModelTests(TestCase):
 
 class ParentModelTests(TestCase):
     fixtures = ("bird_colony_starter_kit",)
+    maxDiff = None
 
     def test_bird_parents(self):
         species = Species.objects.get(pk=1)
@@ -591,6 +593,16 @@ class ParentModelTests(TestCase):
         self.assertTrue(sire.children.contains(bird))
         self.assertTrue(dam.children.contains(bird))
         self.assertEqual(bird.full_siblings().count(), 0)
+
+
+    def test_pedigree(self):
+        species = Species.objects.get(pk=1)
+        sire = Animal.objects.create(species=species, sex=Animal.Sex.MALE)
+        dam = Animal.objects.create(species=species, sex=Animal.Sex.FEMALE)
+        child = make_child(sire, dam)
+        pedigree = Parent.objects.pedigree_subgraph_keys([child])
+        self.assertCountEqual(pedigree,
+                              [(sire.uuid, []), (dam.uuid, []), (child.uuid, [dam.uuid, sire.uuid])])
 
     def test_bird_child_counts(self):
         species = Species.objects.get(pk=1)
@@ -707,6 +719,13 @@ class ParentModelTests(TestCase):
         grandparents = Animal.objects.ancestors_of(grandson, generation=2)
         self.assertCountEqual(grandparents, [sire, dam])
         self.assertCountEqual(grandparents.alive(), [sire])
+
+        pedigree = Parent.objects.pedigree_subgraph_keys([grandson, granddaughter_1])
+        self.assertCountEqual(pedigree,
+                              [(sire.uuid, []), (dam.uuid, []), (wife.uuid, []),
+                               (son.uuid, [dam.uuid, sire.uuid]),
+                               (grandson.uuid, [wife.uuid, son.uuid]),
+                               (granddaughter_1.uuid, [wife.uuid, son.uuid])])
 
 
 class EventModelTests(TestCase):

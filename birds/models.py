@@ -506,26 +506,32 @@ class AnimalQuerySet(models.QuerySet):
 
 
 class ParentManger(models.Manager):
-    def pedigree_subgraph(self, target_animals: list):
+    def pedigree_subgraph(self, target_animals: list["Animal"] | None = None):
         """Returns only the instances where the child is in `target_animals` or has its own children"""
-        return Parent.objects.filter(
-            Q(child__in=target_animals)
-            | Q(
-                child__uuid__in=Subquery(
-                    Parent.objects.values_list("parent__uuid", flat=True)
-                )
-            )
-        )
+        parents_with_kids = Subquery(Parent.objects.values_list("parent__uuid", flat=True))
+        query = Q(child__uuid__in=parents_with_kids)
+        if target_animals:
+            query |= Q(child__in=target_animals)
+        return Parent.objects.filter(query)
 
-    def pedigree_subgraph_keys(self, target_animals: list):
-        """Returns the pedigree for all animals with children or `target_animals`"""
+    def pedigree_subgraph_keys(self, target_animals: list["Animal"] | None = None) -> list[uuid.UUID, list[uuid.UUID | None]]:
+        """Returns the pedigree for all animals with children and `target_animals`
+        
+        Each bird is listed with its parents (which can be 2, 1, or 0 birds). The dam is always listed first.
+
+        """
+        ped = self.pedigree_subgraph(target_animals)
+        founders = ped.exclude(parent__in=Subquery(ped.values_list("child__uuid", flat=True))).distinct("parent")
+        # these are all the children with their parents
         qs = (
-            self.pedigree_subgraph(target_animals)
+            ped
             .values("child")
-            .annotate(parents=ArrayAgg("parent", distinct=True))
+            .annotate(parents=ArrayAgg("parent", ordering="parent__sex"))
+            # ensure topological sort
+            .order_by("child__created", "child__uuid")
             .values_list("child", "parents")
         )
-        return {child: [uuid for uuid in parents] for child, parents in qs}
+        return [(founder, []) for founder in founders.values_list("parent", flat=True)] + list(qs)
 
 
 class Parent(models.Model):

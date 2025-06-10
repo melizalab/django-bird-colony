@@ -168,8 +168,9 @@ def animal_pedigree(request, format=None):
         .prefetch_related(
             Prefetch("parents", queryset=Animal.objects.with_dates()),
             Prefetch("parents__parents", queryset=Animal.objects.with_dates()),
-            Prefetch("parents__children", queryset=Animal.objects.with_dates()),
             Prefetch("children", queryset=Animal.objects.with_dates()),
+            # used when calculating parent breeding outcomes in the dabase
+            # Prefetch("parents__children", queryset=Animal.objects.with_dates()),
         )
         .select_related("species", "band_color", "plumage")
         .order_by("idx")
