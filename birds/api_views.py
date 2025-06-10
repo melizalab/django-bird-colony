@@ -186,7 +186,10 @@ def animal_pedigree(request, format=None):
     ctx = {"bird_to_idx": bird_to_idx, "inbreeding": inbreeding}
     if format == "jsonl" or JSONLRenderer.requested_by(request):
         renderer = JSONLRenderer()
-        gen = (renderer.render(AnimalPedigreeSerializer(obj, context=ctx).data) for obj in f.qs)
+        gen = (
+            renderer.render(AnimalPedigreeSerializer(obj, context=ctx).data)
+            for obj in f.qs
+        )
         return StreamingHttpResponse(gen)
     else:
         serializer = AnimalPedigreeSerializer(f.qs, context=ctx, many=True)

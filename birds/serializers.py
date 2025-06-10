@@ -3,7 +3,7 @@ import datetime
 
 from rest_framework import serializers
 
-from birds.models import Animal, Event, Location, Measure, Measurement, Status
+from birds.models import Animal, Event, Location, Measure, Measurement, Pairing, Status
 
 
 class AgeSerializer(serializers.Field):
@@ -148,6 +148,20 @@ class EventSerializer(serializers.ModelSerializer):
         )
 
 
+class PairingSerializer(serializers.ModelSerializer):
+    sire = serializers.StringRelatedField()
+    dam = serializers.StringRelatedField()
+    class Meta:
+        model = Pairing
+        fields = (
+            "id",
+            "sire",
+            "dam",
+            "began_on",
+            "ended_on",
+        )
+
+
 class BreedingOutcomesSerializer(serializers.Serializer):
     n_eggs_infertile = serializers.IntegerField(
         source="unhatched.lost.count", default=0
@@ -165,13 +179,14 @@ class AnimalPedigreeSerializer(serializers.Serializer):
     dam = serializers.StringRelatedField()
     sex = serializers.CharField()
     plumage = serializers.StringRelatedField()
+    born_on = serializers.DateField()
     alive = serializers.BooleanField()
     unexpectedly_died = serializers.BooleanField(source="has_unexpected_removal")
     age_days = serializers.IntegerField(source="age.days", default=None)
     weight = serializers.SerializerMethodField()
     parent_lifespans = serializers.SerializerMethodField()
     grandparent_lifespans = serializers.SerializerMethodField()
-    parent_breeding_outcomes = BreedingOutcomesSerializer(source="full_siblings")
+    latest_pairing = PairingSerializer(source="pairings.first")
     breeding_outcomes = BreedingOutcomesSerializer(source="children")
     inbreeding = serializers.SerializerMethodField()
 
