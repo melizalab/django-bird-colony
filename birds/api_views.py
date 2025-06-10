@@ -1,7 +1,6 @@
 # -*- mode: python -*-
 
-from django.db.models import Count, Prefetch, Q, Window
-from django.db.models.functions import RowNumber
+from django.db.models import Prefetch
 from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
@@ -159,12 +158,7 @@ def animal_pedigree(request, format=None):
 
     """
     qs = (
-        Animal.objects.with_dates()
-        .annotate(nchildren=Count("children"))
-        .filter(Q(alive__gt=0) | Q(nchildren__gt=0))
-        .annotate(
-            idx=Window(expression=RowNumber(), order_by=["created", "uuid"]),
-        )
+        Animal.objects.for_pedigree()
         .prefetch_related(
             Prefetch("parents", queryset=Animal.objects.with_dates()),
             Prefetch("parents__parents", queryset=Animal.objects.with_dates()),
@@ -173,18 +167,15 @@ def animal_pedigree(request, format=None):
             # Prefetch("parents__children", queryset=Animal.objects.with_dates()),
         )
         .select_related("species", "band_color", "plumage")
-        .order_by("idx")
     )
-    # convert uuids to indices for inbreeding calculation
-    bird_to_idx = {a: a.idx for a in qs}
-    bird_to_idx[None] = 0
-    sires = [bird_to_idx[a.sire()] for a in qs]
-    dams = [bird_to_idx[a.dam()] for a in qs]
-    inbreeding = pedigree.inbreeding_coeffs(sires, dams)
+    ped = pedigree.Pedigree.from_animals(
+        [(animal.uuid, animal.sire, animal.dam) for animal in qs]
+    )
+    inbreeding = ped.get_inbreeding()
     # allow user to filter the results
     f = AnimalFilter(request.GET, qs)
 
-    ctx = {"bird_to_idx": bird_to_idx, "inbreeding": inbreeding}
+    ctx = {"pedigree": ped, "inbreeding": inbreeding}
     if format == "jsonl" or JSONLRenderer.requested_by(request):
         renderer = JSONLRenderer()
         gen = (

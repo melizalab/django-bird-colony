@@ -1,42 +1,39 @@
 # -*- mode: python -*-
-from collections import defaultdict
-from collections.abc import Sequence
-from dataclasses import dataclass
+
 
 import numpy as np
 from numpy.testing import assert_allclose
 
-from birds import pedigree
+from birds.pedigree import Pedigree, inbreeding_coeffs, kinship_coeffs
 
+# @dataclass
+# class Pedigree:
+#     names: Sequence[str]
+#     sires: Sequence[str | None]
+#     dams: Sequence[str | None]
 
-@dataclass
-class Pedigree:
-    names: Sequence[str]
-    sires: Sequence[str | None]
-    dams: Sequence[str | None]
+#     def __post_init__(self):
+#         sire_set = {sire for sire in self.sires if sire is not None}
+#         dam_set = {dam for dam in self.dams if dam is not None}
+#         assert sire_set.isdisjoint(dam_set), "sires and dams are not disjoint"
 
-    def __post_init__(self):
-        sire_set = {sire for sire in self.sires if sire is not None}
-        dam_set = {dam for dam in self.dams if dam is not None}
-        assert sire_set.isdisjoint(dam_set), "sires and dams are not disjoint"
+#     def idx(self, name):
+#         return self.names.index(name) + 1 if name is not None else 0
 
-    def idx(self, name):
-        return self.names.index(name) + 1 if name is not None else 0
+#     def sire_idx(self):
+#         return np.asarray([self.idx(x) for x in self.sires])
 
-    def sire_idx(self):
-        return np.asarray([self.idx(x) for x in self.sires])
+#     def dam_idx(self):
+#         return np.asarray([self.idx(x) for x in self.dams])
 
-    def dam_idx(self):
-        return np.asarray([self.idx(x) for x in self.dams])
-
-    def to_dict(self):
-        out = defaultdict(list)
-        for child, sire, dam in zip(self.names, self.sires, self.dams, strict=False):
-            if sire is not None:
-                out[child].append(sire)
-            if dam is not None:
-                out[child].append(dam)
-        return dict(out)
+#     def to_dict(self):
+#         out = defaultdict(list)
+#         for child, sire, dam in zip(self.names, self.sires, self.dams, strict=False):
+#             if sire is not None:
+#                 out[child].append(sire)
+#             if dam is not None:
+#                 out[child].append(dam)
+#         return dict(out)
 
 
 # from https://genetic-genealogy.co.uk/Toc115570144.html, figure 64
@@ -229,64 +226,78 @@ def test_pedigree_to_dict():
 def test_inbreeding_mrode_2005():
     sires = np.asarray([0, 0, 1, 1, 4, 5])
     dams = np.asarray([0, 0, 2, 0, 3, 2])
-    F = pedigree.inbreeding_coeffs(sires, dams)
+    F = inbreeding_coeffs(sires, dams)
     assert_allclose(F[1:], [0.0, 0.0, 0.0, 0.0, 0.125, 0.125])
 
 
 def test_inbreeding_inbred_common_ancestor():
     ped = inbred_common_ancestor
-    F = pedigree.inbreeding_coeffs(ped.sire_idx(), ped.dam_idx())
-    assert_allclose(F[ped.idx("I")], 0.0625)
-    assert_allclose(F[ped.idx("Q")], 0.06445, rtol=1e-4)
+    F = inbreeding_coeffs(ped.sire_array(), ped.dam_array())
+    assert_allclose(F[ped.index("I")], 0.0625)
+    assert_allclose(F[ped.index("Q")], 0.06445, rtol=1e-4)
 
 
 def test_kinship_inbred_common_ancestor():
-    ped = inbred_common_ancestor.to_dict()
-    rel = pedigree.kinship(ped, ["A", "D", "E", "G", "H", "O", "P"])
+    ped = inbred_common_ancestor
+    kin = kinship_coeffs(ped.sire_array(), ped.dam_array())
     # self
-    assert rel[("A", "A")] == 0.5
+    assert kin[ped.index("A"), ped.index("A")] == 0.5
     # child
-    assert rel[("A", "D")] == 0.25
+    assert kin[ped.index("A"), ped.index("D")] == 0.25
     # siblings
-    assert rel[("D", "E")] == 0.25
+    assert kin[ped.index("D"), ped.index("E")] == 0.25
     # uncle
-    assert rel[("G", "E")] == 0.125
-    # cousins
-    assert rel[("G", "H")] == 0.0625
+    assert kin[ped.index("G"), ped.index("E")] == 0.125
+    # 1st cousins
+    assert kin[ped.index("G"), ped.index("H")] == 0.0625
     # should be same as inbreeding coefficient for Q, but it will fail if the
     # algorithm counts paths through through ancestors of common ancestors
-    assert rel[("O", "P")] == 0.06445
+    assert_allclose(kin[ped.index("O"), ped.index("P")], 0.06445, rtol=1e-4)
 
 
 def test_inbreeding_without_inbred_common_ancestor():
     ped = no_inbred_common_ancestor
-    F = pedigree.inbreeding_coeffs(ped.sire_idx(), ped.dam_idx())
-    assert_allclose(F[ped.idx("O")], 0.0703125)
+    F = inbreeding_coeffs(ped.sire_array(), ped.dam_array())
+    assert_allclose(F[ped.index("O")], 0.0703125)
 
 
 def test_inbreeding_closely_inbred():
     ped = closely_inbred
-    F = pedigree.inbreeding_coeffs(ped.sire_idx(), ped.dam_idx())
-    assert_allclose(F[ped.idx("E")], 0.25)
-    assert_allclose(F[ped.idx("I")], 0.50)
+    F = inbreeding_coeffs(ped.sire_array(), ped.dam_array())
+    assert_allclose(F[ped.index("E")], 0.25)
+    assert_allclose(F[ped.index("I")], 0.50)
 
 
 def test_inbreeding_18th_dynasty():
     ped = ped_18th_dynasty
-    F = pedigree.inbreeding_coeffs(ped.sire_idx(), ped.dam_idx())
+    F = inbreeding_coeffs(ped.sire_array(), ped.dam_array())
     assert_allclose(F[1:], [0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.25, 0.0, 0.375, 0.25])
 
 
 def test_inbreeding_double_grandchildren():
     ped = double_grandchildren
-    F = pedigree.inbreeding_coeffs(ped.sire_idx(), ped.dam_idx())
-    assert_allclose(F[-1], 0.3125)
+    F = inbreeding_coeffs(ped.sire_array(), ped.dam_array())
+    assert_allclose(F[ped.index("E")], 0.25)
+    assert_allclose(F[ped.index("H")], 0.3125)
+
+
+def test_kinship_double_grandchildren():
+    ped = double_grandchildren
+    kin = kinship_coeffs(ped.sire_array(), ped.dam_array())
+    # self
+    assert kin[ped.index("A"), ped.index("A")] == 0.5
+    # child
+    assert kin[ped.index("A"), ped.index("C")] == 0.25
+    # child, but E is inbred
+    assert kin[ped.index("E"), ped.index("G")] == 0.31250
+    # double grandchild
+    assert kin[ped.index("E"), ped.index("H")] == 0.46875
 
 
 def test_inbreeding_direct_collateral():
     ped = direct_collateral
-    F = pedigree.inbreeding_coeffs(ped.sire_idx(), ped.dam_idx())
-    assert_allclose(F[ped.idx("B")], 0.0)
-    assert_allclose(F[ped.idx("J")], 0.125)
-    assert_allclose(F[ped.idx("L")], 0.03125)
-    assert_allclose(F[ped.idx("O")], 0.33203125)
+    F = inbreeding_coeffs(ped.sire_array(), ped.dam_array())
+    assert_allclose(F[ped.index("B")], 0.0)
+    assert_allclose(F[ped.index("J")], 0.125)
+    assert_allclose(F[ped.index("L")], 0.03125)
+    assert_allclose(F[ped.index("O")], 0.33203125)

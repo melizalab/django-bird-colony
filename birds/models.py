@@ -504,34 +504,63 @@ class AnimalQuerySet(models.QuerySet):
         kwargs = {key: animal}
         return self.filter(**kwargs)
 
+    def for_pedigree(self):
+        """All parents and currently living animals annotated with sire/dam and topologically sorted"""
+        return (
+            self.with_dates()
+            .annotate(nchildren=Count("children"))
+            .filter(Q(alive__gt=0) | Q(nchildren__gt=0))
+            .annotate(
+                sire=Subquery(
+                    Animal.objects.filter(children=OuterRef("uuid"), sex="M").values(
+                        "uuid"
+                    )[:1]
+                ),
+                dam=Subquery(
+                    Animal.objects.filter(children=OuterRef("uuid"), sex="F").values(
+                        "uuid"
+                    )[:1]
+                ),
+                idx=Window(expression=RowNumber(), order_by=["created", "uuid"]),
+            )
+            .order_by("idx")
+        )
+
 
 class ParentManger(models.Manager):
     def pedigree_subgraph(self, target_animals: list["Animal"] | None = None):
         """Returns only the instances where the child is in `target_animals` or has its own children"""
-        parents_with_kids = Subquery(Parent.objects.values_list("parent__uuid", flat=True))
+        parents_with_kids = Subquery(
+            Parent.objects.values_list("parent__uuid", flat=True)
+        )
         query = Q(child__uuid__in=parents_with_kids)
         if target_animals:
             query |= Q(child__in=target_animals)
         return Parent.objects.filter(query)
 
-    def pedigree_subgraph_keys(self, target_animals: list["Animal"] | None = None) -> list[uuid.UUID, list[uuid.UUID | None]]:
+    def pedigree_subgraph_keys(
+        self, target_animals: list["Animal"] | None = None
+    ) -> list[uuid.UUID, list[uuid.UUID | None]]:
         """Returns the pedigree for all animals with children and `target_animals`
-        
+
         Each bird is listed with its parents (which can be 2, 1, or 0 birds). The dam is always listed first.
 
         """
         ped = self.pedigree_subgraph(target_animals)
-        founders = ped.exclude(parent__in=Subquery(ped.values_list("child__uuid", flat=True))).distinct("parent")
+        founders = ped.exclude(
+            parent__in=Subquery(ped.values_list("child__uuid", flat=True))
+        ).distinct("parent")
         # these are all the children with their parents
         qs = (
-            ped
-            .values("child")
+            ped.values("child")
             .annotate(parents=ArrayAgg("parent", ordering="parent__sex"))
             # ensure topological sort
             .order_by("child__created", "child__uuid")
             .values_list("child", "parents")
         )
-        return [(founder, []) for founder in founders.values_list("parent", flat=True)] + list(qs)
+        return [
+            (founder, []) for founder in founders.values_list("parent", flat=True)
+        ] + list(qs)
 
 
 class Parent(models.Model):

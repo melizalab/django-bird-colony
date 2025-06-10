@@ -1,10 +1,49 @@
 # -*- mode: python -*-
 """Functions for computing inbreeding and relatedness coefficients"""
 
-from collections import deque
+from collections import defaultdict, deque
+from collections.abc import Sequence
+from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
+
+
+@dataclass
+class Pedigree:
+    names: Sequence[str]
+    sires: Sequence[str | None]
+    dams: Sequence[str | None]
+    indices: dict[str, int] = field(init=False)
+
+    def __post_init__(self):
+        self.indices = {name: index for index, name in enumerate(self.names, start=1)}
+
+    @classmethod
+    def from_animals(cls, animals: Sequence):
+        """Construct a pedigree from a sequence of (id, sire, dam) tuples"""
+        return cls(*zip(*animals, strict=False))
+
+    def index(self, name: str) -> int:
+        return self.indices.get(name, 0)
+
+    def sire_array(self) -> np.ndarray:
+        return np.asarray([self.index(x) for x in self.sires])
+
+    def dam_array(self) -> np.ndarray:
+        return np.asarray([self.index(x) for x in self.dams])
+
+    def to_dict(self) -> dict[str, list[str]]:
+        out = defaultdict(list)
+        for child, sire, dam in zip(self.names, self.sires, self.dams, strict=False):
+            if sire is not None:
+                out[child].append(sire)
+            if dam is not None:
+                out[child].append(dam)
+        return dict(out)
+
+    def get_inbreeding(self) -> np.ndarray:
+        return inbreeding_coeffs(self.sire_array(), self.dam_array())
 
 
 def inbreeding_coeffs(sire_ids: npt.ArrayLike, dam_ids: npt.ArrayLike) -> np.ndarray:
@@ -134,7 +173,48 @@ def inbreeding_coeffs(sire_ids: npt.ArrayLike, dam_ids: npt.ArrayLike) -> np.nda
     return F
 
 
-def kinship(pedigree: dict[str, list[str]], targets: list[str]):
+def kinship_coeffs(sire_ids: npt.ArrayLike, dam_ids: npt.ArrayLike) -> np.ndarray:
+    """Calculate the full kinship array for the pedigree.
+
+    Parameters:
+    -----------
+    sire_ids : array-like
+        Array of sire IDs (1-indexed, 0 for missing)
+    dam_ids : array-like
+        Array of dam IDs (1-indexed, 0 for missing)
+
+    Returns:
+    --------
+    numpy.ndarray
+        2D Array of inbreeding coefficients (1-indexed)
+
+    Notes:
+    ------
+    - Animals must be sorted so that parents appear before offspring
+    - First row and column of the returned array should be ignored
+    """
+    sire_ids = np.asarray(sire_ids, dtype=np.int32)
+    dam_ids = np.asarray(dam_ids, dtype=np.int32)
+
+    # calculate inbreeding coefficients first
+    F = inbreeding_coeffs(sire_ids, dam_ids)
+
+    # initialize kinship array with inbreeding along the diagonal
+    K = np.diag(0.5 * (1 + F))
+
+    # Fill off-diagonal elements directly
+    # Kinship K[i,j] = 0.5 * (K[sire_i, j] + K[dam_i, j])
+    for i, (sire, dam) in enumerate(zip(sire_ids, dam_ids, strict=False), start=1):
+        for j in range(1, i):  # Only fill lower triangle, then copy
+            # This works for all cases because K[0, j] = 0 for missing parents
+            K[i, j] = 0.5 * (K[sire, j] + K[dam, j])
+            # Copy to upper triangle (symmetric matrix)
+            K[j, i] = K[i, j]
+
+    return K
+
+
+def kinship_by_path(pedigree: dict[str, list[str]], targets: list[str]):
     """Calculate kinship coefficients between target animals from the relevant
     pedigree relationships using Malecot's path method.
 

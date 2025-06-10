@@ -218,5 +218,5 @@ class AnimalPedigreeSerializer(serializers.Serializer):
         ]
 
     def get_inbreeding(self, obj):
-        idx = self.context["bird_to_idx"][obj]
+        idx = self.context["pedigree"].index(obj.uuid)
         return float(self.context["inbreeding"][idx])
