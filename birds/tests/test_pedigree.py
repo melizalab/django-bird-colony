@@ -1,11 +1,10 @@
 # -*- mode: python -*-
+from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence, Optional
 
 import numpy as np
-import pytest
 from numpy.testing import assert_allclose
-
 
 from birds import pedigree
 
@@ -13,8 +12,8 @@ from birds import pedigree
 @dataclass
 class Pedigree:
     names: Sequence[str]
-    sires: Sequence[Optional[str]]
-    dams: Sequence[Optional[str]]
+    sires: Sequence[str | None]
+    dams: Sequence[str | None]
 
     def __post_init__(self):
         sire_set = {sire for sire in self.sires if sire is not None}
@@ -29,6 +28,15 @@ class Pedigree:
 
     def dam_idx(self):
         return np.asarray([self.idx(x) for x in self.dams])
+
+    def to_dict(self):
+        out = defaultdict(list)
+        for child, sire, dam in zip(self.names, self.sires, self.dams, strict=False):
+            if sire is not None:
+                out[child].append(sire)
+            if dam is not None:
+                out[child].append(dam)
+        return dict(out)
 
 
 # from https://genetic-genealogy.co.uk/Toc115570144.html, figure 64
@@ -73,7 +81,7 @@ inbred_common_ancestor = Pedigree(
         "N",
         "P",
         "P",
-    ]
+    ],
 )
 
 # from https://genetic-genealogy.co.uk/Toc115570144.html, figure 65
@@ -112,7 +120,7 @@ no_inbred_common_ancestor = Pedigree(
         "J",
         "L",
         "N",
-    ]
+    ],
 )
 
 # from https://genetic-genealogy.co.uk/Toc115570144.html, figure 66
@@ -160,7 +168,7 @@ ped_18th_dynasty = Pedigree(
         "Senseneb",
         "Aahotep II",
         "Aames",
-    ]
+    ],
 )
 
 
@@ -208,8 +216,14 @@ direct_collateral = Pedigree(
         "K",
         "M",
         "N",
-    ]
+    ],
 )
+
+
+def test_pedigree_to_dict():
+    ped = closely_inbred.to_dict()
+    assert ped["I"] == ["G", "H"]
+    assert ped["E"] == ["C", "D"]
 
 
 def test_inbreeding_mrode_2005():
@@ -224,6 +238,24 @@ def test_inbreeding_inbred_common_ancestor():
     F = pedigree.inbreeding_coeffs(ped.sire_idx(), ped.dam_idx())
     assert_allclose(F[ped.idx("I")], 0.0625)
     assert_allclose(F[ped.idx("Q")], 0.06445, rtol=1e-4)
+
+
+def test_kinship_inbred_common_ancestor():
+    ped = inbred_common_ancestor.to_dict()
+    rel = pedigree.kinship(ped, ["A", "D", "E", "G", "H", "O", "P"])
+    # self
+    assert rel[("A", "A")] == 0.5
+    # child
+    assert rel[("A", "D")] == 0.25
+    # siblings
+    assert rel[("D", "E")] == 0.25
+    # uncle
+    assert rel[("G", "E")] == 0.125
+    # cousins
+    assert rel[("G", "H")] == 0.0625
+    # should be same as inbreeding coefficient for Q, but it will fail if the
+    # algorithm counts paths through through ancestors of common ancestors
+    assert rel[("O", "P")] == 0.06445
 
 
 def test_inbreeding_without_inbred_common_ancestor():

@@ -1,6 +1,8 @@
 # -*- mode: python -*-
 """Functions for computing inbreeding and relatedness coefficients"""
 
+from collections import deque
+
 import numpy as np
 import numpy.typing as npt
 
@@ -130,3 +132,81 @@ def inbreeding_coeffs(sire_ids: npt.ArrayLike, dam_ids: npt.ArrayLike) -> np.nda
 
     # Return inbreeding coefficients (leaving placeholder so that indices will work)
     return F
+
+
+def kinship(pedigree: dict[str, list[str]], targets: list[str]):
+    """Calculate kinship coefficients between target animals from the relevant
+    pedigree relationships using Malecot's path method.
+
+    Args:
+        pedigree: a {child: [parents]} dict containing the target animals and at least all their ancestors
+        targets: List of target animals to calculate coefficients for
+
+    Returns:
+        Dict mapping (animal1, animal2) -> relatedness_coefficient
+
+    Notes:
+        Strings should all be unique names for the animals
+    """
+    ancestors = {target: find_ancestors(pedigree, target) for target in targets}
+
+    # Calculate relatedness for all pairs
+    results = {}
+    for i, animal1 in enumerate(targets):
+        for j, animal2 in enumerate(targets):
+            if i <= j:  # Only calculate upper triangle + diagonal
+                if animal1 == animal2:
+                    coefficient = 0.5
+                else:
+                    coefficient = kinship_from_ancestors(
+                        ancestors[animal1], ancestors[animal2]
+                    )
+                results[(animal1, animal2)] = coefficient
+                results[(animal2, animal1)] = coefficient
+
+    return results
+
+
+def find_ancestors(pedigree: dict[str, list[str]], target):
+    """Find all ancestors of target with their minimum distances"""
+    ancestors = {}
+    queue = deque([(target, 0)])
+    visited = {target}
+
+    while queue:
+        child, distance = queue.popleft()
+
+        # Add current animal as ancestor (except for the starting animal)
+        # if distance > 0:
+        if child not in ancestors:
+            ancestors[child] = distance
+        else:
+            # Keep minimum distance if we've seen this ancestor before
+            ancestors[child] = min(ancestors[child], distance)
+
+        # Add parents to queue
+        for parent in pedigree.get(child, []):
+            if parent not in visited:
+                queue.append((parent, distance + 1))
+            visited.add(parent)
+    return ancestors
+
+
+def kinship_from_ancestors(
+    ancestors1: dict[str, int], ancestors2: dict[str, int]
+) -> float:
+    """
+    Calculate Malecot's kinship coefficient from ancestor distance dictionaries.
+
+    Formula: Σ(0.5^(n1+n2+1)) for all common ancestors
+    where n1, n2 are distances from each animal to the common ancestor
+    """
+    relatedness = 0.0
+    common_ancestors = set(ancestors1.keys()) & set(ancestors2.keys())
+
+    for ancestor_uuid in common_ancestors:
+        dist1 = ancestors1[ancestor_uuid]
+        dist2 = ancestors2[ancestor_uuid]
+        relatedness += 0.5 ** (dist1 + dist2 + 1)
+
+    return relatedness

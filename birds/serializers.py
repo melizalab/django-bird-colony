@@ -151,6 +151,7 @@ class EventSerializer(serializers.ModelSerializer):
 class PairingSerializer(serializers.ModelSerializer):
     sire = serializers.StringRelatedField()
     dam = serializers.StringRelatedField()
+
     class Meta:
         model = Pairing
         fields = (

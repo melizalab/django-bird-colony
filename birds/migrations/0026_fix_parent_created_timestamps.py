@@ -3,8 +3,9 @@ import datetime
 
 from django.db import migrations, models
 
+
 def fix_parent_created_after_child(apps, schema_editor):
-    """For every parent with a created timestamp later than its kids, change to one day before child was created """
+    """For every parent with a created timestamp later than its kids, change to one day before child was created"""
     Animal = apps.get_model("birds", "Animal")
     qs = Animal.objects.filter(children__created__lte=models.F("created")).distinct()
     for animal in qs:
@@ -13,15 +14,11 @@ def fix_parent_created_after_child(apps, schema_editor):
         # print(f"{animal.name} has timestamp of {animal.created}; first child {first_child.name} was created {first_child.created}")
         animal.created = first_child.created - datetime.timedelta(days=1)
         animal.save()
-        
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('birds', '0025_parent_parent_idx_parent_child_idx'),
+        ("birds", "0025_parent_parent_idx_parent_child_idx"),
     ]
 
-    operations = [
-        migrations.RunPython(fix_parent_created_after_child)
-    ]
+    operations = [migrations.RunPython(fix_parent_created_after_child)]

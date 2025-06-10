@@ -8,6 +8,7 @@ from typing import Optional
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.postgres.aggregates import ArrayAgg
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import (
@@ -504,6 +505,29 @@ class AnimalQuerySet(models.QuerySet):
         return self.filter(**kwargs)
 
 
+class ParentManger(models.Manager):
+    def pedigree_subgraph(self, target_animals: list):
+        """Returns only the instances where the child is in `target_animals` or has its own children"""
+        return Parent.objects.filter(
+            Q(child__in=target_animals)
+            | Q(
+                child__uuid__in=Subquery(
+                    Parent.objects.values_list("parent__uuid", flat=True)
+                )
+            )
+        )
+
+    def pedigree_subgraph_keys(self, target_animals: list):
+        """Returns the pedigree for all animals with children or `target_animals`"""
+        qs = (
+            self.pedigree_subgraph(target_animals)
+            .values("child")
+            .annotate(parents=ArrayAgg("parent", distinct=True))
+            .values_list("child", "parents")
+        )
+        return {child: [uuid for uuid in parents] for child, parents in qs}
+
+
 class Parent(models.Model):
     """Represents a parent-child relationship between animals.
 
@@ -518,6 +542,7 @@ class Parent(models.Model):
     id = models.AutoField(primary_key=True)
     child = models.ForeignKey("Animal", related_name="+", on_delete=models.CASCADE)
     parent = models.ForeignKey("Animal", related_name="+", on_delete=models.CASCADE)
+    objects = ParentManger()
 
     def __str__(self):
         return f"{self.parent} -> {self.child}"
