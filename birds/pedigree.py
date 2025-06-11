@@ -45,6 +45,9 @@ class Pedigree:
     def get_inbreeding(self) -> np.ndarray:
         return inbreeding_coeffs(self.sire_array(), self.dam_array())
 
+    def get_kinship(self) -> np.ndarray:
+        return kinship_coeffs(self.sire_array(), self.dam_array())
+
 
 def inbreeding_coeffs(sire_ids: npt.ArrayLike, dam_ids: npt.ArrayLike) -> np.ndarray:
     """Calculate inbreeding coefficients using LAP-based modification of

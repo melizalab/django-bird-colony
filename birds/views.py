@@ -542,6 +542,10 @@ def user_view(request, pk):
 # Pairings
 @require_http_methods(["GET"])
 def pairing_list(request):
+    qs_ped = Animal.objects.for_pedigree().values_list("uuid", "sire", "dam")
+    ped = pedigree.Pedigree.from_animals(qs_ped)
+    kinship = ped.get_kinship()
+
     qs = Pairing.objects.with_related().with_progeny_stats().order_by("-began_on")
     query = request.GET.copy()
     try:
@@ -551,15 +555,27 @@ def pairing_list(request):
     f = PairingFilter(query, queryset=qs)
     paginator = Paginator(f.qs, 25)
     page_obj = paginator.get_page(page_number)
+    kinships = {
+        pairing: kinship[ped.index(pairing.sire.uuid), ped.index(pairing.dam.uuid)]
+        for pairing in page_obj.object_list
+    }
     return render(
         request,
         "birds/pairing_list.html",
-        {"query": query, "page_obj": page_obj, "pairing_list": page_obj.object_list},
+        {
+            "query": query,
+            "page_obj": page_obj,
+            "pairing_list": page_obj.object_list,
+            "kinships": kinships,
+        },
     )
 
 
 @require_http_methods(["GET"])
 def active_pairing_list(request):
+    qs_ped = Animal.objects.for_pedigree().values_list("uuid", "sire", "dam")
+    ped = pedigree.Pedigree.from_animals(qs_ped)
+    kinship = ped.get_kinship()
     qs = (
         Pairing.objects.with_related()
         .with_progeny_stats()
@@ -567,10 +583,14 @@ def active_pairing_list(request):
         .order_by("-began_on")
     )
     f = PairingFilter(request.GET, queryset=qs)
+    kinships = {
+        pairing: kinship[ped.index(pairing.sire.uuid), ped.index(pairing.dam.uuid)]
+        for pairing in f.qs
+    }
     return render(
         request,
         "birds/pairing_list_active.html",
-        {"pairing_list": f.qs},
+        {"pairing_list": f.qs, "kinships": kinships},
     )
 
 
@@ -588,6 +608,10 @@ def pairing_view(request, pk):
     eggs = pair.eggs().with_annotations().with_related().unhatched().order_by("created")
     pairings = pair.other_pairings().with_progeny_stats()
     events = pair.events().with_related()
+    # kinship should eventually be cached to avoid all this work
+    qs_ped = Animal.objects.for_pedigree().values_list("uuid", "sire", "dam")
+    ped = pedigree.Pedigree.from_animals(qs_ped)
+    kinship = ped.get_kinship()
     return render(
         request,
         "birds/pairing.html",
@@ -597,6 +621,9 @@ def pairing_view(request, pk):
             "egg_list": eggs,
             "pairing_list": pairings,
             "event_list": events,
+            "pairing_kinship": kinship[
+                ped.index(pair.sire.uuid), ped.index(pair.dam.uuid)
+            ],
         },
     )
 

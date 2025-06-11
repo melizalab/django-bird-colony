@@ -13,6 +13,7 @@
   <dt>species</dt><dd>{{ pairing.sire.species }}</dd>
   <dt>sire</dt><dd><a href="{{ pairing.sire.get_absolute_url }}">{{ pairing.sire.name }}</a></dd>
   <dt>dam</dt><dd><a href="{{ pairing.dam.get_absolute_url }}">{{ pairing.dam.name }}</a></dd>
+  <dt>kinship</dt><dd>{{ pairing_kinship|floatformat:3 }}</dd>
   <dt>began</dt><dd>{{ pairing.began_on }}</dd>
   <dt>ended</dt><dd>{{ pairing.ended_on|default_if_none:"(still active)" }}</dd>
   <dt>purpose</dt><dd>{{ pairing.purpose|default_if_none:"" }}</dd>

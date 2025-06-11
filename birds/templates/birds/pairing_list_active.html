@@ -19,6 +19,7 @@
     <th>Dates</th>
     <th>Sire</th>
     <th>Dam</th>
+    <th>Kinship</th>
     <th>Location</th>
     <th>Purpose</th>
     <th>Eggs Laid</th>
@@ -32,6 +33,7 @@
           <td><a href="{% url 'birds:pairing' pairing.id %}">{{ pairing.began_on }} — {{ pairing.ended|default_if_none:"" }}</a></td>
           <td><a href="{{ pairing.sire.get_absolute_url }}">{{ pairing.sire.name }}</a></td>
           <td><a href="{{ pairing.dam.get_absolute_url }}">{{ pairing.dam.name }}</a></td>
+	  <td>{{ kinships|item_at:pairing|floatformat:3 }}</td>
           <td>{{ pairing.last_location|default_if_none:"" }}</td>
           <td>{{ pairing.purpose|default_if_none:"" }}</td>
           <td>{{ pairing.n_eggs }}</td>

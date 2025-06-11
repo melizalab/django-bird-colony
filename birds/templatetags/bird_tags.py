@@ -75,6 +75,6 @@ def count_total(counter):
 def item_at(arr, index):
     """Return an item from a sequence by index"""
     try:
-        return arr[int(index)]
+        return arr[index]
     except (ValueError, IndexError, TypeError):
         return None
