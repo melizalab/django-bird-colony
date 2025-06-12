@@ -27,7 +27,7 @@ class AnimalAdmin(admin.ModelAdmin):
         "attributes",
     )
     list_display = ("name", "species", "band", "uuid", "sex", "plumage", "reserved_by")
-    list_filter = ("species", "sex", "band_color", "parents", "plumage", "reserved_by")
+    list_filter = ("species", "sex", "band_color", "plumage", "reserved_by")
     search_fields = ("band_number", "uuid", "plumage", "attributes__icontains")
     inlines = (ParentInline,)
 
@@ -55,7 +55,6 @@ class SampleAdmin(admin.ModelAdmin):
     date_hierarchy = "date"
     fields = (
         "type",
-        "animal",
         "source",
         "location",
         "attributes",
@@ -64,7 +63,7 @@ class SampleAdmin(admin.ModelAdmin):
         "collected_by",
     )
     list_display = ("type", "animal", "location", "date", "collected_by")
-    list_filter = ("type", "animal", "source", "location", "collected_by")
+    list_filter = ("type", "location", "collected_by")
     search_fields = ("description",)
 
 
@@ -72,8 +71,24 @@ class PairingAdmin(admin.ModelAdmin):
     date_hierarchy = "began_on"
     fields = ("sire", "dam", "began_on", "purpose", "ended_on", "comment")
     list_display = ("sire", "dam", "began_on", "purpose", "ended_on", "comment")
-    list_filter = ("sire", "dam", "began_on", "ended_on", "purpose")
-    search_fields = ("comment",)
+    list_filter = (
+        "began_on",
+        "ended_on",
+    )
+    search_fields = (
+        "purpose",
+        "comment",
+    )
+
+
+class MeasurementAdmin(admin.ModelAdmin):
+    fields = (
+        "value",
+        "type",
+    )
+    list_display = ("event__animal", "event__date", "value", "type")
+    date_hierarchy = "event__date"
+    list_filter = ("type",)
 
 
 admin.site.register(models.Animal, AnimalAdmin)
@@ -81,6 +96,7 @@ admin.site.register(models.Event, EventAdmin)
 admin.site.register(models.Status, StatusAdmin)
 admin.site.register(models.Sample, SampleAdmin)
 admin.site.register(models.Pairing, PairingAdmin)
+admin.site.register(models.Measurement, MeasurementAdmin)
 
 
 for model in (
@@ -93,6 +109,5 @@ for model in (
     models.SampleLocation,
     models.NestCheck,
     models.Measure,
-    models.Measurement,
 ):
     admin.site.register(model)
