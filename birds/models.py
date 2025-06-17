@@ -28,6 +28,8 @@ from django.db.models import (
     Window,
 )
 from django.db.models.functions import Coalesce, Now, RowNumber, Trunc, TruncDay
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
 from django.urls import reverse
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
@@ -949,6 +951,86 @@ class Animal(models.Model):
         ordering = ["band_color", "band_number"]
 
 
+class AnimalLifeHistory(models.Model):
+    """ Life history information for an animal, computed from events and cached """
+
+    id = models.AutoField(primary_key=True)
+    animal = models.OneToOneField(Animal, on_delete=models.CASCADE, related_name="life_history")
+
+    # Core dates
+    laid_on = models.DateField(null=True, blank=True)
+    born_on = models.DateField(null=True, blank=True) 
+    acquired_on = models.DateField(null=True, blank=True)
+    died_on = models.DateField(null=True, blank=True)
+    
+    # Status flags
+    has_any_event = models.BooleanField(default=False)
+    has_unexpected_removal = models.BooleanField(default=False)
+
+    last_updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['born_on']),
+            models.Index(fields=['died_on']),
+            models.Index(fields=['has_unexpected_removal']),
+        ]
+
+    def laid_as_of(self, on_date: datetime.date) -> bool:
+        return self.laid_on is not None and self.laid_on <= on_date
+
+    def born_as_of(self, on_date: datetime.date) -> bool:
+        return self.born_on is not None and self.born_on <= on_date
+
+    def acquired_as_of(self, on_date: datetime.date) -> bool:
+        return self.acquired_on is not None and self.acquired_on <= on_date
+
+    def died_as_of(self, on_date: datetime.date) -> bool:
+        return self.died_on is not None and self.died_on <= on_date
+
+    def alive(self, on_date: datetime.date | None = None) -> bool:
+        date = on_date or datetime.date.today()
+        return self.acquired_as_of(date) and not self.died_as_of(date)
+
+    def status(self, on_date: datetime.date | None = None) -> Animal.Status | None:
+        date = on_date or datetime.date.today()
+        if not self.has_any_event:
+            return
+        elif not self.acquired_as_of(date) and self.laid_as_of(date):
+            # eggs: laid but not acquired
+            if self.has_unexpected_removal:
+                return Animal.Status.BAD_EGG
+            else:
+                return Animal.Status.GOOD_EGG
+        elif self.died_as_of(date):
+            # died
+            if self.has_unexpected_removal:
+                return Animal.Status.DIED_UNEXPTD
+            else:
+                return Animal.Status.DIED_EXPTD
+        else:
+            return Animal.Status.ALIVE
+
+    def age(self, on_date: datetime.date | None = None) -> datetime.timedelta | None:
+        date = on_date or datetime.date.today()
+        if not self.born_as_of(date):
+            return None
+        elif self.died_as_of(date):
+            return self.died_on - self.born_on
+        else:
+            return date - self.born_on
+
+    def update_dates_from_events(self) -> None:
+        """Recompute life history - trigger when adding/removing/updating an event for the animal"""
+        annotated = Animal.objects.with_dates().get(uuid=self.animal.uuid)
+        self.laid_on = annotated.laid_on
+        self.born_on = annotated.born_on
+        self.acquired_on = annotated.acquired_on
+        self.died_on = annotated.died_on
+        self.has_any_event = annotated.has_any_event
+        self.has_unexpected_removal = annotated.has_unexpected_removal
+
+
 class EventQuerySet(models.QuerySet):
     def with_related(self):
         return self.select_related(
@@ -1436,3 +1518,15 @@ class Sample(models.Model):
 
     class Meta:
         ordering = ("animal", "type")
+
+
+### Triggers
+
+@receiver([post_save, post_delete], sender=Event)
+def update_life_history_on_event_change(sender, instance, **kwargs):
+    """Update life history when events are added/changed/deleted"""
+    life_history, _ = AnimalLifeHistory.objects.get_or_create(
+        animal=instance.animal
+    )
+    life_history.update_dates_from_events()
+    life_history.save()
