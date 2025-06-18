@@ -708,77 +708,6 @@ class Animal(models.Model):
         """
         return self.event_set.filter(status__removes__isnull=False).first()
 
-    def history(self) -> str:
-        """Summarizes the status of the animal for family history
-
-        This method requires the born_on, acquired_on, laid_on, and died_on
-        annotations provided by the with_dates() queryset method.
-
-        Returns "unknown" if the status cannot be determined (i.e., an animal with no events)
-        """
-        try:
-            lbl = Animal.Status(self.status).label.lower()
-        except (ValueError, AttributeError):
-            return "unknown"
-        if self.age is None:
-            age_str = "unknown age"
-        else:
-            age_str = f"{self.age.days // 365}y {self.age.days % 365:3}d old"
-        if self.status == Animal.Status.ALIVE:
-            return f"alive, {age_str}"
-        return f"{lbl} on {self.died_on} at {age_str}"
-
-    def alive(self, on_date: datetime.date | None = None) -> bool:
-        """Returns true if the animal is alive on this date.
-
-        Uses the queryset under the hood to avoid code duplication. The method
-        will be masked if the object is retrieved as part of a queryset.
-
-        """
-        annotated = Animal.objects.with_dates(on_date).get(pk=self.pk)
-        return annotated.alive
-
-    def age_group(self, on_date: datetime.date | None = None):
-        """Returns the age group of the animal by joining on the Age model.
-
-        Age group is calculated relative to on_date, which allows us to use a
-        single database query to determine the animal's age group at different dates.
-
-        If the animal was hatched in the colony, uses the hatch date to
-        determine age and then group. Animals acquired through transfer are
-        always classified as adults, and as eggs if there is an "egg" type
-        event. Otherwise, None. Will also return None if there is no match in
-        the Age table (this can only happen if there is not an object with
-        min_age = 0).
-
-        This method requires the born_on, acquired_on, laid_on, and died_on
-        annotations provided by the with_dates() queryset method, and it will be
-        more performant if age_set is prefetched.
-
-        """
-        refdate = on_date or datetime.date.today()
-
-        # Handle special cases
-        if self.born_on is None or self.born_on > refdate:
-            if self.acquired_on is not None and self.acquired_on <= refdate:
-                return ADULT_ANIMAL_NAME
-            elif self.laid_on is not None and self.laid_on <= refdate:
-                return UNBORN_ANIMAL_NAME
-            else:
-                return None
-
-        # age at death otherwise today
-        if self.died_on is None or self.died_on > refdate:
-            age = refdate - self.born_on
-        else:
-            age = self.died_on - self.born_on
-        age_days = age.days
-
-        # Age groups are now pre-sorted by the model's Meta.ordering
-        # First match is automatically the best match
-        for age_group in self.species.age_set.all():
-            if age_group.min_days <= age_days:
-                return age_group.name
 
     def expected_hatch(self):
         """For eggs, expected hatch date. None if not an egg, lost, already
@@ -989,6 +918,7 @@ class AnimalLifeHistory(models.Model):
         return self.died_on is not None and self.died_on <= on_date
 
     def alive(self, on_date: datetime.date | None = None) -> bool:
+        """ Returns true if the animal is alive on the specified date (default today)"""
         date = on_date or datetime.date.today()
         return self.acquired_as_of(date) and not self.died_as_of(date)
 
@@ -1020,6 +950,61 @@ class AnimalLifeHistory(models.Model):
         else:
             return date - self.born_on
 
+    def age_group(self, on_date: datetime.date | None = None):
+        """Returns the age group of the animal by joining on the Age model.
+
+        If the animal was hatched in the colony, uses the hatch date to
+        determine age and then group. Animals acquired through transfer are
+        always classified as adults, and as eggs if there is an "egg" type
+        event. Otherwise, None. Will also return None if there is no match in
+        the Age table (this can only happen if there is not an object with
+        min_age = 0).
+
+        This method will be more performant if age_set is prefetched.
+
+        """
+        refdate = on_date or datetime.date.today()
+
+        # Handle special cases
+        if self.born_on is None or self.born_on > refdate:
+            if self.acquired_on is not None and self.acquired_on <= refdate:
+                return ADULT_ANIMAL_NAME
+            elif self.laid_on is not None and self.laid_on <= refdate:
+                return UNBORN_ANIMAL_NAME
+            else:
+                return None
+
+        # age at death otherwise today
+        if self.died_on is None or self.died_on > refdate:
+            age = refdate - self.born_on
+        else:
+            age = self.died_on - self.born_on
+        age_days = age.days
+
+        # Age groups are now pre-sorted by the model's Meta.ordering
+        # First match is automatically the best match
+        for age_group in self.animal.species.age_set.all():
+            if age_group.min_days <= age_days:
+                return age_group.name
+
+    def summary(self) -> str:
+        """Summarizes the status of the animal for family history
+
+        Returns "unknown" if the status cannot be determined (i.e., an animal with no events)
+        """
+        try:
+            status = self.status()
+            lbl = Animal.Status(status).label.lower()
+        except (ValueError, AttributeError):
+            return "unknown"
+        if self.age() is None:
+            age_str = "unknown age"
+        else:
+            age_str = f"{self.age.days // 365}y {self.age.days % 365:3}d old"
+        if status == Animal.Status.ALIVE:
+            return f"alive, {age_str}"
+        return f"{lbl} on {self.died_on} at {age_str}"
+            
     def update_dates_from_events(self) -> None:
         """Recompute life history - trigger when adding/removing/updating an event for the animal"""
         annotated = Animal.objects.with_dates().get(uuid=self.animal.uuid)
@@ -1030,6 +1015,7 @@ class AnimalLifeHistory(models.Model):
         self.has_any_event = annotated.has_any_event
         self.has_unexpected_removal = annotated.has_unexpected_removal
 
+        
 
 class EventQuerySet(models.QuerySet):
     def with_related(self):
