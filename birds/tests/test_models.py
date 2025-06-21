@@ -376,9 +376,7 @@ class AnimalModelTests(TestCase):
         self.assertIs(lh.acquired_as_of(date), False)
         self.assertIs(lh.died_as_of(date), False)
         self.assertIs(lh.age(date), None)
-        # this check also fails because has_any_event is a boolean. Again, such
-        # a corner case I'm not going to try to fix
-        # self.assertIs(lh.status(date), None)
+        self.assertIs(lh.status(date), None)
 
     def test_age_grouping(self):
         species = Species.objects.get(pk=1)
@@ -609,6 +607,10 @@ class ParentModelTests(TestCase):
         self.assertEqual(sire.children.unhatched().count(), 0)
         self.assertEqual(sire.children.hatched().count(), 1)
         self.assertEqual(sire.children.alive().count(), 1)
+        annotated = Animal.objects.with_child_counts().get(uuid=dam.uuid)
+        self.assertEqual(annotated.n_eggs, 0)  # because there's no laid event
+        self.assertEqual(annotated.n_hatched, 1)
+        self.assertEqual(annotated.n_alive, 1)
 
     def test_genealogy(self):
         species = Species.objects.get(pk=1)

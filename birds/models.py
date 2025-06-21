@@ -451,18 +451,23 @@ class AnimalQuerySet(models.QuerySet):
             ),
         )
 
-    def with_child_counts(self):
+    def with_child_counts(self, on_date: datetime.date | None = None):
         """Annotate the birds with child counts."""
+        refdate = on_date or datetime.date.today()
         return self.annotate(
+            n_eggs=Count(
+                "children",
+                filter=Q(children__life_history__laid_on__lte=refdate),
+            ),
             n_hatched=Count(
                 "children",
-                filter=Q(children__life_history__born_on__isnull=False),
-                distinct=True,  # Important: prevents duplicate counting
+                filter=Q(children__life_history__born_on__lte=refdate),
+            ),
+            n_alive=Count(
+                "children",
+                filter=~Q(children__life_history__died_on__lte=refdate),
             )
         )
-
-    def with_annotations(self, on_date: datetime.date | None = None):
-        return self.with_dates(on_date).with_location(on_date)
 
     def with_related(self):
         return self.select_related(
@@ -902,6 +907,9 @@ class AnimalLifeHistory(models.Model):
             models.Index(fields=["has_unexpected_removal"]),
         ]
 
+    def first_event_as_of(self, on_date: datetime.date) -> bool:
+        return self.first_event_on is not None and self.first_event_on <= on_date
+
     def laid_as_of(self, on_date: datetime.date) -> bool:
         return self.laid_on is not None and self.laid_on <= on_date
 
@@ -921,7 +929,7 @@ class AnimalLifeHistory(models.Model):
 
     def status(self, on_date: datetime.date | None = None) -> Animal.Status | None:
         date = on_date or datetime.date.today()
-        if self.first_event_on is None:
+        if not self.first_event_as_of(date):
             pass
         elif not self.acquired_as_of(date) and self.laid_as_of(date):
             # eggs: laid but not acquired
