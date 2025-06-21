@@ -709,24 +709,6 @@ class Animal(models.Model):
         return self.event_set.filter(status__removes__isnull=False).first()
 
 
-    def expected_hatch(self):
-        """For eggs, expected hatch date. None if not an egg, lost, already
-        hatched, or incubation time is not known.
-
-        """
-        days = self.species.incubation_days
-        if days is None:
-            return  # incubation time not known
-        evt_laid = self.event_set.filter(status__adds=Status.AdditionType.EGG)
-        if not evt_laid.exists():
-            return  # no egg laid event
-        if self.event_set.filter(
-            Q(status__adds=Status.AdditionType.BIRTH) | Q(status__removes__isnull=False)
-        ).exists():
-            return  # already hatched or removed
-
-        return evt_laid.earliest().date + datetime.timedelta(days=days)
-
     def last_location(self, on_date: datetime.date | None = None):
         """Returns the Location recorded in the most recent event before `on_date`
         (today if not specified). This method will be masked if with_location() is used
@@ -987,6 +969,19 @@ class AnimalLifeHistory(models.Model):
             if age_group.min_days <= age_days:
                 return age_group.name
 
+    def expected_hatch(self):
+        """For eggs, expected hatch date. None if not an egg, lost, already
+        hatched, or incubation time is not known.
+
+        """
+        days = self.animal.species.incubation_days
+        # incubation time not known, no egg laid event, removed, already born
+        if days is None or self.laid_on is None or self.died_on is not None or self.born_on is not None:
+            pass
+        else:
+            return self.laid_on + datetime.timedelta(days=days)
+
+        
     def summary(self) -> str:
         """Summarizes the status of the animal for family history
 
