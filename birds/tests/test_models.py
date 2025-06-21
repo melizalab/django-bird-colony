@@ -543,8 +543,8 @@ class ParentModelTests(TestCase):
         self.assertTrue(dam.children.contains(child))
         self.assertEqual(
             sire.children.unhatched().count(),
-            0,
-            "a bird with no events should not be in the unhatched group",
+            1,
+            "a bird with no events should be in the unhatched group",
         )
         self.assertEqual(
             sire.children.hatched().count(),

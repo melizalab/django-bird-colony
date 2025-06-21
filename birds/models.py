@@ -372,26 +372,10 @@ class AnimalQuerySet(models.QuerySet):
             ),
         )
 
-    def with_child_counts(self):
-        """Annotate the birds with child counts.
-
-        This is usually not worth it because of how deep the joins are.
-
-        """
-        return self.annotate(
-            n_hatched=Count(
-                "children",
-                filter=Q(children__event__status__adds=Status.AdditionType.BIRTH),
-                distinct=True,  # Important: prevents duplicate counting
-            )
-        )
-
     def with_dates(self, on_date: datetime.date | None = None):
-        """Annotate the birds with important dates (born, died, etc) and current status
+        """Annotate the birds with important dates and current status using events on or prior to `on_date`.
 
-        This method is called by filters that need to use all related events (e.g. with
-        alive(), hatched(), or existing()). Only events on or prior to `on_date` are
-        taken into consideration.
+        Generally, use cached life_history intead of this method.
 
         """
         if on_date is None:
@@ -400,6 +384,10 @@ class AnimalQuerySet(models.QuerySet):
 
         return self.annotate(
             # Dates needed for age and age_group calculation
+            first_event_on=Min(
+                "event__date",
+                filter=q_date,
+            ),
             laid_on=Min(
                 "event__date",
                 filter=Q(event__status__adds=Status.AdditionType.EGG) & q_date,
@@ -422,10 +410,7 @@ class AnimalQuerySet(models.QuerySet):
             died_on=Max(
                 "event__date", filter=Q(event__status__removes__isnull=False) & q_date
             ),
-            # Flags for status determination - should be faster than Min
-            has_any_event=Exists(
-                Event.objects.filter(animal=OuterRef("pk"), date__lte=on_date)
-            ),
+            # Flags for status determination
             has_unexpected_removal=Exists(
                 Event.objects.filter(
                     animal=OuterRef("pk"),
@@ -440,7 +425,7 @@ class AnimalQuerySet(models.QuerySet):
                 default=True,
             ),
             status=Case(
-                When(has_any_event=False, then=None),
+                When(first_event_on__isnull=True, then=None),
                 When(
                     Q(acquired_on__isnull=True)
                     & Q(laid_on__isnull=False)
@@ -466,33 +451,57 @@ class AnimalQuerySet(models.QuerySet):
             ),
         )
 
+    def with_child_counts(self):
+        """Annotate the birds with child counts."""
+        return self.annotate(
+            n_hatched=Count(
+                "children",
+                filter=Q(children__life_history__born_on__isnull=False),
+                distinct=True,  # Important: prevents duplicate counting
+            )
+        )
+
     def with_annotations(self, on_date: datetime.date | None = None):
         return self.with_dates(on_date).with_location(on_date)
 
     def with_related(self):
         return self.select_related(
-            "reserved_by", "species", "band_color"
+            "life_history", "reserved_by", "species", "band_color"
         ).prefetch_related("species__age_set")
 
     def hatched(self, on_date: datetime.date | None = None):
         """Only birds that were born in the colony (excludes eggs)."""
-        return self.with_dates(on_date).filter(born_on__isnull=False)
+        refdate = on_date or datetime.date.today()
+        return self.filter(life_history__born_on__lte=refdate)
 
     def unhatched(self, on_date: datetime.date | None = None):
         """Only birds that were not born in the colony (includes eggs)"""
-        return self.with_dates(on_date).filter(has_any_event=True, born_on__isnull=True)
+        refdate = on_date or datetime.date.today()
+        return self.filter(
+            Q(life_history__born_on__isnull=True) | Q(life_history__born_on__gt=refdate)
+        )
 
     def alive(self, on_date: datetime.date | None = None):
         """Only birds that are alive (added but not removed)"""
-        return self.with_dates(on_date).filter(alive=True)
+        refdate = on_date or datetime.date.today()
+        return self.filter(life_history__acquired_on__lte=refdate).exclude(
+            life_history__died_on__lte=refdate
+        )
 
     def existing(self, on_date: datetime.date | None = None):
         """Only birds/eggs that have not been removed"""
-        return self.with_dates(on_date).filter(has_any_event=True, died_on__isnull=True)
+        refdate = on_date or datetime.date.today()
+        return self.filter(life_history__first_event_on__lte=refdate).exclude(
+            life_history__died_on__lte=refdate
+        )
 
     def lost(self, on_date: datetime.date | None = None):
         """Only birds/eggs that were spontaneously lost due to unexpected causes"""
-        return self.with_dates(on_date).filter(has_unexpected_removal=True)
+        refdate = on_date or datetime.date.today()
+        return self.filter(
+            life_history__has_unexpected_removal=True,
+            life_history__died_on__lte=refdate,
+        )
 
     def ancestors_of(self, animal, generation: int = 1):
         """All ancestors of animal at specified generation"""
@@ -509,9 +518,10 @@ class AnimalQuerySet(models.QuerySet):
     def for_pedigree(self):
         """All parents and currently living animals annotated with sire/dam and topologically sorted"""
         return (
-            self.with_dates()
-            .annotate(nchildren=Count("children"))
-            .filter(Q(alive__gt=0) | Q(nchildren__gt=0))
+            self.select_related("life_history")
+            .alive()
+            .with_child_counts()
+            .filter(n_hatched__gt=0)
             .annotate(
                 sire=Subquery(
                     Animal.objects.filter(children=OuterRef("uuid"), sex="M").values(
@@ -871,17 +881,17 @@ class AnimalLifeHistory(models.Model):
     )
 
     # Core dates
+    first_event_on = models.DateField(null=True, blank=True)
     laid_on = models.DateField(null=True, blank=True)
     born_on = models.DateField(null=True, blank=True)
     acquired_on = models.DateField(null=True, blank=True)
     died_on = models.DateField(null=True, blank=True)
 
     # Status flags
-    has_any_event = models.BooleanField(default=False)
     has_unexpected_removal = models.BooleanField(default=False)
 
     # Last location
-    last_location = models.OneToOneField(Location, null=True, on_delete=models.SET_NULL)
+    last_location = models.ForeignKey(Location, null=True, on_delete=models.SET_NULL)
 
     last_updated = models.DateTimeField(auto_now=True)
 
@@ -911,8 +921,8 @@ class AnimalLifeHistory(models.Model):
 
     def status(self, on_date: datetime.date | None = None) -> Animal.Status | None:
         date = on_date or datetime.date.today()
-        if not self.has_any_event:
-            return
+        if self.first_event_on is None:
+            pass
         elif not self.acquired_as_of(date) and self.laid_as_of(date):
             # eggs: laid but not acquired
             if self.has_unexpected_removal:
@@ -1012,11 +1022,11 @@ class AnimalLifeHistory(models.Model):
     def update_from_events(self) -> None:
         """Recompute life history - trigger when adding/removing/updating an event for the animal"""
         annotated = Animal.objects.with_dates().get(uuid=self.animal.uuid)
+        self.first_event_on = annotated.first_event_on
         self.laid_on = annotated.laid_on
         self.born_on = annotated.born_on
         self.acquired_on = annotated.acquired_on
         self.died_on = annotated.died_on
-        self.has_any_event = annotated.has_any_event
         self.has_unexpected_removal = annotated.has_unexpected_removal
         self.last_location = self.animal.last_location(datetime.date.today())
 
@@ -1170,22 +1180,25 @@ class PairingQuerySet(models.QuerySet):
         )
 
     def with_progeny_stats(self):
-        qq_before_ended = Q(sire__children__event__date__lte=F("ended_on")) | Q(
-            ended_on__isnull=True
+        qq_before_ended = Q(
+            sire__children__life_history__born_on__lte=F("ended_on")
+        ) | Q(ended_on__isnull=True)
+        qq_after_began = Q(sire__children__life_history__born_on__gte=F("began_on"))
+        qq_laid_before_ended = Q(
+            sire__children__life_history__laid_on__lte=F("ended_on")
+        ) | Q(ended_on__isnull=True)
+        qq_laid_after_began = Q(
+            sire__children__life_history__laid_on__gte=F("began_on")
         )
-        qq_after_began = Q(sire__children__event__date__gte=F("began_on"))
+
         return self.annotate(
             n_hatched=Count(
                 "sire__children",
-                filter=Q(sire__children__event__status__adds=Status.AdditionType.BIRTH)
-                & qq_after_began
-                & qq_before_ended,
+                filter=qq_after_began & qq_before_ended,
             ),
             n_eggs=Count(
                 "sire__children",
-                filter=Q(sire__children__event__status__adds=Status.AdditionType.EGG)
-                & qq_after_began
-                & qq_before_ended,
+                filter=qq_laid_after_began & qq_laid_before_ended,
             ),
         )
 
@@ -1265,36 +1278,26 @@ class Pairing(models.Model):
         return self.ended_on is None or self.ended_on > on_date
 
     def oldest_living_progeny_age(self):
-        # this is slow, but I'm not sure how to do it any faster
-        params = {
-            "event__status__adds": Status.AdditionType.BIRTH,
-            "event__date__gte": self.began_on,
-        }
+        date_query = Q(life_history__born_on__gte=self.began_on)
         if self.ended_on is not None:
-            params["event__date__lte"] = self.ended_on
-        qs = self.sire.children.with_dates().filter(**params)
-        # ages = [a.age_days() for a in qs if a.alive]
-        # return max(ages, default=None)
-        agg = qs.annotate(
-            age=Case(
-                When(born_on__isnull=True, then=None),
-                When(died_on__isnull=True, then=TruncDay(Now()) - F("born_on")),
-                default=None,
-            )
-        ).aggregate(Max("age"))
+            date_query &= Q(life_history__born_on__lte=self.ended_on)
+
+        qs = self.sire.children.alive().filter(date_query)
+        agg = qs.annotate(age=TruncDay(Now()) - F("life_history__born_on")).aggregate(
+            Max("age")
+        )
         return agg["age__max"]
 
     def eggs(self):
         """All the eggs laid during this pairing (hatched and unhatched)"""
-        d_query = Q(laid_on__gte=self.began_on)
+        d_query = Q(life_history__laid_on__gte=self.began_on)
         if self.ended_on is not None:
-            d_query &= Q(laid_on__lte=self.ended_on)
-        qs = Animal.objects.filter(parents=self.sire).filter(parents=self.dam)
-        return qs.annotate(
-            laid_on=Min(
-                "event__date", filter=Q(event__status__adds=Status.AdditionType.EGG)
-            )
-        ).filter(d_query)
+            d_query &= Q(life_history__laid_on__lte=self.ended_on)
+        return (
+            Animal.objects.filter(parents=self.sire)
+            .filter(parents=self.dam)
+            .filter(d_query)
+        )
 
     def events(self):
         """All events for the pair and their progeny during the pairing"""
