@@ -227,7 +227,9 @@ class AnimalModelTests(TestCase):
         self.assertNotIn(bird, Animal.objects.alive().unhatched())
         self.assertNotIn(bird, Animal.objects.lost())
         self.assertIs(
-            bird.life_history.expected_hatch(), None, "hatched bird should not have expected hatch"
+            bird.life_history.expected_hatch(),
+            None,
+            "hatched bird should not have expected hatch",
         )
 
         status_died = Status.objects.get(name="died")
@@ -419,7 +421,7 @@ class AnimalModelTests(TestCase):
     def test_bird_locations(self):
         species = Species.objects.get(pk=1)
         bird = Animal.objects.create(species=species)
-        self.assertIs(bird.last_location(), None)
+        self.assertIs(bird.last_location(today()), None)
         user = models.get_sentinel_user()
         status_1 = models.get_birth_event_type()
         birthday = today() - dt_days(10)
@@ -431,7 +433,8 @@ class AnimalModelTests(TestCase):
             entered_by=user,
             location=location_1,
         )
-        self.assertEqual(bird.last_location(), location_1)
+        self.assertEqual(bird.last_location(today()), location_1)
+        self.assertEqual(bird.life_history.last_location, location_1)
         abird = Animal.objects.with_location().get(pk=bird.pk)
         self.assertEqual(abird.last_location, location_1.name)
 
@@ -445,7 +448,7 @@ class AnimalModelTests(TestCase):
             entered_by=user,
             location=location_2,
         )
-        self.assertEqual(bird.last_location(), location_2)
+        self.assertEqual(bird.last_location(today()), location_2)
         abird = Animal.objects.with_location().get(pk=bird.pk)
         self.assertEqual(abird.last_location, location_2.name)
         self.assertEqual(bird.last_location(on_date=birthday), location_1)
@@ -456,6 +459,12 @@ class AnimalModelTests(TestCase):
             pk=bird.pk
         )
         self.assertIs(abird.last_location, None)
+        bird.life_history.refresh_from_db()
+        self.assertEqual(
+            bird.life_history.last_location,
+            location_2,
+            "cached location in life history does not match last location",
+        )
 
     def test_updating_sex(self):
         species = Species.objects.get(pk=1)

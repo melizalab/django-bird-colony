@@ -28,7 +28,7 @@ from django.db.models import (
     Window,
 )
 from django.db.models.functions import Coalesce, Now, RowNumber, Trunc, TruncDay
-from django.db.models.signals import post_save, post_delete
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django.urls import reverse
 from django.utils.functional import cached_property
@@ -708,18 +708,18 @@ class Animal(models.Model):
         """
         return self.event_set.filter(status__removes__isnull=False).first()
 
-
-    def last_location(self, on_date: datetime.date | None = None):
+    def last_location(self, on_date: datetime.date):
         """Returns the Location recorded in the most recent event before `on_date`
-        (today if not specified). This method will be masked if with_location() is used
-        on the queryset (note that the annotation is just the name of the location)
+
+        Use the cached life_history.last_location if you need the location on the
+        current date. Use with_locations() on the queryset if you just need the name of
+        the last location as of a given date for a bunch of birds.
 
         """
-        refdate = on_date or datetime.date.today()
         try:
             return (
                 self.event_set.select_related("location")
-                .filter(date__lte=refdate)
+                .filter(date__lte=on_date)
                 .exclude(location__isnull=True)
                 .latest()
                 .location
@@ -863,28 +863,33 @@ class Animal(models.Model):
 
 
 class AnimalLifeHistory(models.Model):
-    """ Life history information for an animal, computed from events and cached """
+    """Life history information for an animal, computed from events and cached"""
 
     id = models.AutoField(primary_key=True)
-    animal = models.OneToOneField(Animal, on_delete=models.CASCADE, related_name="life_history")
+    animal = models.OneToOneField(
+        Animal, on_delete=models.CASCADE, related_name="life_history"
+    )
 
     # Core dates
     laid_on = models.DateField(null=True, blank=True)
-    born_on = models.DateField(null=True, blank=True) 
+    born_on = models.DateField(null=True, blank=True)
     acquired_on = models.DateField(null=True, blank=True)
     died_on = models.DateField(null=True, blank=True)
-    
+
     # Status flags
     has_any_event = models.BooleanField(default=False)
     has_unexpected_removal = models.BooleanField(default=False)
+
+    # Last location
+    last_location = models.OneToOneField(Location, null=True, on_delete=models.SET_NULL)
 
     last_updated = models.DateTimeField(auto_now=True)
 
     class Meta:
         indexes = [
-            models.Index(fields=['born_on']),
-            models.Index(fields=['died_on']),
-            models.Index(fields=['has_unexpected_removal']),
+            models.Index(fields=["born_on"]),
+            models.Index(fields=["died_on"]),
+            models.Index(fields=["has_unexpected_removal"]),
         ]
 
     def laid_as_of(self, on_date: datetime.date) -> bool:
@@ -900,7 +905,7 @@ class AnimalLifeHistory(models.Model):
         return self.died_on is not None and self.died_on <= on_date
 
     def alive(self, on_date: datetime.date | None = None) -> bool:
-        """ Returns true if the animal is alive on the specified date (default today)"""
+        """Returns true if the animal is alive on the specified date (default today)"""
         date = on_date or datetime.date.today()
         return self.acquired_as_of(date) and not self.died_as_of(date)
 
@@ -976,12 +981,16 @@ class AnimalLifeHistory(models.Model):
         """
         days = self.animal.species.incubation_days
         # incubation time not known, no egg laid event, removed, already born
-        if days is None or self.laid_on is None or self.died_on is not None or self.born_on is not None:
+        if (
+            days is None
+            or self.laid_on is None
+            or self.died_on is not None
+            or self.born_on is not None
+        ):
             pass
         else:
             return self.laid_on + datetime.timedelta(days=days)
 
-        
     def summary(self) -> str:
         """Summarizes the status of the animal for family history
 
@@ -999,8 +1008,8 @@ class AnimalLifeHistory(models.Model):
         if status == Animal.Status.ALIVE:
             return f"alive, {age_str}"
         return f"{lbl} on {self.died_on} at {age_str}"
-            
-    def update_dates_from_events(self) -> None:
+
+    def update_from_events(self) -> None:
         """Recompute life history - trigger when adding/removing/updating an event for the animal"""
         annotated = Animal.objects.with_dates().get(uuid=self.animal.uuid)
         self.laid_on = annotated.laid_on
@@ -1009,8 +1018,8 @@ class AnimalLifeHistory(models.Model):
         self.died_on = annotated.died_on
         self.has_any_event = annotated.has_any_event
         self.has_unexpected_removal = annotated.has_unexpected_removal
+        self.last_location = self.animal.last_location(datetime.date.today())
 
-        
 
 class EventQuerySet(models.QuerySet):
     def with_related(self):
@@ -1503,11 +1512,10 @@ class Sample(models.Model):
 
 ### Triggers
 
+
 @receiver([post_save, post_delete], sender=Event)
 def update_life_history_on_event_change(sender, instance, **kwargs):
     """Update life history when events are added/changed/deleted"""
-    life_history, _ = AnimalLifeHistory.objects.get_or_create(
-        animal=instance.animal
-    )
-    life_history.update_dates_from_events()
+    life_history, _ = AnimalLifeHistory.objects.get_or_create(animal=instance.animal)
+    life_history.update_from_events()
     life_history.save()
