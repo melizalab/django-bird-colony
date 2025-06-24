@@ -75,7 +75,7 @@ class Species(models.Model):
     code = models.CharField(max_length=4, unique=True)
     incubation_days = models.PositiveIntegerField(blank=True, null=True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.common_name
 
     class Meta:
@@ -91,7 +91,7 @@ class Color(models.Model):
     name = models.CharField(max_length=12, unique=True)
     abbrv = models.CharField("Abbreviation", max_length=3, unique=True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
     class Meta:
@@ -109,7 +109,7 @@ class Plumage(models.Model):
     name = models.CharField(max_length=16, unique=True)
     description = models.TextField()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
     class Meta:
@@ -157,7 +157,7 @@ class Status(models.Model):
     )
     description = models.TextField()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
     def effect(self) -> str | None:
@@ -204,7 +204,7 @@ class Measure(models.Model):
         help_text="how to format values for this measure (use Python str.format() mini-language)",
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.name} ({self.unit_sym})"
 
     class Meta:
@@ -232,11 +232,11 @@ class Measurement(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     @property
-    def formatted(self):
+    def formatted(self) -> str:
         val = self.type.format_str.format(self.value)
         return f"{val} {self.type.unit_sym}"
 
-    def __str__(self):
+    def __str__(self) -> str:
         event = self.event
         return f"{event.animal}: {self.type.name} {self.formatted} on {event.date}"
 
@@ -265,7 +265,7 @@ class Location(models.Model):
         """Returns an AnimalQuerySet with all the birds in this location"""
         return Animal.objects.with_location(on_date=on_date).filter(last_location=self)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
     def get_absolute_url(self):
@@ -292,7 +292,7 @@ class Age(models.Model):
     min_days = models.PositiveIntegerField()
     species = models.ForeignKey("Species", on_delete=models.CASCADE)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.species} {self.name} (≥ {self.min_days:d} days)"
 
     class Meta:
@@ -596,7 +596,7 @@ class Parent(models.Model):
     parent = models.ForeignKey("Animal", related_name="+", on_delete=models.CASCADE)
     objects = ParentManger()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.parent} -> {self.child}"
 
     class Meta:
@@ -656,10 +656,10 @@ class Animal(models.Model):
     )
     objects = AnimalManager.from_queryset(AnimalQuerySet)()
 
-    def short_uuid(self):
+    def short_uuid(self) -> str:
         return str(self.uuid).split("-")[0]
 
-    def band(self):
+    def band(self) -> str:
         if self.band_number:
             if self.band_color:
                 return f"{self.band_color}_{self.band_number:d}"
@@ -701,7 +701,7 @@ class Animal(models.Model):
             .exclude(uuid=self.uuid)
         )
 
-    def sexed(self):
+    def sexed(self) -> bool:
         return self.sex != Animal.Sex.UNKNOWN_SEX
 
     def acquisition_event(self) -> Optional["Event"]:
@@ -723,7 +723,7 @@ class Animal(models.Model):
         """
         return self.event_set.filter(status__removes__isnull=False).first()
 
-    def last_location(self, on_date: datetime.date):
+    def last_location(self, on_date: datetime.date) -> Optional["Location"]:
         """Returns the Location recorded in the most recent event before `on_date`
 
         Use the cached life_history.last_location if you need the location on the
@@ -955,7 +955,7 @@ class AnimalLifeHistory(models.Model):
         else:
             return date - self.born_on
 
-    def age_group(self, on_date: datetime.date | None = None):
+    def age_group(self, on_date: datetime.date | None = None) -> str:
         """Returns the age group of the animal by joining on the Age model.
 
         If the animal was hatched in the colony, uses the hatch date to
@@ -992,7 +992,7 @@ class AnimalLifeHistory(models.Model):
             if age_group.min_days <= age_days:
                 return age_group.name
 
-    def expected_hatch(self):
+    def expected_hatch(self) -> datetime.date | None:
         """For eggs, expected hatch date. None if not an egg, lost, already
         hatched, or incubation time is not known.
 
@@ -1088,14 +1088,14 @@ class Event(models.Model):
 
     objects = EventQuerySet.as_manager()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.animal}: {self.status} on {self.date}"
 
-    def event_date(self):
+    def event_date(self) -> str:
         """Description of event and date"""
         return f"{self.status} on {self.date:%b %-d, %Y}"
 
-    def age(self):
+    def age(self) -> datetime.timedelta:
         """Age of the animal at the time of the event, or None if birthday not known"""
         events = self.animal.event_set.filter(status=get_birth_event_type())
         if events:
@@ -1265,11 +1265,11 @@ class Pairing(models.Model):
 
     objects = PairingManager.from_queryset(PairingQuerySet)()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.short_name} ({self.date_range()})"
 
     @cached_property
-    def short_name(self):
+    def short_name(self) -> str:
         return f"♂{self.sire} × ♀{self.dam}"  # noqa: RUF001
 
     def date_range(self) -> str:
@@ -1285,7 +1285,7 @@ class Pairing(models.Model):
             return False
         return self.ended_on is None or self.ended_on > on_date
 
-    def oldest_living_progeny_age(self):
+    def oldest_living_progeny_age(self) -> datetime.timedelta:
         date_query = Q(life_history__born_on__gte=self.began_on)
         if self.ended_on is not None:
             date_query &= Q(life_history__born_on__lte=self.ended_on)
@@ -1296,7 +1296,7 @@ class Pairing(models.Model):
         )
         return agg["age__max"]
 
-    def eggs(self):
+    def eggs(self) -> AnimalQuerySet:
         """All the eggs laid during this pairing (hatched and unhatched)"""
         d_query = Q(life_history__laid_on__gte=self.began_on)
         if self.ended_on is not None:
@@ -1307,7 +1307,7 @@ class Pairing(models.Model):
             .filter(d_query)
         )
 
-    def events(self):
+    def events(self) -> EventQuerySet:
         """All events for the pair and their progeny during the pairing"""
         qs = Event.objects.filter(
             Q(animal__in=self.eggs()) | Q(animal__in=(self.sire, self.dam)),
@@ -1317,7 +1317,7 @@ class Pairing(models.Model):
             qs = qs.filter(date__lte=self.ended_on)
         return qs.order_by("date")
 
-    def last_location(self, on_date: datetime.date | None = None):
+    def last_location(self, on_date: datetime.date | None = None) -> Location | None:
         """Returns the location recorded in the most recent event for the sire
         or dam. For an inactive pair, only events between the beginning and
         ending are considered. For an active pair, only dates between the
@@ -1337,7 +1337,7 @@ class Pairing(models.Model):
         except (AttributeError, Event.DoesNotExist):
             return None
 
-    def other_pairings(self):
+    def other_pairings(self) -> PairingQuerySet:
         """Returns queryset with all other pairings of this sire and dam"""
         return Pairing.objects.filter(sire=self.sire, dam=self.dam).exclude(id=self.id)
 
@@ -1349,7 +1349,7 @@ class Pairing(models.Model):
         location: Location | None = None,
         description: str | None = None,
         **animal_properties,
-    ):
+    ) -> Animal:
         """Create an egg and associated event for the pair.
 
         Date must be during the pairing.
@@ -1378,7 +1378,7 @@ class Pairing(models.Model):
         location: Location | None = None,
         comment: str | None = None,
         remove_unhatched: bool = False,
-    ):
+    ) -> None:
         """Close an active pairing. Marks all remaining eggs as lost.
 
         Raises a ValueError if the pairing is not active. Sets ended date and a
@@ -1422,7 +1422,7 @@ class Pairing(models.Model):
                     description="marked as lost when pairing ended",
                 )
 
-    def clean(self):
+    def clean(self) -> None:
         """Validate the pairing"""
         if self.sire.sex != Animal.Sex.MALE:
             raise ValidationError(_("Sire must be a male"))
@@ -1451,7 +1451,7 @@ class NestCheck(models.Model):
     datetime = models.DateTimeField()
     comments = models.TextField(blank=True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.entered_by} at {self.datetime}"
 
 
@@ -1462,7 +1462,7 @@ class SampleType(models.Model):
     name = models.CharField(max_length=16, unique=True)
     description = models.CharField(max_length=64, unique=True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
     class Meta:
@@ -1475,7 +1475,7 @@ class SampleLocation(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=64, unique=True)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
     class Meta:
@@ -1508,10 +1508,10 @@ class Sample(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.SET(get_sentinel_user)
     )
 
-    def short_uuid(self):
+    def short_uuid(self) -> str:
         return str(self.uuid).split("-")[0]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.animal.name}:{self.type.name}"
 
     def get_absolute_url(self):

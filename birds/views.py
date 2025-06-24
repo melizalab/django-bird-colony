@@ -73,11 +73,7 @@ def index(request):
 # Animals
 @require_http_methods(["GET"])
 def animal_list(request, *, parent: str | None = None):
-    qs = (
-        Animal.objects.with_annotations()
-        .with_related()
-        .order_by("band_color", "band_number")
-    )
+    qs = Animal.objects.with_related().with_child_counts().order_by("band_color", "band_number")
     if parent is not None:
         animal = get_object_or_404(Animal, uuid=parent)
         qs = qs.descendents_of(animal)

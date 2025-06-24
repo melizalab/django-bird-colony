@@ -13,18 +13,20 @@
   </thead>
   <tbody>
     {% for animal in animal_list %}
+    {% with history=animal.life_history %}
         <tr>
           <td><a href="{{ animal.get_absolute_url }}">{{ animal.name }}</a></td>
           <td>{{ animal.species }}</td>
           <td>{{ animal.sex }}</td>
-          <td>{{ animal.age|agestr }} ({{ animal.age_group }})</td>
-          <td>{{ animal.status }}</td>
-          <td>{{ animal.last_location|default_if_none:"" }}</td>
-          <td>{{ animal.children.hatched.count}}</td>
+          <td>{{ history.age|agestr }} ({{ history.age_group }})</td>
+          <td>{{ history.status }}</td>
+          <td>{{ history.last_location|default_if_none:"" }}</td>
+          <td>{{ animal.n_hatched}}</td>
           <td>{{ animal.uuid }}</td>
           <td>{% if animal.reserved_by %}<a href="{% url 'birds:user' animal.reserved_by.id %}">{{ animal.reserved_by }}</a>{% endif %}</td>
           <td></td>
         </tr>
+    {% endwith %}
     {% endfor %}
   </tbody>
 </table>
