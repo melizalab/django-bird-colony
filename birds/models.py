@@ -3,6 +3,7 @@
 import datetime
 import uuid
 from collections.abc import Sequence
+from dataclasses import dataclass
 from functools import lru_cache
 from typing import Optional
 
@@ -12,7 +13,6 @@ from django.contrib.postgres.aggregates import ArrayAgg
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import (
-    Case,
     CheckConstraint,
     Count,
     DateField,
@@ -24,7 +24,6 @@ from django.db.models import (
     Q,
     Subquery,
     Value,
-    When,
     Window,
 )
 from django.db.models.functions import Coalesce, Now, RowNumber, Trunc, TruncDay
@@ -44,6 +43,26 @@ MOVED_EVENT_NAME = "moved"
 NOTE_EVENT_NAME = "note"
 BANDED_EVENT_NAME = "banded"
 RESERVATION_EVENT_NAME = "reservation"
+
+
+# Modeling age of animals
+@dataclass
+class UnknownAge:
+    """age is unknown (animals that transfer in)"""
+
+    def __str__(self):
+        return "unknown"
+
+
+@dataclass
+class UnbornAge:
+    """age is undefined (eggs)"""
+
+    def __str__(self):
+        return UNBORN_ANIMAL_NAME
+
+
+AnimalAge = datetime.timedelta | UnknownAge | UnbornAge | None
 
 
 @lru_cache
@@ -418,41 +437,41 @@ class AnimalQuerySet(models.QuerySet):
                     date__lte=on_date,
                 )
             ),
-            # Derived fields
-            alive=Case(
-                When(died_on__isnull=False, then=False),
-                When(acquired_on__isnull=True, then=False),
-                default=True,
-            ),
-            status=Case(
-                When(first_event_on__isnull=True, then=None),
-                When(
-                    Q(acquired_on__isnull=True)
-                    & Q(laid_on__isnull=False)
-                    & Q(has_unexpected_removal=False),
-                    then=Value(Animal.Status.GOOD_EGG),
-                ),
-                When(
-                    Q(acquired_on__isnull=True)
-                    & Q(laid_on__isnull=False)
-                    & Q(has_unexpected_removal=True),
-                    then=Value(Animal.Status.BAD_EGG),
-                ),
-                When(
-                    has_unexpected_removal=True, then=Value(Animal.Status.DIED_UNEXPTD)
-                ),
-                When(died_on__isnull=False, then=Value(Animal.Status.DIED_EXPTD)),
-                default=Value(Animal.Status.ALIVE),
-            ),
-            age=Case(
-                When(born_on__isnull=True, then=None),
-                When(died_on__isnull=True, then=on_date - F("born_on")),
-                default=F("died_on") - F("born_on"),
-            ),
+            # Derived fields (can probably remove)
+            # alive=Case(
+            #     When(died_on__isnull=False, then=False),
+            #     When(acquired_on__isnull=True, then=False),
+            #     default=True,
+            # ),
+            # status=Case(
+            #     When(first_event_on__isnull=True, then=None),
+            #     When(
+            #         Q(acquired_on__isnull=True)
+            #         & Q(laid_on__isnull=False)
+            #         & Q(has_unexpected_removal=False),
+            #         then=Value(Animal.Status.GOOD_EGG),
+            #     ),
+            #     When(
+            #         Q(acquired_on__isnull=True)
+            #         & Q(laid_on__isnull=False)
+            #         & Q(has_unexpected_removal=True),
+            #         then=Value(Animal.Status.BAD_EGG),
+            #     ),
+            #     When(
+            #         has_unexpected_removal=True, then=Value(Animal.Status.DIED_UNEXPTD)
+            #     ),
+            #     When(died_on__isnull=False, then=Value(Animal.Status.DIED_EXPTD)),
+            #     default=Value(Animal.Status.ALIVE),
+            # ),
+            # age=Case(
+            #     When(born_on__isnull=True, then=None),
+            #     When(died_on__isnull=True, then=on_date - F("born_on")),
+            #     default=F("died_on") - F("born_on"),
+            # ),
         )
 
     def with_child_counts(self, on_date: datetime.date | None = None):
-        """Annotate the birds with child counts."""
+        """Annotate the birds with child counts (uses life history)."""
         refdate = on_date or datetime.date.today()
         return self.annotate(
             n_eggs=Count(
@@ -465,13 +484,18 @@ class AnimalQuerySet(models.QuerySet):
             ),
             n_alive=Count(
                 "children",
-                filter=~Q(children__life_history__died_on__lte=refdate),
-            )
+                filter=Q(children__life_history__born_on__lte=refdate)
+                & ~Q(children__life_history__died_on__lte=refdate),
+            ),
         )
 
     def with_related(self):
         return self.select_related(
-            "life_history", "reserved_by", "species", "band_color"
+            "life_history",
+            "life_history__last_location",
+            "reserved_by",
+            "species",
+            "band_color",
         ).prefetch_related("species__age_set")
 
     def hatched(self, on_date: datetime.date | None = None):
@@ -614,15 +638,6 @@ class Animal(models.Model):
         MALE = "M", _("male")
         FEMALE = "F", _("female")
         UNKNOWN_SEX = "U", _("unknown")
-
-    class Status(models.TextChoices):
-        """Enumeration of status an animal can have (inferred)"""
-
-        ALIVE = "alive", _("Alive")
-        DIED_EXPTD = "dead", _("Expected death/removal")
-        GOOD_EGG = "egg", _("Unhatched egg")
-        BAD_EGG = "bad egg", _("Infertile egg")
-        DIED_UNEXPTD = "lost", _("Unexpected death")
 
     species = models.ForeignKey("Species", on_delete=models.PROTECT)
     sex = models.CharField(max_length=2, choices=Sex.choices, default=Sex.UNKNOWN_SEX)
@@ -880,6 +895,16 @@ class Animal(models.Model):
 class AnimalLifeHistory(models.Model):
     """Life history information for an animal, computed from events and cached"""
 
+    class LifeStage(models.TextChoices):
+        EGG = "egg", _("Egg")
+        ALIVE = "alive", _("Alive")
+        DEAD = "dead", _("Dead")
+        BAD_EGG = "failed egg", _("Infertile egg")
+
+    class RemovalOutcome(models.TextChoices):
+        EXPECTED = "expected", _("Expected death/removal")
+        UNEXPECTED = "unexpected", _("Unexpected death")
+
     id = models.AutoField(primary_key=True)
     animal = models.OneToOneField(
         Animal, on_delete=models.CASCADE, related_name="life_history"
@@ -922,38 +947,48 @@ class AnimalLifeHistory(models.Model):
     def died_as_of(self, on_date: datetime.date) -> bool:
         return self.died_on is not None and self.died_on <= on_date
 
-    def alive(self, on_date: datetime.date | None = None) -> bool:
-        """Returns true if the animal is alive on the specified date (default today)"""
+    def life_stage(self, on_date: datetime.date | None = None) -> LifeStage | None:
+        """Returns the life stage of the animal, or None if not calculable"""
         date = on_date or datetime.date.today()
-        return self.acquired_as_of(date) and not self.died_as_of(date)
 
-    def status(self, on_date: datetime.date | None = None) -> Animal.Status | None:
-        date = on_date or datetime.date.today()
         if not self.first_event_as_of(date):
             pass
-        elif not self.acquired_as_of(date) and self.laid_as_of(date):
-            # eggs: laid but not acquired
-            if self.has_unexpected_removal:
-                return Animal.Status.BAD_EGG
-            else:
-                return Animal.Status.GOOD_EGG
         elif self.died_as_of(date):
-            # died
-            if self.has_unexpected_removal:
-                return Animal.Status.DIED_UNEXPTD
+            if self.born_as_of(date):
+                return self.LifeStage.DEAD
             else:
-                return Animal.Status.DIED_EXPTD
-        else:
-            return Animal.Status.ALIVE
+                return self.LifeStage.BAD_EGG
+        elif self.acquired_as_of(date):
+            # Animal has hatched or been transferred into colony - it's alive
+            return self.LifeStage.ALIVE
+        elif self.laid_as_of(date):
+            # Animal was laid as egg but hasn't hatched yet
+            return self.LifeStage.EGG
 
     def age(self, on_date: datetime.date | None = None) -> datetime.timedelta | None:
+        """Age of the animal as of today or date of death, or None if not calculable"""
         date = on_date or datetime.date.today()
         if not self.born_as_of(date):
             return None
-        elif self.died_as_of(date):
-            return self.died_on - self.born_on
+        end_date = self.died_on if self.died_as_of(date) else date
+        return end_date - self.born_on
+
+    def removal_outcome(
+        self, on_date: datetime.date | None = None
+    ) -> RemovalOutcome | None:
+        """Returns the removal outcome if animal is dead, None otherwise"""
+        date = on_date or datetime.date.today()
+
+        if not self.died_as_of(date):
+            return None
+        elif self.has_unexpected_removal:
+            return self.RemovalOutcome.UNEXPECTED
         else:
-            return date - self.born_on
+            return self.RemovalOutcome.EXPECTED
+
+    def is_alive(self, on_date: datetime.date | None = None) -> bool:
+        """Returns true if the animal is alive on the specified date (default today)"""
+        return self.life_stage(on_date) == self.LifeStage.ALIVE
 
     def age_group(self, on_date: datetime.date | None = None) -> str:
         """Returns the age group of the animal by joining on the Age model.
@@ -968,26 +1003,20 @@ class AnimalLifeHistory(models.Model):
         This method will be more performant if age_set is prefetched.
 
         """
-        refdate = on_date or datetime.date.today()
+        stage = self.life_stage(on_date)
 
-        # Handle special cases
-        if self.born_on is None or self.born_on > refdate:
-            if self.acquired_on is not None and self.acquired_on <= refdate:
-                return ADULT_ANIMAL_NAME
-            elif self.laid_on is not None and self.laid_on <= refdate:
-                return UNBORN_ANIMAL_NAME
-            else:
-                return None
+        if stage is None:
+            return None
+        elif stage in (self.LifeStage.EGG, self.LifeStage.BAD_EGG):
+            return UNBORN_ANIMAL_NAME
 
-        # age at death otherwise today
-        if self.died_on is None or self.died_on > refdate:
-            age = refdate - self.born_on
-        else:
-            age = self.died_on - self.born_on
+        age = self.age(on_date)
+        if age is None:
+            # Acquired animal with unknown birth date
+            return ADULT_ANIMAL_NAME
         age_days = age.days
 
-        # Age groups are now pre-sorted by the model's Meta.ordering
-        # First match is automatically the best match
+        # Age groups are pre-sorted by min_days (descending)
         for age_group in self.animal.species.age_set.all():
             if age_group.min_days <= age_days:
                 return age_group.name
@@ -1022,7 +1051,8 @@ class AnimalLifeHistory(models.Model):
         if self.age() is None:
             age_str = "unknown age"
         else:
-            age_str = f"{self.age.days // 365}y {self.age.days % 365:3}d old"
+            age = self.age()
+            age_str = f"{age.days // 365}y {age.days % 365:3}d old"
         if status == Animal.Status.ALIVE:
             return f"alive, {age_str}"
         return f"{lbl} on {self.died_on} at {age_str}"

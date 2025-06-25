@@ -8,6 +8,7 @@ from django.test import TestCase
 from birds import models
 from birds.models import (
     Animal,
+    AnimalLifeHistory,
     Color,
     Event,
     Location,
@@ -60,7 +61,7 @@ class AnimalModelTests(TestCase):
             location=location,
             sex=Animal.Sex.MALE,
         )
-        self.assertTrue(bird.life_history.alive())
+        self.assertTrue(bird.life_history.is_alive())
         self.assertEqual(bird.sex, Animal.Sex.MALE)
         self.assertEqual(bird.event_set.count(), 1)
         event = bird.event_set.first()
@@ -97,8 +98,6 @@ class AnimalModelTests(TestCase):
         self.assertIs(annotated_bird.acquired_on, None)
         self.assertIs(annotated_bird.died_on, None)
         self.assertIs(annotated_bird.laid_on, None)
-        self.assertFalse(annotated_bird.alive)
-        self.assertIs(annotated_bird.status, None)
         annotated_bird = Animal.objects.with_dates(random_date).get(pk=bird.pk)
         self.assertIs(annotated_bird.born_on, None)
         self.assertIs(annotated_bird.acquired_on, None)
@@ -123,9 +122,10 @@ class AnimalModelTests(TestCase):
         self.assertEqual(bird.life_history.acquired_on, birthday)
         self.assertIs(bird.life_history.died_on, None)
         self.assertIs(bird.life_history.laid_on, None)
-        self.assertTrue(bird.life_history.alive())
-        self.assertEqual(bird.life_history.status(), Animal.Status.ALIVE)
+
+        self.assertTrue(bird.life_history.is_alive())
         self.assertEqual(bird.life_history.age(), age)
+        self.assertIs(bird.life_history.removal_outcome(), None)
         self.assertIs(bird.life_history.expected_hatch(), None)
 
         self.assertIn(bird, Animal.objects.alive())
@@ -154,9 +154,9 @@ class AnimalModelTests(TestCase):
         self.assertEqual(bird.life_history.acquired_on, acq_on)
         self.assertIs(bird.life_history.died_on, None)
         self.assertIs(bird.life_history.laid_on, None)
-        self.assertTrue(bird.life_history.alive())
-        self.assertEqual(bird.life_history.status(), Animal.Status.ALIVE)
+        self.assertTrue(bird.life_history.is_alive())
         self.assertIs(bird.life_history.age(), None)
+        self.assertIs(bird.life_history.removal_outcome(), None)
         self.assertEqual(bird.life_history.age_group(), models.ADULT_ANIMAL_NAME)
         self.assertIs(bird.life_history.expected_hatch(), None)
 
@@ -194,8 +194,11 @@ class AnimalModelTests(TestCase):
         self.assertEqual(lh.born_on, born_on)
         self.assertEqual(lh.acquired_on, born_on)
         self.assertEqual(lh.died_on, died_on)
-        self.assertIs(lh.alive(), False)
-        self.assertEqual(lh.status(), Animal.Status.DIED_UNEXPTD)
+        self.assertIs(lh.is_alive(), False)
+        # the starter kit has "died" as unexpected
+        self.assertEqual(
+            lh.removal_outcome(), AnimalLifeHistory.RemovalOutcome.UNEXPECTED
+        )
         self.assertEqual(lh.age(), died_on - born_on)
         self.assertIs(lh.expected_hatch(), None)
 
@@ -264,8 +267,9 @@ class AnimalModelTests(TestCase):
         self.assertIs(lh.acquired_on, None)
         self.assertIs(lh.died_on, None)
         self.assertIs(lh.age(), None)
-        self.assertIs(lh.alive(), False, "an egg is not alive")
-        self.assertEqual(lh.status(), Animal.Status.GOOD_EGG)
+        self.assertIs(lh.is_alive(), False, "an egg is not alive")
+        self.assertEqual(lh.life_stage(), AnimalLifeHistory.LifeStage.EGG)
+        self.assertIs(lh.removal_outcome(), None)
         self.assertEqual(lh.age_group(), models.UNBORN_ANIMAL_NAME)
         self.assertEqual(lh.expected_hatch(), eggspected_hatch)
 
@@ -299,8 +303,11 @@ class AnimalModelTests(TestCase):
         self.assertIs(lh.acquired_on, None)
         self.assertEqual(lh.died_on, lost_on)
         self.assertIs(lh.age(), None)
-        self.assertIs(lh.alive(), False, "an egg is not alive")
-        self.assertEqual(lh.status(), Animal.Status.BAD_EGG)
+        self.assertIs(lh.is_alive(), False, "an egg is not alive")
+        self.assertEqual(lh.life_stage(), AnimalLifeHistory.LifeStage.BAD_EGG)
+        self.assertEqual(
+            lh.removal_outcome(), AnimalLifeHistory.RemovalOutcome.UNEXPECTED
+        )
         self.assertEqual(lh.age_group(), models.UNBORN_ANIMAL_NAME)
         self.assertIs(
             lh.expected_hatch(), None, "lost egg should not have expected hatch"
@@ -342,33 +349,30 @@ class AnimalModelTests(TestCase):
         )
         lh = bird.life_history
         lh.refresh_from_db()
-        self.assertFalse(lh.alive())
+        self.assertFalse(lh.is_alive())
         self.assertEqual(lh.laid_on, laid_on)
         self.assertEqual(lh.born_on, birthday)
         self.assertEqual(lh.acquired_on, birthday)
         self.assertEqual(lh.died_on, today())
         self.assertEqual(lh.age(), age)
-        self.assertEqual(lh.status(), Animal.Status.DIED_UNEXPTD)
+        self.assertEqual(lh.life_stage(), AnimalLifeHistory.LifeStage.DEAD)
 
-        self.assertTrue(lh.alive(birthday))
+        self.assertTrue(lh.is_alive(birthday))
         self.assertEqual(lh.laid_as_of(birthday), True)
         self.assertEqual(lh.born_as_of(birthday), True)
         self.assertEqual(lh.acquired_as_of(birthday), True)
         self.assertIs(lh.died_as_of(birthday), False)
         self.assertEqual(lh.age(birthday), dt_days(0))
-        self.assertEqual(lh.status(birthday), Animal.Status.ALIVE)
+        self.assertEqual(lh.life_stage(birthday), AnimalLifeHistory.LifeStage.ALIVE)
 
         date = birthday - dt_days(1)
-        self.assertFalse(lh.alive(date))
+        self.assertFalse(lh.is_alive(date))
         self.assertEqual(lh.laid_as_of(date), True)
         self.assertIs(lh.born_as_of(date), False)
         self.assertIs(lh.acquired_as_of(date), False)
         self.assertIs(lh.died_as_of(date), False)
         self.assertIs(lh.age(date), None)
-        # marked as bad egg because the removal was unexpected, and that's a
-        # boolean flag on life history. Not actually an infertile egg but this
-        # is such a rare case I'm not going to try to fix
-        self.assertEqual(lh.status(date), Animal.Status.BAD_EGG)
+        self.assertEqual(lh.life_stage(date), AnimalLifeHistory.LifeStage.EGG)
 
         date = laid_on - dt_days(1)
         self.assertIs(lh.laid_as_of(date), False)
@@ -376,7 +380,7 @@ class AnimalModelTests(TestCase):
         self.assertIs(lh.acquired_as_of(date), False)
         self.assertIs(lh.died_as_of(date), False)
         self.assertIs(lh.age(date), None)
-        self.assertIs(lh.status(date), None)
+        self.assertIs(lh.life_stage(date), None)
 
     def test_age_grouping(self):
         species = Species.objects.get(pk=1)
