@@ -598,18 +598,48 @@ class ParentModelTests(TestCase):
         )
 
     def test_bird_child_counts(self):
+        user = models.get_sentinel_user()
         species = Species.objects.get(pk=1)
         sire = Animal.objects.create(species=species, sex=Animal.Sex.MALE)
         dam = Animal.objects.create(species=species, sex=Animal.Sex.FEMALE)
-        age = dt_days(5)
-        birthday = today() - age
-        make_child(sire, dam, birthday)
-        self.assertEqual(sire.children.unhatched().count(), 0)
-        self.assertEqual(sire.children.hatched().count(), 1)
+        status_laid = models.get_unborn_creation_event_type()
+        status_died = models.get_death_event_type()
+        birthday = today() - dt_days(5)
+        # one egg
+        egg = Animal.objects.create(species=species)
+        egg.parents.set([sire, dam])
+        Event.objects.create(
+            animal=egg, status=status_laid, date=today(), entered_by=user
+        )
+        # one living child
+        living_child = make_child(sire, dam, birthday)
+        # add the egg event
+        Event.objects.create(
+            animal=living_child,
+            status=status_laid,
+            date=birthday - dt_days(14),
+            entered_by=user,
+        )
+        # one deceased child
+        deceased_child = make_child(sire, dam, birthday)
+        # add the egg event
+        Event.objects.create(
+            animal=deceased_child,
+            status=status_laid,
+            date=birthday - dt_days(14),
+            entered_by=user,
+        )
+        # add the death event
+        Event.objects.create(
+            animal=deceased_child, status=status_died, date=today(), entered_by=user
+        )
+
+        self.assertEqual(sire.children.unhatched().count(), 1)
+        self.assertEqual(sire.children.hatched().count(), 2)
         self.assertEqual(sire.children.alive().count(), 1)
         annotated = Animal.objects.with_child_counts().get(uuid=dam.uuid)
-        self.assertEqual(annotated.n_eggs, 0)  # because there's no laid event
-        self.assertEqual(annotated.n_hatched, 1)
+        self.assertEqual(annotated.n_eggs, 3)
+        self.assertEqual(annotated.n_hatched, 2)
         self.assertEqual(annotated.n_alive, 1)
 
     def test_genealogy(self):
