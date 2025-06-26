@@ -491,6 +491,11 @@ class AnimalQuerySet(models.QuerySet):
             Q(life_history__born_on__isnull=True) | Q(life_history__born_on__gt=refdate)
         )
 
+    def eggs(self, on_date: datetime.date | None = None):
+        """Only birds that were eggs on on_date (default today)"""
+        refdate = on_date or datetime.date.today()
+        return self.unhatched(on_date).filter(life_history__laid_on__lte=refdate)
+
     def alive(self, on_date: datetime.date | None = None):
         """Only birds that are alive (added but not removed)"""
         refdate = on_date or datetime.date.today()
@@ -1091,6 +1096,7 @@ class EventQuerySet(models.QuerySet):
     def with_related(self):
         return self.select_related(
             "animal",
+            "animal__life_history",
             "animal__species",
             "animal__band_color",
             "status",

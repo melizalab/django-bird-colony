@@ -132,6 +132,7 @@ class AnimalModelTests(TestCase):
         self.assertIn(bird, Animal.objects.hatched())
         self.assertNotIn(bird, Animal.objects.lost())
         self.assertNotIn(bird, Animal.objects.unhatched())
+        self.assertNotIn(bird, Animal.objects.eggs())
         self.assertIn(bird, Animal.objects.alive(birthday))
         self.assertNotIn(bird, Animal.objects.alive(birthday - dt_days(1)))
         self.assertIn(bird, Animal.objects.existing(birthday))
@@ -164,6 +165,7 @@ class AnimalModelTests(TestCase):
         self.assertNotIn(bird, Animal.objects.hatched())
         self.assertIn(bird, Animal.objects.unhatched())
         self.assertIn(bird, Animal.objects.unhatched().alive())
+        self.assertNotIn(bird, Animal.objects.eggs())
         self.assertIn(bird, Animal.objects.alive(acq_on))
         self.assertNotIn(bird, Animal.objects.alive(acq_on - dt_days(1)))
         self.assertIn(bird, Animal.objects.existing(acq_on))
@@ -206,6 +208,7 @@ class AnimalModelTests(TestCase):
         self.assertNotIn(bird, Animal.objects.hatched())
         self.assertIn(bird, Animal.objects.unhatched())
         self.assertNotIn(bird, Animal.objects.unhatched().alive())
+        self.assertNotIn(bird, Animal.objects.eggs())
         self.assertIn(bird, Animal.objects.alive(acq_on))
         self.assertNotIn(bird, Animal.objects.alive(acq_on - dt_days(1)))
         self.assertNotIn(bird, Animal.objects.alive(died_on + dt_days(1)))
@@ -248,6 +251,7 @@ class AnimalModelTests(TestCase):
 
         self.assertNotIn(bird, Animal.objects.alive())
         self.assertIn(bird, Animal.objects.hatched())
+        self.assertNotIn(bird, Animal.objects.eggs())
         self.assertIn(bird, Animal.objects.lost())
         self.assertNotIn(bird, Animal.objects.unhatched())
         self.assertIn(bird, Animal.objects.alive(born_on))
@@ -320,8 +324,11 @@ class AnimalModelTests(TestCase):
         self.assertNotIn(egg, Animal.objects.alive())
         self.assertNotIn(egg, Animal.objects.hatched())
         self.assertIn(egg, Animal.objects.unhatched())
+        self.assertIn(egg, Animal.objects.eggs())
         self.assertIn(egg, Animal.objects.existing(laid_on))
+        self.assertIn(egg, Animal.objects.eggs(laid_on))
         self.assertNotIn(egg, Animal.objects.existing(laid_on - dt_days(1)))
+        self.assertNotIn(egg, Animal.objects.eggs(laid_on - dt_days(1)))
 
     def test_status_of_lost_egg(self):
         species = Species.objects.get(pk=1)
@@ -360,9 +367,12 @@ class AnimalModelTests(TestCase):
         self.assertNotIn(egg, Animal.objects.alive())
         self.assertNotIn(egg, Animal.objects.hatched())
         self.assertIn(egg, Animal.objects.unhatched())
+        self.assertIn(egg, Animal.objects.eggs())
         self.assertNotIn(egg, Animal.objects.unhatched().existing())
         self.assertIn(egg, Animal.objects.existing(laid_on))
+        self.assertIn(egg, Animal.objects.eggs(laid_on))
         self.assertNotIn(egg, Animal.objects.existing(laid_on - dt_days(1)))
+        self.assertNotIn(egg, Animal.objects.eggs(laid_on - dt_days(1)))
         self.assertNotIn(egg, Animal.objects.existing(lost_on))
 
     def test_life_history_as_of_date(self):
