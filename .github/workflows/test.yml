@@ -39,6 +39,7 @@ jobs:
     - name: Install dependencies
       env:
         DJANGO_VERSION: ${{ matrix.django-version }}
+        NUMPY_VERSION: ${{ matrix.numpy-version }}
       run: |
         uv sync --frozen
         uv add "Django>${DJANGO_VERSION}"
