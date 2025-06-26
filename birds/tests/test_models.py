@@ -1290,6 +1290,7 @@ class PairingModelTests(TestCase):
         annotated_pairing = Pairing.objects.with_progeny_stats().get(pk=pairing.pk)
         self.assertEqual(annotated_pairing.n_eggs, 2)
         self.assertEqual(annotated_pairing.n_hatched, 1)  # progeny have to have hatched
+        self.assertEqual(annotated_pairing.n_living, 1)  # progeny have to have hatched
 
     def test_animal_birth_pairing(self):
         pairing = Pairing.objects.create(

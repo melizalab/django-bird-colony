@@ -1266,13 +1266,17 @@ class PairingQuerySet(models.QuerySet):
         )
 
         return self.annotate(
+            n_eggs=Count(
+                "sire__children",
+                filter=qq_laid_after_began & qq_laid_before_ended,
+            ),
             n_hatched=Count(
                 "sire__children",
                 filter=qq_after_began & qq_before_ended,
             ),
-            n_eggs=Count(
+            n_living=Count(
                 "sire__children",
-                filter=qq_laid_after_began & qq_laid_before_ended,
+                filter=qq_after_began & qq_before_ended & Q(sire__children__life_history__died_on__isnull=True),
             ),
         )
 
