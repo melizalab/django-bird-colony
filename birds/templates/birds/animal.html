@@ -13,8 +13,8 @@
   <dt>sex</dt><dd>{{ animal.sex }}</dd>
   <dt>plumage</dt><dd>{{ animal.plumage }}</dd>
   <dt>uuid</dt><dd>{{ animal.uuid }}</dd>
-  <dt>status</dt><dd>{{ animal.status|default_if_none:"unknown" }}</dd>
-  <dt>age</dt><dd>{{ animal.age|agestr }} ({{ animal.age_group }})</dd>
+  <dt>status</dt><dd>{{ life_history.status_display }}</dd>
+  <dt>age</dt><dd>{{ life_history.age_display }} </dd>
   {% for measurement in animal_measurements %}
   <dt>{{ measurement.type.name }} </dt><dd>{{ measurement.formatted }} (as of {{measurement.event.date}})</dd>
   {% endfor %}
@@ -25,20 +25,20 @@
   <dt><u>family history</u></dt><dd/>
   <dt>acquired</dt><dd>{{ animal.acquisition_event.event_date }}</dd>
   <dt>birth pairing</dt><dd> {% if animal.birth_pairing %}<a href="{{ animal.birth_pairing.get_absolute_url }}">{{ animal.birth_pairing.began_on}} - {{ animal.birth_pairing.ended_on|default_if_none:""}}</a>{% endif %}</dd>
-  <dt>sire</dt><dd>{% if animal.sire %}<a href="{{ animal.sire.get_absolute_url }}">{{ animal.sire }}</a>: {{ animal.sire.history }}{% endif %}</dd>
-  <dt>paternal grandsire</dt><dd>{% if animal.sire.sire %}<a href="{{ animal.sire.sire.get_absolute_url }}">{{ animal.sire.sire }}</a>: {{ animal.sire.sire.history }}{% endif %}</dd>
-  <dt>paternal granddam</dt><dd>{% if animal.sire.dam %}<a href="{{ animal.sire.dam.get_absolute_url }}">{{ animal.sire.dam }}</a>: {{ animal.sire.dam.history }}{% endif %}</dd>
-  <dt>dam</dt><dd>{% if animal.dam %}<a href="{{ animal.dam.get_absolute_url }}">{{ animal.dam }}</a>: {{ animal.dam.history }}{% endif %}</dd>
-  <dt>maternal grandsire</dt><dd>{% if animal.dam.sire %}<a href="{{ animal.dam.sire.get_absolute_url }}">{{ animal.dam.sire }}</a>: {{ animal.dam.sire.history }}{% endif %}</dd>
-  <dt>maternal granddam</dt><dd>{% if animal.dam.dam %}<a href="{{ animal.dam.dam.get_absolute_url }}">{{ animal.dam.dam }}</a>: {{ animal.dam.dam.history }}{% endif %}</dd>
+  <dt>sire</dt><dd>{% if animal.sire %}<a href="{{ animal.sire.get_absolute_url }}">{{ animal.sire }}</a>: {{ animal.sire.life_history.summary }}{% endif %}</dd>
+  <dt>paternal grandsire</dt><dd>{% if animal.sire.sire %}<a href="{{ animal.sire.sire.get_absolute_url }}">{{ animal.sire.sire }}</a>: {{ animal.sire.sire.life_history.summary }}{% endif %}</dd>
+  <dt>paternal granddam</dt><dd>{% if animal.sire.dam %}<a href="{{ animal.sire.dam.get_absolute_url }}">{{ animal.sire.dam }}</a>: {{ animal.sire.dam.life_history.summary }}{% endif %}</dd>
+  <dt>dam</dt><dd>{% if animal.dam %}<a href="{{ animal.dam.get_absolute_url }}">{{ animal.dam }}</a>: {{ animal.dam.life_history.summary }}{% endif %}</dd>
+  <dt>maternal grandsire</dt><dd>{% if animal.dam.sire %}<a href="{{ animal.dam.sire.get_absolute_url }}">{{ animal.dam.sire }}</a>: {{ animal.dam.sire.life_history.summary }}{% endif %}</dd>
+  <dt>maternal granddam</dt><dd>{% if animal.dam.dam %}<a href="{{ animal.dam.dam.get_absolute_url }}">{{ animal.dam.dam }}</a>: {{ animal.dam.dam.life_history.summary }}{% endif %}</dd>
 </dl>
 
 <dl class="dl-horizontal">
   <dt><u>breeding outcomes</u></dt><dd/>
-  <dt>infertile eggs</dt><dd> {{ kids.unhatched.lost.count }}</dd>
-  <dt>successfully hatched</dt><dd>{{ kids.hatched.count }}</dd>
-  <dt>unexpectedly died</dt><dd>{{ kids.hatched.lost.count }}</dd>
-  <dt>currently alive</dt><dd>{{ kids.alive.count }}</dd>
+  <dt>total eggs</dt><dd> {{ animal.n_eggs }}</dd>
+  <dt>successfully hatched</dt><dd>{{ animal.n_hatched }}</dd>
+  <dt>unexpectedly died</dt><dd>{{ kids.lost.count }} </dd>
+  <dt>currently alive</dt><dd>{{ animal.n_alive }}</dd>
 </dl>
 
 {% if not animal.sexed %}
@@ -73,7 +73,7 @@
         <tr>
           <td>{{ event.status }}</td>
           <td>{{ event.date }}</td>
-	  <td>{{ event.age|agestr }}</td>
+	  <td>{{ event.age_display }}</td>
           <td>{{ event.location|link_or_blank }}</td>
           <td>{{ event.description }}</td>
 	  <td>{{ event.entered_by}}</td>
@@ -99,7 +99,7 @@
 
 <h3>Children</h3>
 
-{% include "birds/animal_table.html" with animal_list=kids.hatched only %}
+{% include "birds/animal_table.html" with animal_list=kids only %}
 
 <a href="{% url 'birds:animal_kids' animal.uuid %}">all children</a> (including eggs)&nbsp;&nbsp;
 <a href="{% url 'birds:genealogy' animal.uuid %}">full genealogy</a> (may take a while)<br/>

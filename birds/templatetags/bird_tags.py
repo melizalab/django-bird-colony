@@ -1,5 +1,6 @@
 # -*- mode: python -*-
 from django import template
+from django.urls import NoReverseMatch, reverse
 from django.utils.html import format_html, format_html_join
 
 register = template.Library()
@@ -78,3 +79,15 @@ def item_at(arr, index):
         return arr[index]
     except (ValueError, IndexError, TypeError):
         return None
+
+
+@register.filter
+def link_to(obj, url_name):
+    """Create a link to an object if it exists"""
+    try:
+        url = reverse(url_name, args=[obj.pk])
+        return format_html('<a href="{}">{}</a>', url, obj)
+    except NoReverseMatch:
+        return str(obj)
+    except AttributeError:
+        return ""

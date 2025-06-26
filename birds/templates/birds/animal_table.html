@@ -18,12 +18,12 @@
           <td><a href="{{ animal.get_absolute_url }}">{{ animal.name }}</a></td>
           <td>{{ animal.species }}</td>
           <td>{{ animal.sex }}</td>
-          <td>{{ history.age|agestr }} ({{ history.age_group }})</td>
-          <td>{{ history.status }}</td>
-          <td>{{ history.last_location|default_if_none:"" }}</td>
+          <td>{{ history.age_display }}</td>
+          <td>{{ history.status_display }}</td>
+          <td>{{ history.last_location|link_or_blank }}</td>
           <td>{{ animal.n_hatched}}</td>
           <td>{{ animal.uuid }}</td>
-          <td>{% if animal.reserved_by %}<a href="{% url 'birds:user' animal.reserved_by.id %}">{{ animal.reserved_by }}</a>{% endif %}</td>
+          <td>{{ animal.reserved_by|link_to:"birds:user" }}</td>
           <td></td>
         </tr>
     {% endwith %}

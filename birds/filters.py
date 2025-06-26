@@ -19,7 +19,7 @@ class AnimalFilter(filters.FilterSet):
     child = filters.CharFilter(field_name="children__uuid", lookup_expr="istartswith")
 
     def is_alive(self, queryset, name, value):
-        return queryset.filter(alive__gt=0)
+        return queryset.alive()
 
     class Meta:
         model = Animal

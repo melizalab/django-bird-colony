@@ -3,7 +3,6 @@
 import datetime
 import uuid
 from collections.abc import Sequence
-from dataclasses import dataclass
 from functools import lru_cache
 from typing import Optional
 
@@ -530,6 +529,12 @@ class AnimalQuerySet(models.QuerySet):
         kwargs = {key: animal}
         return self.filter(**kwargs)
 
+    def order_by_life_stage(self):
+        """List living animals first, then dead, then unborn"""
+        return self.order_by(
+            "-life_history__died_on", F("life_history__born_on").asc(nulls_last=True)
+        )
+
     def for_pedigree(self):
         """All parents and currently living animals annotated with sire/dam and topologically sorted"""
         return (
@@ -1031,8 +1036,6 @@ class AnimalLifeHistory(models.Model):
         if age is None:
             return ""
         days = age.days
-        years = days // 365
-        remaining_days = days % 365
         return f"{days // 365}y {days % 365}d"
 
     def status_display(self) -> str:
@@ -1157,6 +1160,14 @@ class Event(models.Model):
                 return self.date - born_on
         except (Animal.life_history.RelatedObjectDoesNotExist, TypeError):
             pass
+
+    def age_display(self) -> str:
+        """Age at time of event, formatted for display"""
+        age = self.age()
+        if age is None:
+            return ""
+        days = age.days
+        return f"{days // 365}y {days % 365}d"
 
     def measures(self):
         """Returns a queryset with all defined Measures. Each Measure is

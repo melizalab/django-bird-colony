@@ -6,7 +6,7 @@ from itertools import groupby
 
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
-from django.db.models import Count, F, Prefetch, Q, Window
+from django.db.models import Count, Prefetch, Q, Window
 from django.db.models.functions import RowNumber
 from django.db.utils import IntegrityError
 from django.forms import ValidationError, formset_factory
@@ -73,7 +73,7 @@ def index(request):
 # Animals
 @require_http_methods(["GET"])
 def animal_list(request, *, parent: str | None = None):
-    qs = Animal.objects.with_related().with_child_counts().order_by("band_color", "band_number")
+    qs = Animal.objects.with_related().with_child_counts().order_by_life_stage()
     if parent is not None:
         animal = get_object_or_404(Animal, uuid=parent)
         qs = qs.descendents_of(animal)
@@ -105,26 +105,14 @@ def animal_list(request, *, parent: str | None = None):
 
 @require_http_methods(["GET"])
 def animal_view(request, uuid: str):
-    qs = (
-        Animal.objects.with_annotations()
-        .with_related()
-        .prefetch_related(
-            Prefetch("parents", queryset=Animal.objects.with_dates()),
-            Prefetch("parents__parents", queryset=Animal.objects.with_dates()),
-        )
-    )
+    qs = Animal.objects.with_related().with_child_counts()
     animal = get_object_or_404(qs, uuid=uuid)
     kids = (
-        animal.children.with_annotations()
+        animal.children.hatched()
         .with_related()
-        .order_by("-alive", F("age").desc(nulls_last=True))
+        .with_child_counts()
+        .order_by_life_stage()
     )
-    # family history
-
-    # consider counting some breeding outcomes to avoid extra hits on DB
-    # counts = defaultdict(int)
-    # for kid in kids:
-    #     counts[kid.status] += 1
     events = animal.event_set.with_related().order_by("-date", "-created")
     samples = animal.sample_set.order_by("-date")
     pairings = (
@@ -136,12 +124,8 @@ def animal_view(request, uuid: str):
         {
             "animal": animal,
             "animal_measurements": animal.measurements(),
+            "life_history": animal.life_history,
             "kids": kids,
-            # "breeding_stats": {
-            #     "infertile_eggs": counts[Animal.Status.BAD_EGG],
-            #     "unexpectedly_died": counts[Animal.Status.DIED_UNEXPTD],
-            #     "currently_alive": counts[Animal.Status.ALIVE],
-            # },
             "event_list": events,
             "sample_list": samples,
             "pairing_list": pairings,
@@ -151,17 +135,17 @@ def animal_view(request, uuid: str):
 
 @require_http_methods(["GET"])
 def animal_genealogy(request, uuid: str):
-    animal = get_object_or_404(Animal.objects.with_dates(), pk=uuid)
+    animal = get_object_or_404(Animal, pk=uuid)
     generations = (1, 2, 3, 4)
     ancestors = [
-        Animal.objects.ancestors_of(animal, generation=gen).with_annotations()
+        Animal.objects.with_child_counts().ancestors_of(animal, generation=gen)
         for gen in generations
     ]
     descendents = [
-        Animal.objects.descendents_of(animal, generation=gen)
-        .with_annotations()
+        Animal.objects.with_child_counts()
+        .descendents_of(animal, generation=gen)
         .hatched()
-        .order_by("-alive", "-age")
+        .order_by("-n_hatched", "-life_history__died_on", "life_history__born_on")
         for gen in generations
     ]
     living = [qs.alive() for qs in descendents]
@@ -445,17 +429,6 @@ def measurement_list(
 # Locations
 @require_http_methods(["GET"])
 def location_list(request):
-    # Alternative:
-    # qs = (
-    #     Animal.objects.with_annotations()
-    #     .with_related()
-    #     .alive()
-    #     .order_by("last_location")
-    # )
-    # counts = {}
-    # for location, animals in groupby(qs, key=lambda animal: animal.last_location):
-    #     counts[location] = len(animals)
-    # This is usually faster:
     qs = Location.objects.order_by("name")
     paginator = Paginator(qs, 25)
     page_number = request.GET.get("page")
@@ -470,15 +443,9 @@ def location_list(request):
 @require_http_methods(["GET"])
 def location_view(request, pk):
     location = get_object_or_404(Location, pk=pk)
-    birds = list(
-        location.birds()
-        .with_dates()
-        .with_related()
-        .existing()
-        .order_by("status", "-created")
-    )
-    alive_birds = [bird for bird in birds if bird.status == Animal.Status.ALIVE]
-    eggy_birds = [bird for bird in birds if bird.status == Animal.Status.GOOD_EGG]
+    birds = location.birds().with_related().existing().order_by("-created")
+    # alive_birds = [bird for bird in birds if bird.status == Animal.Status.ALIVE]
+    # eggy_birds = [bird for bird in birds if bird.status == Animal.Status.GOOD_EGG]
     events = location.event_set.with_related()
 
     return render(
@@ -486,8 +453,8 @@ def location_view(request, pk):
         "birds/location.html",
         {
             "location": location,
-            "animal_list": alive_birds,
-            "egg_list": eggy_birds,
+            "animal_list": birds.alive(),
+            "egg_list": birds.eggs(),
             "event_list": events,
         },
     )
@@ -498,7 +465,14 @@ def location_view(request, pk):
 def user_list(request):
     queryset = (
         User.objects.filter(is_active=True)
-        .annotate(n_reserved=Count("animal"))
+        .annotate(
+            n_reserved=Count("animal"),
+            n_reserved_alive=Count(
+                "animal",
+                filter=Q(animal__life_history__acquired_on__isnull=False)
+                & Q(animal__life_history__died_on__isnull=True),
+            ),
+        )
         .order_by("-n_reserved")
     )
     return render(
@@ -511,9 +485,7 @@ def user_list(request):
 @require_http_methods(["GET"])
 def user_view(request, pk):
     user = get_object_or_404(User, pk=pk)
-    reserved = (
-        user.animal_set.with_annotations().with_related().order_by("-alive", "-age")
-    )
+    reserved = user.animal_set.with_related().order_by_life_stage()
     query = request.GET.copy()
     try:
         page_number = query.pop("page")[-1]

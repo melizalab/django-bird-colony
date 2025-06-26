@@ -10,13 +10,17 @@
 
 <table class="table table-striped table-condensed">
   <thead>
+    <th>User</th>
     <th>Name</th>
-    <th>Reserved Animals</th>
+    <th>Living</th>
+    <th>Total</th>
   </thead>
   <tbody>
     {% for user in user_list %}
         <tr>
           <td><a href="{% url 'birds:user' user.id %}">{{ user }}</a></td>
+	  <td>{{ user.get_full_name }}</td>
+          <td>{{ user.n_reserved_alive }}</td>	  
           <td>{{ user.n_reserved }}</td>
         </tr>
     {% endfor %}

@@ -200,7 +200,9 @@ class AnimalModelTests(TestCase):
         self.assertFalse(lh.is_alive())
         self.assertIs(lh.age(), None)
         self.assertEqual(lh.life_stage(), AnimalLifeHistory.LifeStage.DEAD)
-        self.assertEqual(lh.removal_outcome(), AnimalLifeHistory.RemovalOutcome.UNEXPECTED)
+        self.assertEqual(
+            lh.removal_outcome(), AnimalLifeHistory.RemovalOutcome.UNEXPECTED
+        )
         self.assertEqual(lh.age_group(), models.ADULT_ANIMAL_NAME)
         self.assertIs(lh.expected_hatch(), None)
 
@@ -1707,7 +1709,7 @@ class LocationModelTests(TestCase):
         self.assertEqual(
             lh.age_group(last_week),
             None,
-            f"bird age group should be None after laid event",
+            "bird age group should be None after laid event",
         )
         lh = location_1.birds(yesterday).first().life_history
         self.assertEqual(

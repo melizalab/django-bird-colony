@@ -31,22 +31,24 @@
     <th>Species</th>
     <th>Sex</th>
     <th>Age</th>
-    <th>Alive</th>
-    <th>Children</th>
+    <th>Status</th>
+    <th>Last Location</th>
     <th>UUID</th>
   </thead>
   <tbody>
     {% for animal in animal_list %}
+    {% with history=animal.life_history %}
         <tr>
           <td><a href="{{ animal.get_absolute_url }}">{{ animal.name }}</a></td>
           <td>{{ animal.species }}</td>
           <td>{{ animal.sex }}</td>
-          <td>{{ animal.age|agestr }} ({{ animal.age_group }})</td>
-          <td>{{ animal.alive|yesno }}</td>
-          <td>{{ animal.children.hatched.count}}</td>
+          <td>{{ history.age_display }}</td>
+          <td>{{ history.status_display }}</td>
+          <td>{{ history.last_location|link_or_blank }}</td>
           <td>{{ animal.uuid }}</td>
           <td></td>
         </tr>
+    {% endwith %}
     {% endfor %}
   </tbody>
 </table>
