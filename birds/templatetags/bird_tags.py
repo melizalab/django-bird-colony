@@ -50,13 +50,6 @@ def url_list(values):
 
 
 @register.filter
-def link_or_blank(value):
-    if value is None:
-        return ""
-    return format_html('<a href="{}">{}</a>', value.get_absolute_url(), value)
-
-
-@register.filter
 def count_summary(counter, join_by=", "):
     """Generate a summary of counts"""
     if counter is None:
@@ -86,6 +79,17 @@ def link_to(obj, url_name):
     """Create a link to an object if it exists"""
     try:
         url = reverse(url_name, args=[obj.pk])
+        return format_html('<a href="{}">{}</a>', url, obj)
+    except NoReverseMatch:
+        return str(obj)
+    except AttributeError:
+        return ""
+
+
+@register.filter
+def link_or_blank(obj):
+    try:
+        url = obj.get_absolute_url()
         return format_html('<a href="{}">{}</a>', url, obj)
     except NoReverseMatch:
         return str(obj)

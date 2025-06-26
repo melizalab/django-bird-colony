@@ -27,6 +27,7 @@
     <th>Purpose</th>
     <th>Eggs Laid</th>
     <th>Eggs Hatched</th>
+    <th>Living Children</th>
     <th>Oldest Living Child</th>
     <th>Comment</th>
   </thead>
@@ -40,6 +41,7 @@
           <td>{{ pairing.purpose|default_if_none:"" }}</td>
           <td>{{ pairing.n_eggs }}</td>
           <td>{{ pairing.n_hatched }}</td>
+          <td>{{ pairing.n_living }}</td>
           <td>{{ pairing.oldest_living_progeny_age|ageorblank }}</td>
       <td>{{ pairing.comment }}</td>
         </tr>

@@ -1,16 +1,8 @@
 # -*- mode: python -*-
-import datetime
 
 from rest_framework import serializers
 
 from birds.models import Animal, Event, Location, Measure, Measurement, Pairing, Status
-
-
-class AgeSerializer(serializers.Field):
-    """Serialize age into days"""
-
-    def to_representation(self, value: datetime.timedelta):
-        return value.days
 
 
 class AnimalSerializer(serializers.ModelSerializer):
@@ -20,7 +12,7 @@ class AnimalSerializer(serializers.ModelSerializer):
     reserved_by = serializers.StringRelatedField()
     sire = serializers.PrimaryKeyRelatedField(read_only=True)
     dam = serializers.PrimaryKeyRelatedField(read_only=True)
-    alive = serializers.BooleanField(required=False)
+    alive = serializers.BooleanField(source="life_history.is_alive")
 
     class Meta:
         model = Animal
@@ -46,9 +38,17 @@ class AnimalDetailSerializer(AnimalSerializer):
     reserved_by = serializers.StringRelatedField()
     sire = serializers.PrimaryKeyRelatedField(read_only=True)
     dam = serializers.PrimaryKeyRelatedField(read_only=True)
-    age_days = AgeSerializer(source="age", read_only=True)
-    alive = serializers.BooleanField()
-    last_location = serializers.StringRelatedField()
+    age_days = (
+        serializers.SerializerMethodField()
+    )  # ModelAgeSerializer(source="life_history.age", read_only=True)
+    alive = serializers.BooleanField(source="life_history.is_alive")
+    last_location = serializers.StringRelatedField(source="life_history.last_location")
+
+    def get_age_days(self, obj):
+        try:
+            return obj.life_history.age().days
+        except (Animal.life_history.RelatedObjectDoesNotExist, AttributeError):
+            pass
 
     class Meta:
         model = Animal
@@ -104,7 +104,8 @@ class MeasurementInlineSerializer(serializers.ModelSerializer):
 
 
 class EventSerializer(serializers.ModelSerializer):
-    animal = serializers.PrimaryKeyRelatedField(queryset=Animal.objects.all())
+    # animal = serializers.PrimaryKeyRelatedField(queryset=Animal.objects.all())
+    animal = serializers.UUIDField()
     entered_by = serializers.StringRelatedField()
     location = serializers.SlugRelatedField(
         slug_field="name",
@@ -133,6 +134,20 @@ class EventSerializer(serializers.ModelSerializer):
         for measurement in measurements:
             _ = Measurement.objects.create(event=instance, **measurement)
         return instance
+
+    def validate_animal(self, value):
+        # Validate that the animal exists
+        try:
+            return Animal.objects.get(uuid=value)
+        except Animal.DoesNotExist:
+            raise serializers.ValidationError("Animal does not exist") from None
+
+    def to_representation(self, instance):
+        # For serialization (GET requests), return the animal UUID. This is to
+        # avoid a really expensive lookup when using PrimaryKeyRelatedField
+        data = super().to_representation(instance)
+        data["animal"] = str(instance.animal.uuid)
+        return data
 
     class Meta:
         model = Event
@@ -180,42 +195,65 @@ class AnimalPedigreeSerializer(serializers.Serializer):
     dam = serializers.StringRelatedField()
     sex = serializers.CharField()
     plumage = serializers.StringRelatedField()
-    born_on = serializers.DateField()
-    alive = serializers.BooleanField()
-    unexpectedly_died = serializers.BooleanField(source="has_unexpected_removal")
-    age_days = serializers.IntegerField(source="age.days", default=None)
+    born_on = serializers.DateField(source="life_history.born_on")
+    alive = serializers.BooleanField(source="life_history.is_alive")
+    unexpectedly_died = serializers.BooleanField(
+        source="life_history.has_unexpected_removal"
+    )
+    age_days = serializers.IntegerField(source="life_history.age.days", default=None)
     weight = serializers.SerializerMethodField()
     parent_lifespans = serializers.SerializerMethodField()
     grandparent_lifespans = serializers.SerializerMethodField()
     latest_pairing = PairingSerializer(source="pairings.first")
-    breeding_outcomes = BreedingOutcomesSerializer(source="children")
+    # breeding_outcomes = BreedingOutcomesSerializer(source="children")
+    n_eggs = serializers.IntegerField(default=0)
+    n_eggs_hatched = serializers.IntegerField(source="n_hatched", default=0)
+    n_kids_unexpectedly_died = serializers.IntegerField(
+        source="children.hatched.lost.count", default=0
+    )
     inbreeding = serializers.SerializerMethodField()
 
-    # some queries that are too specialized to go on the model
+    def get_alive(self, obj):
+        return obj.life_history.is_alive()
+
+    def get_unexpectedly_died(self, obj):
+        # Check if dead with unexpected removal
+        stage = obj.life_history.life_stage()
+        if stage in (
+            obj.life_history.LifeStage.DEAD,
+            obj.life_history.LifeStage.FAILED_EGG,
+        ):
+            outcome = obj.life_history.removal_outcome()
+            return outcome == obj.life_history.RemovalOutcome.UNEXPECTED
+        return False
+
+    def get_age_days(self, obj):
+        age = obj.life_history.age()
+        return age.days if age is not None else None
+
     def get_weight(self, obj):
         try:
             return obj.measurements().get(type__name="weight").value
         except Measurement.DoesNotExist:
-            pass
+            return None
 
     def get_parent_lifespans(self, obj):
-        return [
-            age.days
-            for age in obj.parents.filter(has_unexpected_removal=True).values_list(
-                "age", flat=True
-            )
-            if age is not None
-        ]
+        lifespans = []
+        for parent in obj.parents.all():
+            if parent.history.died_unexpectedly():
+                age = parent.history.age()
+                if age is not None:
+                    lifespans.append(age.days)
+        return lifespans
 
     def get_grandparent_lifespans(self, obj):
-        return [
-            age.days
-            for parent in obj.parents.all()
-            for age in parent.parents.filter(has_unexpected_removal=True).values_list(
-                "age", flat=True
-            )
-            if age is not None
-        ]
+        lifespans = []
+        for grandparent in Animal.objects.ancestors_of(obj, 2):
+            if grandparent.history.died_unexpectedly():
+                age = grandparent.history.age()
+                if age is not None:
+                    lifespans.append(age.days)
+        return lifespans
 
     def get_inbreeding(self, obj):
         idx = self.context["pedigree"].index(obj.uuid)

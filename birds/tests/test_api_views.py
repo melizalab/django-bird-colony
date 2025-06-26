@@ -66,7 +66,7 @@ class ApiViewTests(APITestCase):
                 | {
                     "uuid": str(child.uuid),
                     "species": self.species.common_name,
-                    "sex": Animal.Sex.MALE,
+                    "sex": str(Animal.Sex.MALE),
                     "sire": self.sire.uuid,
                     "dam": self.dam.uuid,
                     "age_days": self.age.days,
@@ -83,12 +83,13 @@ class ApiViewTests(APITestCase):
                 | {
                     "uuid": str(parent.uuid),
                     "species": self.species.common_name,
-                    "sex": parent.sex,
+                    "sex": str(parent.sex),
                     "sire": None,
                     "dam": None,
                     "age_days": None,
                     "last_location": None,
-                    "alive": False,
+                    # animals with no events are neither alive or dead
+                    "alive": None,
                 },
             )
 

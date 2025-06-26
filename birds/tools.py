@@ -4,7 +4,7 @@
 import datetime
 from collections import Counter
 
-from birds.models import Pairing
+from birds.models import AnimalLifeHistory, Pairing
 
 
 def sort_and_group(qs, key):
@@ -24,7 +24,7 @@ def find_first(iterable, predicate):
 def tabulate_pairs(
     since: datetime.date, until: datetime.date, only_active: bool = False
 ):
-    """Counts the number of chicks of each age group in all pairing over a range
+    """Counts the number of chicks of each age group in all pairings over a range
     of dates (since to until, inclusive). If `only_active` is True, only pairs
     that are active on `until` are included; otherwise all pairs that were
     active at any point between `since` and `until` are used.
@@ -46,7 +46,7 @@ def tabulate_pairs(
     data = []
     for pair in active_pairs:
         location = pair.last_location(on_date=until)
-        eggs = pair.eggs().with_dates().with_related()
+        eggs = pair.eggs().with_related()
         days = []
         for date in dates:
             counts = Counter()
@@ -54,11 +54,12 @@ def tabulate_pairs(
                 pass
             else:
                 for animal in eggs:
-                    # dead/lost animals are not counted
-                    if animal.died_on is None or animal.died_on > date:
-                        age_group = animal.age_group(date)
-                        if age_group is not None:
-                            counts[age_group] += 1
+                    if (
+                        status := animal.history.life_stage(date)
+                    ) == AnimalLifeHistory.LifeStage.EGG:
+                        counts[status.label.lower()] += 1
+                    elif (age_group := animal.history.age_group(date)) is not None:
+                        counts[age_group] += 1
             days.append(counts)
         data.append({"pair": pair, "location": location, "counts": days})
     return dates, data

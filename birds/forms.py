@@ -77,9 +77,9 @@ class NewPairingForm(forms.Form):
             raise forms.ValidationError(_("Must provide a sire"))
         if sire.sex != Animal.Sex.MALE:
             raise forms.ValidationError(_("Sire is not male"))
-        if sire.age_group() != models.ADULT_ANIMAL_NAME:
+        if sire.history.age_group() != models.ADULT_ANIMAL_NAME:
             raise forms.ValidationError(_("Sire is not an adult"))
-        if not sire.alive:
+        if not sire.history.is_alive():
             raise forms.ValidationError(_("Sire is not alive"))
         if sire.pairings().filter(ended_on__isnull=True).count():
             raise forms.ValidationError(_("Sire is already in an active pairing"))
@@ -99,9 +99,9 @@ class NewPairingForm(forms.Form):
             raise forms.ValidationError(_("Must provide a dam"))
         if dam.sex != Animal.Sex.FEMALE:
             raise forms.ValidationError(_("Dam is not female"))
-        if dam.age_group() != models.ADULT_ANIMAL_NAME:
+        if dam.history.age_group() != models.ADULT_ANIMAL_NAME:
             raise forms.ValidationError(_("Dam is not an adult"))
-        if not dam.alive:
+        if not dam.history.is_alive():
             raise forms.ValidationError(_("Dam is not alive"))
         if dam.pairings().filter(ended_on__isnull=True).count():
             raise forms.ValidationError(_("Dam is in an active pairing"))

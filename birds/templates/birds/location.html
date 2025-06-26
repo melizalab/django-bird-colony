@@ -23,7 +23,7 @@
   </thead>
   <tbody>
     {% for animal in animal_list %}
-    {% with history=animal.life_history %}
+    {% with history=animal.history %}
         <tr>
           <td><a href="{{ animal.get_absolute_url }}">{{ animal.name }}</a></td>
           <td>{{ animal.species }}</td>

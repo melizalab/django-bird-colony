@@ -617,8 +617,8 @@ class NewAnimalFormViewTests(TestCase):
             },
         )
         self.assertEqual(response.status_code, 302)
-        animal = Animal.objects.with_dates().get(band_number=10)
-        self.assertTrue(animal.alive)
+        animal = Animal.objects.get(band_number=10)
+        self.assertTrue(animal.life_history.is_alive())
         # one event for transfer and one for banding
         self.assertEqual(animal.event_set.count(), 2)
         self.assertRedirects(response, reverse("birds:animal", args=[animal.uuid]))
@@ -661,8 +661,8 @@ class NewAnimalFormViewTests(TestCase):
             },
         )
         self.assertEqual(response.status_code, 302)
-        animal = Animal.objects.with_dates().get(band_number=10)
-        self.assertTrue(animal.alive)
+        animal = Animal.objects.get(band_number=10)
+        self.assertTrue(animal.life_history.is_alive())
         # one event for transfer and one for banding
         self.assertEqual(animal.event_set.count(), 2)
         self.assertRedirects(response, reverse("birds:animal", args=[animal.uuid]))
@@ -792,7 +792,7 @@ class EventFormViewTests(TestCase):
 
     def test_add_event(self):
         self.assertEqual(self.animal.event_set.count(), 1)
-        self.assertTrue(self.animal.alive())
+        self.assertTrue(self.animal.life_history.is_alive())
         status = Status.objects.get(name=models.DEATH_EVENT_NAME)
         self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
         response = self.client.post(
@@ -807,7 +807,8 @@ class EventFormViewTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, reverse("birds:animal", args=[self.animal.uuid]))
         self.assertEqual(self.animal.event_set.count(), 2)
-        self.assertFalse(self.animal.alive())
+        self.animal.life_history.refresh_from_db()
+        self.assertFalse(self.animal.life_history.is_alive())
 
     def test_add_event_with_measurements(self):
         self.assertEqual(self.animal.event_set.count(), 1)
@@ -1432,13 +1433,13 @@ class BreedingCheckFormViewTests(TestCase):
         response = self.client.post(reverse("birds:breeding-check"), data | user_data)
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, reverse("birds:breeding-summary"))
-        eggs = self.sire.children.with_dates().unhatched()
+        eggs = self.sire.children.unhatched()
         self.assertEqual(eggs.count(), 1)
         egg = eggs.first()
         self.assertEqual(egg.sire(), self.sire)
         self.assertEqual(egg.dam(), self.dam)
-        self.assertEqual(egg.laid_on, today())
-        self.assertEqual(egg.age_group(), "egg")
+        self.assertEqual(egg.history.laid_on, today())
+        self.assertIs(egg.history.age_group(), None)
         nest_checks = NestCheck.objects.all()
         self.assertEqual(nest_checks.count(), 1)
 
@@ -1470,12 +1471,12 @@ class BreedingCheckFormViewTests(TestCase):
         response = self.client.post(reverse("birds:breeding-check"), data | user_data)
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, reverse("birds:breeding-summary"))
-        children = self.sire.children.with_dates().alive()
+        children = self.sire.children.alive()
         self.assertEqual(children.count(), 1)
         child = children.first()
         self.assertEqual(child, child_1)
-        self.assertEqual(child.born_on, today())
-        self.assertEqual(child.age_group(), "hatchling")
+        self.assertEqual(child.history.born_on, today())
+        self.assertEqual(child.history.age_group(), "hatchling")
         nest_checks = NestCheck.objects.all()
         self.assertEqual(nest_checks.count(), 1)
 

@@ -65,8 +65,7 @@ def info(request, format=None):
 
 class AnimalsList(generics.ListAPIView):
     queryset = (
-        Animal.objects.with_dates()
-        .select_related("reserved_by", "species", "band_color")
+        Animal.objects.with_related()
         .prefetch_related("parents")
         .order_by("band_color", "band_number")
     )
@@ -81,8 +80,7 @@ class AnimalChildList(AnimalsList):
     def get_queryset(self):
         animal = get_object_or_404(Animal, uuid=self.kwargs["pk"])
         return (
-            animal.children.with_dates()
-            .select_related("reserved_by", "species", "band_color")
+            animal.children.with_related()
             .prefetch_related("parents")
             .order_by("band_color", "band_number")
         )
@@ -90,7 +88,7 @@ class AnimalChildList(AnimalsList):
 
 @api_view(["GET"])
 def animal_detail(request, pk: str, format=None):
-    animal = get_object_or_404(Animal.objects.with_dates(), pk=pk)
+    animal = get_object_or_404(Animal, pk=pk)
     serializer = AnimalDetailSerializer(animal)
     return Response(serializer.data)
 
@@ -102,11 +100,14 @@ class EventList(generics.ListCreateAPIView):
     permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
 
     def get_queryset(self):
+        qs = Event.objects.select_related(
+            "location", "status", "entered_by"
+        ).prefetch_related("measurements", "measurements__type")
         try:
             animal = get_object_or_404(Animal, uuid=self.kwargs["animal"])
-            return Event.objects.filter(animal=animal)
+            return qs.filter(animal=animal)
         except KeyError:
-            return Event.objects.all()
+            return qs
 
     def perform_create(self, serializer):
         serializer.save(entered_by=self.request.user)
@@ -136,7 +137,7 @@ def event_detail(request, pk: int, format=None):
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer, JSONLRenderer])
 def measurement_list(request, format=None):
     """Get measurements attached to events as streamed line-delimited JSON or as standard JSON"""
-    qs = Measurement.objects.select_related("type")
+    qs = Measurement.objects.select_related("type", "event")
     f = MeasurementFilter(request.GET, queryset=qs)
     if format == "jsonl" or JSONLRenderer.requested_by(request):
         renderer = JSONLRenderer()
@@ -160,9 +161,9 @@ def animal_pedigree(request, format=None):
     qs = (
         Animal.objects.for_pedigree()
         .prefetch_related(
-            Prefetch("parents", queryset=Animal.objects.with_dates()),
-            Prefetch("parents__parents", queryset=Animal.objects.with_dates()),
-            Prefetch("children", queryset=Animal.objects.with_dates()),
+            Prefetch("parents"),
+            Prefetch("parents__parents"),
+            Prefetch("children"),
             # used when calculating parent breeding outcomes in the dabase
             # Prefetch("parents__children", queryset=Animal.objects.with_dates()),
         )

@@ -13,24 +13,24 @@
   <dt>sex</dt><dd>{{ animal.sex }}</dd>
   <dt>plumage</dt><dd>{{ animal.plumage }}</dd>
   <dt>uuid</dt><dd>{{ animal.uuid }}</dd>
-  <dt>status</dt><dd>{{ life_history.status_display }}</dd>
-  <dt>age</dt><dd>{{ life_history.age_display }} </dd>
+  <dt>status</dt><dd>{{ history.status_display }}</dd>
+  <dt>age</dt><dd>{{ history.age_display }} </dd>
   {% for measurement in animal_measurements %}
   <dt>{{ measurement.type.name }} </dt><dd>{{ measurement.formatted }} (as of {{measurement.event.date}})</dd>
   {% endfor %}
-  {% if animal.expected_hatch %}<dt>expected hatch</dt><dd>{{ animal.expected_hatch}}</dd>{% endif %}
+  {% if history.expected_hatch %}<dt>expected hatch</dt><dd>{{ history.expected_hatch}}</dd>{% endif %}
 </dl>
 
 <dl class="dl-horizontal">
   <dt><u>family history</u></dt><dd/>
   <dt>acquired</dt><dd>{{ animal.acquisition_event.event_date }}</dd>
   <dt>birth pairing</dt><dd> {% if animal.birth_pairing %}<a href="{{ animal.birth_pairing.get_absolute_url }}">{{ animal.birth_pairing.began_on}} - {{ animal.birth_pairing.ended_on|default_if_none:""}}</a>{% endif %}</dd>
-  <dt>sire</dt><dd>{% if animal.sire %}<a href="{{ animal.sire.get_absolute_url }}">{{ animal.sire }}</a>: {{ animal.sire.life_history.summary }}{% endif %}</dd>
-  <dt>paternal grandsire</dt><dd>{% if animal.sire.sire %}<a href="{{ animal.sire.sire.get_absolute_url }}">{{ animal.sire.sire }}</a>: {{ animal.sire.sire.life_history.summary }}{% endif %}</dd>
-  <dt>paternal granddam</dt><dd>{% if animal.sire.dam %}<a href="{{ animal.sire.dam.get_absolute_url }}">{{ animal.sire.dam }}</a>: {{ animal.sire.dam.life_history.summary }}{% endif %}</dd>
-  <dt>dam</dt><dd>{% if animal.dam %}<a href="{{ animal.dam.get_absolute_url }}">{{ animal.dam }}</a>: {{ animal.dam.life_history.summary }}{% endif %}</dd>
-  <dt>maternal grandsire</dt><dd>{% if animal.dam.sire %}<a href="{{ animal.dam.sire.get_absolute_url }}">{{ animal.dam.sire }}</a>: {{ animal.dam.sire.life_history.summary }}{% endif %}</dd>
-  <dt>maternal granddam</dt><dd>{% if animal.dam.dam %}<a href="{{ animal.dam.dam.get_absolute_url }}">{{ animal.dam.dam }}</a>: {{ animal.dam.dam.life_history.summary }}{% endif %}</dd>
+  <dt>sire</dt><dd>{% if animal.sire %}<a href="{{ animal.sire.get_absolute_url }}">{{ animal.sire }}</a>: {{ animal.sire.history.summary }}{% endif %}</dd>
+  <dt>paternal grandsire</dt><dd>{% if animal.sire.sire %}<a href="{{ animal.sire.sire.get_absolute_url }}">{{ animal.sire.sire }}</a>: {{ animal.sire.sire.history.summary }}{% endif %}</dd>
+  <dt>paternal granddam</dt><dd>{% if animal.sire.dam %}<a href="{{ animal.sire.dam.get_absolute_url }}">{{ animal.sire.dam }}</a>: {{ animal.sire.dam.history.summary }}{% endif %}</dd>
+  <dt>dam</dt><dd>{% if animal.dam %}<a href="{{ animal.dam.get_absolute_url }}">{{ animal.dam }}</a>: {{ animal.dam.history.summary }}{% endif %}</dd>
+  <dt>maternal grandsire</dt><dd>{% if animal.dam.sire %}<a href="{{ animal.dam.sire.get_absolute_url }}">{{ animal.dam.sire }}</a>: {{ animal.dam.sire.history.summary }}{% endif %}</dd>
+  <dt>maternal granddam</dt><dd>{% if animal.dam.dam %}<a href="{{ animal.dam.dam.get_absolute_url }}">{{ animal.dam.dam }}</a>: {{ animal.dam.dam.history.summary }}{% endif %}</dd>
 </dl>
 
 <dl class="dl-horizontal">

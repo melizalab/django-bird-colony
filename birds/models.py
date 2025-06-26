@@ -417,37 +417,6 @@ class AnimalQuerySet(models.QuerySet):
                     date__lte=on_date,
                 )
             ),
-            # Derived fields (can probably remove)
-            # alive=Case(
-            #     When(died_on__isnull=False, then=False),
-            #     When(acquired_on__isnull=True, then=False),
-            #     default=True,
-            # ),
-            # status=Case(
-            #     When(first_event_on__isnull=True, then=None),
-            #     When(
-            #         Q(acquired_on__isnull=True)
-            #         & Q(laid_on__isnull=False)
-            #         & Q(has_unexpected_removal=False),
-            #         then=Value(Animal.Status.GOOD_EGG),
-            #     ),
-            #     When(
-            #         Q(acquired_on__isnull=True)
-            #         & Q(laid_on__isnull=False)
-            #         & Q(has_unexpected_removal=True),
-            #         then=Value(Animal.Status.BAD_EGG),
-            #     ),
-            #     When(
-            #         has_unexpected_removal=True, then=Value(Animal.Status.DIED_UNEXPTD)
-            #     ),
-            #     When(died_on__isnull=False, then=Value(Animal.Status.DIED_EXPTD)),
-            #     default=Value(Animal.Status.ALIVE),
-            # ),
-            # age=Case(
-            #     When(born_on__isnull=True, then=None),
-            #     When(died_on__isnull=True, then=on_date - F("born_on")),
-            #     default=F("died_on") - F("born_on"),
-            # ),
         )
 
     def with_child_counts(self, on_date: datetime.date | None = None):
@@ -539,9 +508,8 @@ class AnimalQuerySet(models.QuerySet):
         """All parents and currently living animals annotated with sire/dam and topologically sorted"""
         return (
             self.select_related("life_history")
-            .alive()
             .with_child_counts()
-            .filter(n_hatched__gt=0)
+            .filter(Q(n_hatched__gt=0) | Q(life_history__died_on__isnull=True))
             .annotate(
                 sire=Subquery(
                     Animal.objects.filter(children=OuterRef("uuid"), sex="M").values(
@@ -747,6 +715,18 @@ class Animal(models.Model):
             )
         except (AttributeError, Event.DoesNotExist):
             return None
+
+    @cached_property
+    def history(self):
+        """Use this instead of life_history to ensure the record exists"""
+        try:
+            return self.life_history
+        except AnimalLifeHistory.DoesNotExist:
+            life_history, created = AnimalLifeHistory.objects.get_or_create(animal=self)
+            if created:
+                life_history.update_from_events()
+                life_history.save()
+            return life_history
 
     def pairings(self):
         """Returns all pairings involving this animal as sire or dam"""
@@ -981,7 +961,7 @@ class AnimalLifeHistory(models.Model):
         """Returns true if the animal is alive on the specified date (default today)"""
         return self.life_stage(on_date) == self.LifeStage.ALIVE
 
-    def is_lost(self, on_date: datetime.date | None = None) -> bool:
+    def died_unexpectedly(self, on_date: datetime.date | None = None) -> bool:
         """Returns true if the animal died unexpectedly on or before the specified date (default today)"""
         return self.removal_outcome(on_date) == self.RemovalOutcome.UNEXPECTED
 
@@ -1055,7 +1035,7 @@ class AnimalLifeHistory(models.Model):
             return "unknown"
 
     def summary(self) -> str:
-        """Summarizes the status of the animal for family history"""
+        """Summarizes the status of the animal for family history. More verbose than status_display."""
         stage = self.life_stage()
         if stage == self.LifeStage.ALIVE:
             age_str = self.age_display()
@@ -1064,7 +1044,11 @@ class AnimalLifeHistory(models.Model):
             else:
                 return "alive, unknown age"
         elif stage == self.LifeStage.DEAD:
-            status = "unexpected death" if self.is_lost() else "expected death/removal"
+            status = (
+                "unexpected death"
+                if self.died_unexpectedly()
+                else "expected death/removal"
+            )
             age_str = self.age_display()
             death_date = date_format(self.died_on) if self.died_on else "unknown date"
             if age_str:
@@ -1276,7 +1260,9 @@ class PairingQuerySet(models.QuerySet):
             ),
             n_living=Count(
                 "sire__children",
-                filter=qq_after_began & qq_before_ended & Q(sire__children__life_history__died_on__isnull=True),
+                filter=qq_after_began
+                & qq_before_ended
+                & Q(sire__children__life_history__died_on__isnull=True),
             ),
         )
 

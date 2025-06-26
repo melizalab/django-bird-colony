@@ -19,7 +19,7 @@
   <dt>purpose</dt><dd>{{ pairing.purpose|default_if_none:"" }}</dd>
   <dt>last location</dt><dd> {{ pairing.last_location|default_if_none:"" }}</dd>
   <dt>eggs laid</dt><dd>{{ pairing.n_eggs }}</dd>
-  <dt>eggs hatched</dt><dd>{{ pairing.n_progeny }}</dd>
+  <dt>eggs hatched</dt><dd>{{ pairing.n_hatched }}</dd>
   <dt>oldest living progeny</dt><dd>{{ pairing.oldest_living_progeny_age|ageorblank }}</dd>
   <dt>comment</dt><dd>{{ pairing.comment }}</dd>
 </dl>
@@ -52,17 +52,18 @@
   </thead>
   <tbody>
     {% for animal in animal_list %}
+    {% with history=animal.history %}
         <tr>
           <td><a href="{{ animal.get_absolute_url }}">{{ animal.name }}</a></td>
           <td>{{ animal.sex }}</td>
-          <td>{{ animal.age|agestr }} ({{ animal.age_group }})</td>
-          <td>{{ animal.status }}</td>
-          <td>{{ animal.last_location|default_if_none:"" }}</td>
-          <td>{{ animal.children.hatched.count}}</td>
+          <td>{{ history.age_display }}</td>
+          <td>{{ history.status_display }}</td>
+          <td>{{ history.last_location|link_or_blank }}</td>
+          <td>{{ animal.n_hatched}}</td>
           <td>{{ animal.uuid }}</td>
-          <td>{% if animal.reserved_by %}<a href="{% url 'birds:user' animal.reserved_by.id %}">{{ animal.reserved_by }}</a>{% endif %}</td>
-          <td></td>
+          <td>{{ animal.reserved_by|link_to:"birds:user" }}</td>
         </tr>
+    {% endwith %}
     {% endfor %}
   </tbody>
 </table>
@@ -78,7 +79,7 @@
     {% for egg in egg_list %}
         <tr>
           <td><a href="{{ egg.get_absolute_url }}">{{ egg.name }}</a></td>
-	  <td>{{ egg.expected_hatch|default_if_none:"(lost)" }}</td>
+	  <td>{{ egg.history.expected_hatch|default_if_none:"(lost)" }}</td>
           <td></td>
         </tr>
     {% endfor %}
@@ -97,6 +98,7 @@
     <th>Date</th>
     <th>Location</th>
     <th>Comments</th>
+    <th>Entered by</th>
   </thead>
   <tbody>
     {% for event in event_list %}
@@ -106,6 +108,7 @@
           <td>{{ event.date }}</td>
           <td>{{ event.location|link_or_blank }}</td>
           <td>{{ event.description }}</td>
+	  <td>{{ event.entered_by}}</td>
         </tr>
     {% endfor %}
   </tbody>
@@ -120,7 +123,8 @@
     <th>Dates</th>
     <th>Purpose</th>
     <th>Eggs Laid</th>
-    <th>Progeny</th>
+    <th>Eggs Hatched</th>
+    <th>Living Children</th>
     <th>Comment</th>
   </thead>
   <tbody>
@@ -129,7 +133,8 @@
           <td><a href="{% url 'birds:pairing' pairing.id %}">{{ pairing.began_on }} — {{ pairing.ended_on|default_if_none:"" }}</a></td>
           <td>{{ pairing.purpose }}</td>
           <td>{{ pairing.n_eggs }}</td>
-          <td>{{ pairing.n_progeny }}</td>
+          <td>{{ pairing.n_hatched }}</td>
+          <td>{{ pairing.n_living }}</td>
       <td>{{ pairing.comment }}</td>
         </tr>
     {% endfor %}

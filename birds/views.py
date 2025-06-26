@@ -124,7 +124,7 @@ def animal_view(request, uuid: str):
         {
             "animal": animal,
             "animal_measurements": animal.measurements(),
-            "life_history": animal.life_history,
+            "history": animal.history,
             "kids": kids,
             "event_list": events,
             "sample_list": samples,
@@ -444,8 +444,6 @@ def location_list(request):
 def location_view(request, pk):
     location = get_object_or_404(Location, pk=pk)
     birds = location.birds().with_related().existing().order_by("-created")
-    # alive_birds = [bird for bird in birds if bird.status == Animal.Status.ALIVE]
-    # eggy_birds = [bird for bird in birds if bird.status == Animal.Status.GOOD_EGG]
     events = location.event_set.with_related()
 
     return render(
@@ -566,14 +564,8 @@ def active_pairing_list(request):
 def pairing_view(request, pk):
     qs = Pairing.objects.with_related().with_progeny_stats()
     pair = get_object_or_404(qs, pk=pk)
-    progeny = (
-        pair.eggs()
-        .with_annotations()
-        .with_related()
-        .hatched()
-        .order_by("-alive", "-created")
-    )
-    eggs = pair.eggs().with_annotations().with_related().unhatched().order_by("created")
+    progeny = pair.eggs().with_related().hatched().order_by_life_stage()
+    eggs = pair.eggs().with_related().unhatched().order_by("created")
     pairings = pair.other_pairings().with_progeny_stats()
     events = pair.events().with_related()
     # kinship should eventually be cached to avoid all this work
@@ -681,9 +673,9 @@ def new_pairing_event(request, pk: int):
                     ),
                 )
             else:
-                if pairing.sire.alive(on_date=data["date"]):
+                if pairing.sire.history.is_alive(on_date=data["date"]):
                     _evt = Event.objects.create(animal=pairing.sire, **data)
-                if pairing.dam.alive(on_date=data["date"]):
+                if pairing.dam.history.is_alive(on_date=data["date"]):
                     _evt = Event.objects.create(animal=pairing.dam, **data)
                 for bird in pairing.eggs().alive(on_date=data["date"]):
                     _evt = Event.objects.create(animal=bird, **data)
@@ -809,17 +801,14 @@ def new_sample_entry(request, uuid: str):
 @require_http_methods(["GET"])
 def location_summary(request):
     # do this with a single query and then group by location
-    qs = (
-        Animal.objects.with_annotations()
-        .with_related()
-        .alive()
-        .order_by("last_location")
-    )
+    qs = Animal.objects.with_related().alive().order_by("life_history__last_location")
     loc_data = []
-    for location, animals in groupby(qs, key=lambda animal: animal.last_location):
+    for location, animals in groupby(
+        qs, key=lambda animal: animal.history.last_location
+    ):
         d = defaultdict(list)
         for animal in animals:
-            age_group = animal.age_group()
+            age_group = animal.history.age_group()
             if age_group == ADULT_ANIMAL_NAME:
                 group_name = f"{age_group} {Animal.Sex(animal.sex).label}"
                 d[group_name].append(animal)
@@ -992,7 +981,7 @@ def event_summary(request, year: int, month: int):
     )
     counter = defaultdict(lambda: defaultdict(Counter))
     for bird in birds:
-        age_group = bird.age_group()
+        age_group = bird.history.age_group()
         counter[bird.species.common_name][age_group][bird.sex] += 1
     # template engine really wants plain dicts
     counts = [
