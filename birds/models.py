@@ -30,6 +30,7 @@ from django.db.models.functions import Coalesce, Now, RowNumber, Trunc, TruncDay
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django.urls import reverse
+from django.utils.formats import date_format
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
 
@@ -43,26 +44,6 @@ MOVED_EVENT_NAME = "moved"
 NOTE_EVENT_NAME = "note"
 BANDED_EVENT_NAME = "banded"
 RESERVATION_EVENT_NAME = "reservation"
-
-
-# Modeling age of animals
-@dataclass
-class UnknownAge:
-    """age is unknown (animals that transfer in)"""
-
-    def __str__(self):
-        return "unknown"
-
-
-@dataclass
-class UnbornAge:
-    """age is undefined (eggs)"""
-
-    def __str__(self):
-        return UNBORN_ANIMAL_NAME
-
-
-AnimalAge = datetime.timedelta | UnknownAge | UnbornAge | None
 
 
 @lru_cache
@@ -898,8 +879,8 @@ class AnimalLifeHistory(models.Model):
     class LifeStage(models.TextChoices):
         EGG = "egg", _("Egg")
         ALIVE = "alive", _("Alive")
-        DEAD = "dead", _("Dead")
-        BAD_EGG = "failed egg", _("Infertile egg")
+        DEAD = "dead", _("Died")
+        BAD_EGG = "bad egg", _("Infertile egg")
 
     class RemovalOutcome(models.TextChoices):
         EXPECTED = "expected", _("Expected death/removal")
@@ -954,7 +935,7 @@ class AnimalLifeHistory(models.Model):
         if not self.first_event_as_of(date):
             pass
         elif self.died_as_of(date):
-            if self.born_as_of(date):
+            if self.acquired_as_of(date):
                 return self.LifeStage.DEAD
             else:
                 return self.LifeStage.BAD_EGG
@@ -990,25 +971,26 @@ class AnimalLifeHistory(models.Model):
         """Returns true if the animal is alive on the specified date (default today)"""
         return self.life_stage(on_date) == self.LifeStage.ALIVE
 
-    def age_group(self, on_date: datetime.date | None = None) -> str:
+    def is_lost(self, on_date: datetime.date | None = None) -> bool:
+        """Returns true if the animal died unexpectedly on or before the specified date (default today)"""
+        return self.removal_outcome(on_date) == self.RemovalOutcome.UNEXPECTED
+
+    def age_group(self, on_date: datetime.date | None = None) -> str | None:
         """Returns the age group of the animal by joining on the Age model.
 
         If the animal was hatched in the colony, uses the hatch date to
         determine age and then group. Animals acquired through transfer are
-        always classified as adults, and as eggs if there is an "egg" type
-        event. Otherwise, None. Will also return None if there is no match in
-        the Age table (this can only happen if there is not an object with
-        min_age = 0).
+        always classified as adults. Otherwise, None. Will also return None if
+        there is no match in the Age table (this can only happen if there is not
+        an object with min_age = 0).
 
         This method will be more performant if age_set is prefetched.
 
         """
         stage = self.life_stage(on_date)
 
-        if stage is None:
+        if stage in (None, self.LifeStage.EGG, self.LifeStage.BAD_EGG):
             return None
-        elif stage in (self.LifeStage.EGG, self.LifeStage.BAD_EGG):
-            return UNBORN_ANIMAL_NAME
 
         age = self.age(on_date)
         if age is None:
@@ -1038,24 +1020,60 @@ class AnimalLifeHistory(models.Model):
         else:
             return self.laid_on + datetime.timedelta(days=days)
 
-    def summary(self) -> str:
-        """Summarizes the status of the animal for family history
+    def age_display(self) -> str:
+        """Short summary of the bird's current age"""
+        age = self.age()
+        if age is None:
+            return ""
+        days = age.days
+        years = days // 365
+        remaining_days = days % 365
+        return f"{days // 365}y {days % 365}d"
 
-        Returns "unknown" if the status cannot be determined (i.e., an animal with no events)
-        """
-        try:
-            status = self.status()
-            lbl = Animal.Status(status).label.lower()
-        except (ValueError, AttributeError):
-            return "unknown"
-        if self.age() is None:
-            age_str = "unknown age"
+    def status_display(self) -> str:
+        """Returns age group for living animals or life stage for others"""
+        stage = self.life_stage()
+        if stage in (self.LifeStage.EGG, self.LifeStage.BAD_EGG):
+            return stage.label.lower()
+        elif stage == self.LifeStage.DEAD:
+            if self.removal_outcome() == self.RemovalOutcome.UNEXPECTED:
+                return "lost"
+            else:
+                return stage.label.lower()
+        elif stage == self.LifeStage.ALIVE:
+            age_group = self.age_group()
+            return age_group or stage.label.lower()
         else:
-            age = self.age()
-            age_str = f"{age.days // 365}y {age.days % 365:3}d old"
-        if status == Animal.Status.ALIVE:
-            return f"alive, {age_str}"
-        return f"{lbl} on {self.died_on} at {age_str}"
+            return "unknown"
+
+    def summary(self) -> str:
+        """Summarizes the status of the animal for family history"""
+        stage = self.life_stage()
+        if stage == self.LifeStage.ALIVE:
+            age_str = self.age_display()
+            if age_str:
+                return f"alive, {age_str} old"
+            else:
+                return "alive, unknown age"
+        elif stage == self.LifeStage.DEAD:
+            status = "unexpected death" if self.is_lost() else "expected death/removal"
+            age_str = self.age_display()
+            death_date = date_format(self.died_on) if self.died_on else "unknown date"
+            if age_str:
+                return f"{status} on {death_date} at {age_str} old"
+            else:
+                return f"{status} on {death_date}"
+        elif stage == self.LifeStage.FAILED_EGG:
+            death_date = date_format(self.died_on) if self.died_on else "unknown date"
+            return f"infertile egg, removed on {death_date}"
+        elif stage == self.LifeStage.EGG:
+            if self.laid_on:
+                laid_date = date_format(self.laid_on)
+                return f"egg, laid on {laid_date}"
+            else:
+                return "egg"
+        else:
+            return "unknown"
 
     def update_from_events(self) -> None:
         """Recompute life history - trigger when adding/removing/updating an event for the animal"""
@@ -1125,13 +1143,14 @@ class Event(models.Model):
         """Description of event and date"""
         return f"{self.status} on {self.date:%b %-d, %Y}"
 
-    def age(self) -> datetime.timedelta:
+    def age(self) -> datetime.timedelta | None:
         """Age of the animal at the time of the event, or None if birthday not known"""
-        events = self.animal.event_set.filter(status=get_birth_event_type())
-        if events:
-            evt_birth = events.earliest()
-            if evt_birth is not None and self.date >= evt_birth.date:
-                return self.date - evt_birth.date
+        try:
+            born_on = self.animal.life_history.born_on
+            if self.date >= born_on:
+                return self.date - born_on
+        except (Animal.life_history.RelatedObjectDoesNotExist, TypeError):
+            pass
 
     def measures(self):
         """Returns a queryset with all defined Measures. Each Measure is

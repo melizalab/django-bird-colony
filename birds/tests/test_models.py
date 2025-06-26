@@ -169,6 +169,50 @@ class AnimalModelTests(TestCase):
         self.assertIn(bird, Animal.objects.existing(acq_on))
         self.assertNotIn(bird, Animal.objects.existing(acq_on - dt_days(1)))
 
+    def test_status_of_dead_transferred_bird(self):
+        species = Species.objects.get(pk=1)
+        bird = Animal.objects.create(species=species)
+        status_acq = Status.objects.get(name="transferred in")
+        status_died = Status.objects.get(name="died")
+        self.assertIsNot(status_acq.adds, None)
+        self.assertIsNot(status_died.removes, None)
+        acq_on = today() - dt_days(10)
+        died_on = today()
+        user = models.get_sentinel_user()
+        event_acq = Event.objects.create(
+            animal=bird, status=status_acq, date=acq_on, entered_by=user
+        )
+        event_died = Event.objects.create(
+            animal=bird, status=status_died, date=died_on, entered_by=user
+        )
+
+        self.assertEqual(bird.acquisition_event(), event_acq)
+        self.assertEqual(bird.removal_event(), event_died)
+
+        lh = bird.life_history
+        lh.refresh_from_db()  # not sure why this is necessary - not accessed
+        self.assertIs(lh.born_on, None)
+        self.assertEqual(lh.acquired_on, acq_on)
+        self.assertEqual(lh.died_on, died_on)
+        self.assertIs(lh.laid_on, None)
+        self.assertFalse(lh.is_alive())
+        self.assertIs(lh.age(), None)
+        self.assertEqual(lh.life_stage(), AnimalLifeHistory.LifeStage.DEAD)
+        self.assertEqual(lh.removal_outcome(), AnimalLifeHistory.RemovalOutcome.UNEXPECTED)
+        self.assertEqual(lh.age_group(), models.ADULT_ANIMAL_NAME)
+        self.assertIs(lh.expected_hatch(), None)
+
+        self.assertNotIn(bird, Animal.objects.alive())
+        self.assertNotIn(bird, Animal.objects.hatched())
+        self.assertIn(bird, Animal.objects.unhatched())
+        self.assertNotIn(bird, Animal.objects.unhatched().alive())
+        self.assertIn(bird, Animal.objects.alive(acq_on))
+        self.assertNotIn(bird, Animal.objects.alive(acq_on - dt_days(1)))
+        self.assertNotIn(bird, Animal.objects.alive(died_on + dt_days(1)))
+        self.assertIn(bird, Animal.objects.existing(acq_on))
+        self.assertNotIn(bird, Animal.objects.existing(acq_on - dt_days(1)))
+        self.assertNotIn(bird, Animal.objects.existing(died_on + dt_days(1)))
+
     def test_status_of_dead_bird(self):
         species = Species.objects.get(pk=1)
         bird = Animal.objects.create(species=species)
@@ -270,7 +314,7 @@ class AnimalModelTests(TestCase):
         self.assertIs(lh.is_alive(), False, "an egg is not alive")
         self.assertEqual(lh.life_stage(), AnimalLifeHistory.LifeStage.EGG)
         self.assertIs(lh.removal_outcome(), None)
-        self.assertEqual(lh.age_group(), models.UNBORN_ANIMAL_NAME)
+        self.assertIs(lh.age_group(), None)
         self.assertEqual(lh.expected_hatch(), eggspected_hatch)
 
         self.assertNotIn(egg, Animal.objects.alive())
@@ -308,7 +352,7 @@ class AnimalModelTests(TestCase):
         self.assertEqual(
             lh.removal_outcome(), AnimalLifeHistory.RemovalOutcome.UNEXPECTED
         )
-        self.assertEqual(lh.age_group(), models.UNBORN_ANIMAL_NAME)
+        self.assertIs(lh.age_group(), None)
         self.assertIs(
             lh.expected_hatch(), None, "lost egg should not have expected hatch"
         )
@@ -407,7 +451,7 @@ class AnimalModelTests(TestCase):
             animal=egg, status=status, date=laid_on, entered_by=user
         )
         lh = egg.life_history
-        self.assertEqual(lh.age_group(), models.UNBORN_ANIMAL_NAME)
+        self.assertIs(lh.age_group(), None)
         # Adding a hatch event
         _event = Event.objects.create(
             animal=egg,
@@ -417,8 +461,8 @@ class AnimalModelTests(TestCase):
         )
         lh.refresh_from_db()
         self.assertEqual(lh.age_group(), "hatchling")
-        self.assertEqual(lh.age_group(laid_on), models.UNBORN_ANIMAL_NAME)
-        self.assertEqual(lh.age_group(laid_on - dt_days(1)), None)
+        self.assertIs(lh.age_group(laid_on), None)
+        self.assertIs(lh.age_group(laid_on - dt_days(1)), None)
 
     def test_bird_locations(self):
         species = Species.objects.get(pk=1)
@@ -1652,8 +1696,8 @@ class LocationModelTests(TestCase):
         lh = location_1.birds(last_week).first().life_history
         self.assertEqual(
             lh.age_group(last_week),
-            models.UNBORN_ANIMAL_NAME,
-            f"bird age group should be '{models.UNBORN_ANIMAL_NAME}' after laid event",
+            None,
+            f"bird age group should be None after laid event",
         )
         lh = location_1.birds(yesterday).first().life_history
         self.assertEqual(
