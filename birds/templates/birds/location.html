@@ -52,7 +52,7 @@
     {% for egg in egg_list %}
         <tr>
           <td><a href="{{ egg.get_absolute_url }}">{{ egg.name }}</a></td>
-	  <td>{{ egg.expected_hatch }}</td>
+	  <td>{{ egg.life_history.expected_hatch }}</td>
           <td>{{ egg.species }}</td>
           <td>{{ egg.uuid }}</td>
           <td></td>

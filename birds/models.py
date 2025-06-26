@@ -243,21 +243,38 @@ class Measurement(models.Model):
         unique_together = ("type", "event")
 
 
+class Room(models.Model):
+    """Represents a room (or building) that can contain Locations"""
+
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=45, unique=True)
+    description = models.TextField(default="")
+
+    def __str__(self) -> str:
+        return self.name
+
+    class Meta:
+        ordering = ("name",)
+
+
 class Location(models.Model):
     """Represents a physical location in the colony.
 
     Locations with the `nest` field set to True are designed as breeding
-    locations.
+    locations. This is used to restrict which locations can be chosen in the
+    form for pairings.
 
     """
 
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=45, unique=True)
     description = models.TextField(default="")
-    # This field should probably be deprecated, as some locations are not
-    # permanently used for breeding.
+    room = models.ForeignKey("Room", null=True, blank=True, on_delete=models.SET_NULL)
     nest = models.BooleanField(
         default=False, help_text="select for locations used for breeding"
+    )
+    active = models.BooleanField(
+        default=True, help_text="select if the location currently exists"
     )
 
     def birds(self, on_date: datetime.date | None = None):
@@ -265,13 +282,19 @@ class Location(models.Model):
         return Animal.objects.with_location(on_date=on_date).filter(last_location=self)
 
     def __str__(self) -> str:
-        return self.name
+        if self.room:
+            return f"{self.room}/{self.name}"
+        else:
+            return self.name
 
     def get_absolute_url(self):
         return reverse("birds:location", kwargs={"pk": self.id})
 
     class Meta:
-        ordering = ("name",)
+        ordering = (
+            "room",
+            "name",
+        )
 
 
 class Age(models.Model):

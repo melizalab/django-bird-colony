@@ -429,14 +429,19 @@ def measurement_list(
 # Locations
 @require_http_methods(["GET"])
 def location_list(request):
-    qs = Location.objects.order_by("name")
-    paginator = Paginator(qs, 25)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
+    qs = (
+        Location.objects.filter(active=True)
+        .select_related("room")
+        .order_by("room__name", "name")
+    )
+    # paginator = Paginator(qs, 25)
+    # page_number = request.GET.get("page")
+    # page_obj = paginator.get_page(page_number)
     return render(
         request,
         "birds/location_list.html",
-        {"page_obj": page_obj, "location_list": page_obj.object_list},
+        {"location_list": qs},
+        # {"page_obj": page_obj, "location_list": page_obj.object_list},
     )
 
 

@@ -105,6 +105,7 @@ for model in (
     models.Plumage,
     models.Location,
     models.Age,
+    models.Room,
     models.SampleType,
     models.SampleLocation,
     models.NestCheck,

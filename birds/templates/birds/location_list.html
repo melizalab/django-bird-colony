@@ -8,18 +8,23 @@
 
 <table class="table table-striped table-condensed">
   <thead>
-    <th>Name</th>
+    <th>Room/Building</th>
+    <th>Cage</th>
+    <th>Description</th>
     <th>Animals</th>
   </thead>
   <tbody>
     {% for location in location_list %}
         <tr>
-          <td><a href="{{ location.get_absolute_url }}">{{ location }}</a></td>
+	  <td>{{ location.room|default_if_none:"" }}</td>
+          <td><a href="{{ location.get_absolute_url }}">{{ location.name }}</a></td>
+	  <td>{{ location.description }}</td>
           <td>{{ location.birds.alive.count }}</td>
         </tr>
     {% endfor %}
   </tbody>
 </table>
+{% if page_obj %}
 <div class="pagination">
     <span class="step-links">
         {% if page_obj.has_previous %}
@@ -35,4 +40,5 @@
         {% endif %}
     </span>
 </div>
+{% endif %}
 {% endblock %}
