@@ -10,7 +10,7 @@ from rest_framework.decorators import api_view, renderer_classes
 from rest_framework.renderers import BrowsableAPIRenderer, JSONRenderer
 from rest_framework.response import Response
 
-from birds import __version__, api_version, pedigree
+from birds import __version__, api_version
 from birds.filters import (
     AnimalFilter,
     EventFilter,
@@ -169,21 +169,12 @@ def animal_pedigree(request, format=None):
         )
         .select_related("species", "band_color", "plumage")
     )
-    ped = pedigree.Pedigree.from_animals(
-        [(animal.uuid, animal.sire, animal.dam) for animal in qs]
-    )
-    inbreeding = ped.get_inbreeding()
-    # allow user to filter the results
     f = AnimalFilter(request.GET, qs)
 
-    ctx = {"pedigree": ped, "inbreeding": inbreeding}
     if format == "jsonl" or JSONLRenderer.requested_by(request):
         renderer = JSONLRenderer()
-        gen = (
-            renderer.render(AnimalPedigreeSerializer(obj, context=ctx).data)
-            for obj in f.qs
-        )
+        gen = (renderer.render(AnimalPedigreeSerializer(obj).data) for obj in f.qs)
         return StreamingHttpResponse(gen)
     else:
-        serializer = AnimalPedigreeSerializer(f.qs, context=ctx, many=True)
+        serializer = AnimalPedigreeSerializer(f.qs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)

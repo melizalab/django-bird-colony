@@ -26,12 +26,12 @@ from django.db.models import (
     Window,
 )
 from django.db.models.functions import Coalesce, Now, RowNumber, Trunc, TruncDay
-from django.db.models.signals import post_delete, post_save
-from django.dispatch import receiver
 from django.urls import reverse
 from django.utils.formats import date_format
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
+
+from birds import pedigree
 
 BIRTH_EVENT_NAME = "hatched"
 DEATH_EVENT_NAME = "died"
@@ -891,8 +891,8 @@ class AnimalLifeHistory(models.Model):
     # Status flags
     has_unexpected_removal = models.BooleanField(default=False)
 
-    # Last location
     last_location = models.ForeignKey(Location, null=True, on_delete=models.SET_NULL)
+    inbreeding_coefficient = models.FloatField(null=True, blank=True)
 
     last_updated = models.DateTimeField(auto_now=True)
 
@@ -1055,7 +1055,7 @@ class AnimalLifeHistory(models.Model):
                 return f"{status} on {death_date} at {age_str} old"
             else:
                 return f"{status} on {death_date}"
-        elif stage == self.LifeStage.FAILED_EGG:
+        elif stage == self.LifeStage.BAD_EGG:
             death_date = date_format(self.died_on) if self.died_on else "unknown date"
             return f"infertile egg, removed on {death_date}"
         elif stage == self.LifeStage.EGG:
@@ -1077,6 +1077,26 @@ class AnimalLifeHistory(models.Model):
         self.died_on = annotated.died_on
         self.has_unexpected_removal = annotated.has_unexpected_removal
         self.last_location = self.animal.last_location(datetime.date.today())
+
+    def update_from_pedigree(self) -> None:
+        """Recompute values related to pedigree (inbreeding coefficient)"""
+        if not self.animal.parents.exists():
+            self.inbreeding_coefficient = 0.0
+            self.save(update_fields=["inbreeding_coefficient"])
+            return
+        # Pedigree calculation only uses living animals + dead ancestors
+        pedigree_animals = Animal.objects.for_pedigree()
+        ped = pedigree.Pedigree.from_animals(
+            [(animal.uuid, animal.sire, animal.dam) for animal in pedigree_animals]
+        )
+        inbreeding_coeffs = ped.get_inbreeding()
+        try:
+            animal_index = ped.index(self.animal.uuid)
+            self.inbreeding_coefficient = float(inbreeding_coeffs[animal_index])
+        except (KeyError, IndexError):
+            # Animal not found in pedigree (shouldn't happen but just in case)
+            self.inbreeding_coefficient = 0.0
+        self.save(update_fields=["inbreeding_coefficient"])
 
 
 class EventQuerySet(models.QuerySet):
@@ -1575,14 +1595,3 @@ class Sample(models.Model):
 
     class Meta:
         ordering = ("animal", "type")
-
-
-### Triggers
-
-
-@receiver([post_save, post_delete], sender=Event)
-def update_life_history_on_event_change(sender, instance, **kwargs):
-    """Update life history when events are added/changed/deleted"""
-    life_history, _ = AnimalLifeHistory.objects.get_or_create(animal=instance.animal)
-    life_history.update_from_events()
-    life_history.save()

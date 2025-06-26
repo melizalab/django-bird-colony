@@ -61,6 +61,7 @@ class AnimalModelTests(TestCase):
             location=location,
             sex=Animal.Sex.MALE,
         )
+        bird = Animal.objects.get(pk=bird.pk)
         self.assertTrue(bird.history.is_alive())
         self.assertEqual(bird.sex, Animal.Sex.MALE)
         self.assertEqual(bird.event_set.count(), 1)
@@ -119,6 +120,7 @@ class AnimalModelTests(TestCase):
         self.assertEqual(bird.acquisition_event(), event)
         self.assertIs(bird.removal_event(), None)
 
+        bird = Animal.objects.get(pk=bird.pk)
         self.assertEqual(bird.history.born_on, birthday)
         self.assertEqual(bird.history.acquired_on, birthday)
         self.assertIs(bird.history.died_on, None)
@@ -150,8 +152,8 @@ class AnimalModelTests(TestCase):
             animal=bird, status=status, date=acq_on, entered_by=user
         )
 
+        bird = Animal.objects.get(pk=bird.pk)
         self.assertEqual(bird.acquisition_event(), event)
-
         self.assertIs(bird.history.born_on, None)
         self.assertEqual(bird.history.acquired_on, acq_on)
         self.assertIs(bird.history.died_on, None)
@@ -192,8 +194,9 @@ class AnimalModelTests(TestCase):
         self.assertEqual(bird.acquisition_event(), event_acq)
         self.assertEqual(bird.removal_event(), event_died)
 
+        # reload from the db
+        bird = Animal.objects.get(pk=bird.pk)
         lh = bird.history
-        lh.refresh_from_db()  # not sure why this is necessary - not accessed
         self.assertIs(lh.born_on, None)
         self.assertEqual(lh.acquired_on, acq_on)
         self.assertEqual(lh.died_on, died_on)
@@ -239,8 +242,8 @@ class AnimalModelTests(TestCase):
         self.assertEqual(bird.acquisition_event(), event_born)
         self.assertEqual(bird.removal_event(), event_died)
 
+        bird = Animal.objects.get(pk=bird.pk)
         lh = bird.history
-        lh.refresh_from_db()  # not sure why this is necessary - not accessed
         self.assertEqual(lh.born_on, born_on)
         self.assertEqual(lh.acquired_on, born_on)
         self.assertEqual(lh.died_on, died_on)
@@ -312,6 +315,7 @@ class AnimalModelTests(TestCase):
         self.assertIs(egg.acquisition_event(), None)
         eggspected_hatch = laid_on + datetime.timedelta(days=species.incubation_days)
 
+        egg = Animal.objects.get(pk=egg.pk)
         lh = egg.history
         self.assertEqual(lh.laid_on, laid_on)
         self.assertIs(lh.born_on, None)
@@ -350,8 +354,8 @@ class AnimalModelTests(TestCase):
 
         self.assertIs(egg.acquisition_event(), None)
 
+        egg = Animal.objects.get(pk=egg.pk)
         lh = egg.history
-        lh.refresh_from_db()
         self.assertEqual(lh.laid_on, laid_on)
         self.assertIs(lh.born_on, None)
         self.assertIs(lh.acquired_on, None)
@@ -404,8 +408,8 @@ class AnimalModelTests(TestCase):
             date=today(),
             entered_by=user,
         )
+        bird = Animal.objects.get(pk=bird.pk)
         lh = bird.history
-        lh.refresh_from_db()
         self.assertFalse(lh.is_alive())
         self.assertEqual(lh.laid_on, laid_on)
         self.assertEqual(lh.born_on, birthday)
@@ -450,6 +454,7 @@ class AnimalModelTests(TestCase):
             Event.objects.create(
                 animal=bird, status=status, date=birthday, entered_by=user
             )
+            bird = Animal.objects.get(pk=bird.pk)
             self.assertEqual(bird.history.age_group(), age_group.name)
             self.assertEqual(bird.history.age_group(birthday), youngest_group.name)
             self.assertIs(bird.history.age_group(birthday - dt_days(1)), None)
@@ -463,8 +468,9 @@ class AnimalModelTests(TestCase):
         _event = Event.objects.create(
             animal=egg, status=status, date=laid_on, entered_by=user
         )
-        lh = egg.history
-        self.assertIs(lh.age_group(), None)
+
+        egg_from_db = Animal.objects.get(pk=egg.pk)
+        self.assertIs(egg_from_db.history.age_group(), None)
         # Adding a hatch event
         _event = Event.objects.create(
             animal=egg,
@@ -472,10 +478,11 @@ class AnimalModelTests(TestCase):
             date=today(),
             entered_by=user,
         )
-        lh.refresh_from_db()
-        self.assertEqual(lh.age_group(), "hatchling")
-        self.assertIs(lh.age_group(laid_on), None)
-        self.assertIs(lh.age_group(laid_on - dt_days(1)), None)
+
+        egg_from_db = Animal.objects.get(pk=egg.pk)
+        self.assertEqual(egg_from_db.history.age_group(), "hatchling")
+        self.assertIs(egg_from_db.history.age_group(laid_on), None)
+        self.assertIs(egg_from_db.history.age_group(laid_on - dt_days(1)), None)
 
     def test_bird_locations(self):
         species = Species.objects.get(pk=1)
@@ -492,6 +499,7 @@ class AnimalModelTests(TestCase):
             entered_by=user,
             location=location_1,
         )
+        bird = Animal.objects.get(pk=bird.pk)
         self.assertEqual(bird.last_location(today()), location_1)
         self.assertEqual(bird.history.last_location, location_1)
         abird = Animal.objects.with_location().get(pk=bird.pk)
@@ -518,9 +526,9 @@ class AnimalModelTests(TestCase):
             pk=bird.pk
         )
         self.assertIs(abird.last_location, None)
-        bird.history.refresh_from_db()
+
         self.assertEqual(
-            bird.history.last_location,
+            abird.history.last_location,
             location_2,
             "cached location in life history does not match last location",
         )
@@ -821,6 +829,81 @@ class ParentModelTests(TestCase):
             ],
         )
 
+    def test_inbreeding_coefficient(self):
+        species = Species.objects.get(pk=1)
+        born_status = models.get_birth_event_type()
+        died_status = models.get_death_event_type()
+        user = models.get_sentinel_user()
+        location = Location.objects.get(pk=2)
+
+        birthday = today() - dt_days(365)
+        sire = Animal.objects.create_with_event(
+            species=species,
+            date=birthday,
+            entered_by=user,
+            location=location,
+            status=born_status,
+            sex=Animal.Sex.MALE,
+        )
+        dam = Animal.objects.create_with_event(
+            species=species,
+            date=birthday,
+            entered_by=user,
+            location=location,
+            status=born_status,
+            sex=Animal.Sex.FEMALE,
+        )
+        # add death event for sire
+        Event.objects.create(
+            animal=sire,
+            date=today() - dt_days(5),
+            entered_by=user,
+            status=died_status,
+        )
+        son = Animal.objects.create_from_parents(
+            sire=sire,
+            dam=dam,
+            date=today() - dt_days(100),
+            status=born_status,
+            entered_by=user,
+            location=location,
+            sex=Animal.Sex.MALE,
+        )
+        _wife = Animal.objects.create_with_event(
+            species=species,
+            date=today() - dt_days(99),
+            location=location,
+            status=born_status,
+            entered_by=user,
+            sex=Animal.Sex.FEMALE,
+        )
+        # F1 cross
+        double_grandson = make_child(
+            son,
+            dam,
+            today() - dt_days(50),
+            sex=Animal.Sex.MALE,
+        )
+
+        bird = Animal.objects.get(pk=sire.pk)
+        self.assertEqual(
+            bird.history.inbreeding_coefficient,
+            0.0,
+            "founder should have inbreeding of 0",
+        )
+        bird = Animal.objects.get(pk=son.pk)
+        self.assertEqual(
+            bird.history.inbreeding_coefficient,
+            0.0,
+            "son of two founders should have inbreeding of 0",
+        )
+        bird = Animal.objects.get(pk=double_grandson.pk)
+        self.assertEqual(
+            bird.history.inbreeding_coefficient,
+            0.25,
+            "double grandchild should have inbreeding of 0.25",
+        )
+
 
 class EventModelTests(TestCase):
     fixtures = ("bird_colony_starter_kit",)
@@ -835,16 +918,18 @@ class EventModelTests(TestCase):
         event = Event.objects.create(
             animal=bird, status=status, date=birthday, entered_by=user
         )
+        event = Event.objects.get(pk=event.pk)
         self.assertEqual(event.age(), dt_days(0))
         status_2 = Status.objects.get(name="moved")
         date_2 = today() - dt_days(1)
-        event_2 = Event(
+        event_2 = Event.objects.create(
             animal=bird,
             status=status_2,
             date=date_2,
             entered_by=user,
         )
-        self.assertEqual(event_2.age(), date_2 - birthday)
+        event = Event.objects.get(pk=event_2.pk)
+        self.assertEqual(event.age(), date_2 - birthday)
 
     def test_age_at_event_time_for_unhatched_bird(self):
         species = Species.objects.get(pk=1)
@@ -1860,3 +1945,9 @@ class StatusModelTests(TestCase):
                 adds=Status.AdditionType.EGG,
                 removes=Status.RemovalType.EXPECTED,
             )
+
+
+class AnimalLifeHistoryModelTests(TestCase):
+    """Test the pedigree-related life history caching - event related stuff is under AnimalModelTests"""
+
+    fixtures = ("bird_colony_starter_kit",)

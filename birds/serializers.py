@@ -38,11 +38,10 @@ class AnimalDetailSerializer(AnimalSerializer):
     reserved_by = serializers.StringRelatedField()
     sire = serializers.PrimaryKeyRelatedField(read_only=True)
     dam = serializers.PrimaryKeyRelatedField(read_only=True)
-    age_days = (
-        serializers.SerializerMethodField()
-    )  # ModelAgeSerializer(source="life_history.age", read_only=True)
+    age_days = serializers.SerializerMethodField()
     alive = serializers.BooleanField(source="life_history.is_alive")
     last_location = serializers.StringRelatedField(source="life_history.last_location")
+    inbreeding = serializers.FloatField(source="life_history.inbreeding_coefficient")
 
     def get_age_days(self, obj):
         try:
@@ -66,6 +65,7 @@ class AnimalDetailSerializer(AnimalSerializer):
             "age_days",
             "alive",
             "last_location",
+            "inbreeding",
             "attributes",
         )
 
@@ -211,7 +211,7 @@ class AnimalPedigreeSerializer(serializers.Serializer):
     n_kids_unexpectedly_died = serializers.IntegerField(
         source="children.hatched.lost.count", default=0
     )
-    inbreeding = serializers.SerializerMethodField()
+    inbreeding = serializers.FloatField(source="life_history.inbreeding_coefficient")
 
     def get_alive(self, obj):
         return obj.life_history.is_alive()
@@ -254,7 +254,3 @@ class AnimalPedigreeSerializer(serializers.Serializer):
                 if age is not None:
                     lifespans.append(age.days)
         return lifespans
-
-    def get_inbreeding(self, obj):
-        idx = self.context["pedigree"].index(obj.uuid)
-        return float(self.context["inbreeding"][idx])

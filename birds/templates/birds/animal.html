@@ -19,6 +19,7 @@
   <dt>{{ measurement.type.name }} </dt><dd>{{ measurement.formatted }} (as of {{measurement.event.date}})</dd>
   {% endfor %}
   {% if history.expected_hatch %}<dt>expected hatch</dt><dd>{{ history.expected_hatch}}</dd>{% endif %}
+  {% if history.inbreeding_coefficient is not None %}<dt>inbreeding coefficient</dt><dd>{{ history.inbreeding_coefficient|stringformat:".3g" }}</dd>{% endif %}  
 </dl>
 
 <dl class="dl-horizontal">

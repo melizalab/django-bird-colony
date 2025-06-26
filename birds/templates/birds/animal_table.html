@@ -9,6 +9,7 @@
     <th>Location</th>
     <th>Children</th>
     <th>UUID</th>
+    <th>Inbreeding</th>
     <th>Reserved</th>
   </thead>
   <tbody>
@@ -23,6 +24,7 @@
           <td>{{ history.last_location|link_or_blank }}</td>
           <td>{{ animal.n_hatched}}</td>
           <td>{{ animal.uuid }}</td>
+	  <td>{{ history.inbreeding_coefficient|default_if_none:""|stringformat:".3g" }}</td>
           <td>{{ animal.reserved_by|link_to:"birds:user" }}</td>
         </tr>
     {% endwith %}

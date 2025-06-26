@@ -88,8 +88,7 @@ class ApiViewTests(APITestCase):
                     "dam": None,
                     "age_days": None,
                     "last_location": None,
-                    # animals with no events are neither alive or dead
-                    "alive": None,
+                    "alive": False,
                 },
             )
 

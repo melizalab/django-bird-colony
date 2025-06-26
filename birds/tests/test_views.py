@@ -791,8 +791,9 @@ class EventFormViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_add_event(self):
-        self.assertEqual(self.animal.event_set.count(), 1)
-        self.assertTrue(self.animal.life_history.is_alive())
+        animal = Animal.objects.get(pk=self.animal.pk)
+        self.assertEqual(animal.event_set.count(), 1)
+        self.assertTrue(animal.history.is_alive())
         status = Status.objects.get(name=models.DEATH_EVENT_NAME)
         self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
         response = self.client.post(
@@ -807,8 +808,8 @@ class EventFormViewTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, reverse("birds:animal", args=[self.animal.uuid]))
         self.assertEqual(self.animal.event_set.count(), 2)
-        self.animal.life_history.refresh_from_db()
-        self.assertFalse(self.animal.life_history.is_alive())
+        animal = Animal.objects.get(pk=self.animal.pk)
+        self.assertFalse(animal.history.is_alive())
 
     def test_add_event_with_measurements(self):
         self.assertEqual(self.animal.event_set.count(), 1)
