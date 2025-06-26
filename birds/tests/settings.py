@@ -22,7 +22,7 @@ INSTALLED_APPS = [
     "django_filters",
     "widget_tweaks",
     "fullurl",
-    "birds.app.BirdsConfig",
+    "birds",
 ]
 
 SECRET_KEY = "django-insecure-test-key-not-for-production"
