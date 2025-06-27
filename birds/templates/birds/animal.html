@@ -13,8 +13,7 @@
   <dt>sex</dt><dd>{{ animal.sex }}</dd>
   <dt>plumage</dt><dd>{{ animal.plumage }}</dd>
   <dt>uuid</dt><dd>{{ animal.uuid }}</dd>
-  <dt>status</dt><dd>{{ history.status_display }}</dd>
-  <dt>age</dt><dd>{{ history.age_display }} </dd>
+  <dt>status</dt><dd>{{ history.summary }}</dd>
   {% for measurement in animal_measurements %}
   <dt>{{ measurement.type.name }} </dt><dd>{{ measurement.formatted }} (as of {{measurement.event.date}})</dd>
   {% endfor %}

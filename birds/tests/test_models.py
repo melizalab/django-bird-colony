@@ -342,7 +342,7 @@ class AnimalModelTests(TestCase):
         egg = Animal.objects.create(species=species)
         user = models.get_sentinel_user()
         status_laid = models.get_unborn_creation_event_type()
-        status_lost = Status.objects.get(name=models.LOST_EVENT_NAME)
+        status_lost = Status.objects.get(name=models.BAD_EGG_EVENT_NAME)
         laid_on = today() - dt_days(10)
         Event.objects.create(
             animal=egg, status=status_laid, date=laid_on, entered_by=user
@@ -1316,7 +1316,7 @@ class PairingModelTests(TestCase):
         lost_on = laid_on + dt_days(2)
         Event.objects.create(
             animal=egg,
-            status=Status.objects.get(name="lost"),
+            status=Status.objects.get(name=models.BAD_EGG_EVENT_NAME),
             date=lost_on,
             entered_by=user,
         )

@@ -356,13 +356,14 @@ def event_entry(request, event: int | None = None, animal: str | None = None):
 
             return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
     else:
-        form.initial["entered_by"] = request.user
         if event:
+            form.initial["entered_by"] = event.entered_by
             initial_data = [
                 {"type": measure, "value": measure.measurement_value}
                 for measure in event.measures()
             ]
         else:
+            form.initial["entered_by"] = request.user
             initial_data = [
                 {"type": measure, "value": None} for measure in Measure.objects.all()
             ]

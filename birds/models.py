@@ -38,7 +38,7 @@ DEATH_EVENT_NAME = "died"
 UNBORN_ANIMAL_NAME = "egg"
 UNBORN_CREATION_EVENT_NAME = "laid"
 ADULT_ANIMAL_NAME = "adult"
-LOST_EVENT_NAME = "lost"
+BAD_EGG_EVENT_NAME = "bad egg"
 MOVED_EVENT_NAME = "moved"
 NOTE_EVENT_NAME = "note"
 BANDED_EVENT_NAME = "banded"
@@ -1511,7 +1511,7 @@ class Pairing(models.Model):
             )
         if remove_unhatched:
             unhatched_eggs = self.eggs().unhatched().existing()
-            lost_event = Status.objects.get(name=LOST_EVENT_NAME)
+            lost_event = Status.objects.get(name=BAD_EGG_EVENT_NAME)
             for egg in unhatched_eggs:
                 Event.objects.create(
                     animal=egg,

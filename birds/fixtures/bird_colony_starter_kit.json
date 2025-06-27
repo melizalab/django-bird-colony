@@ -88,10 +88,10 @@
     "model": "birds.status",
     "pk": 6,
     "fields": {
-      "name": "lost",
+      "name": "bad egg",
       "adds": null,
       "removes": "unexpected",
-      "description": "Bird was lost because of a missing band or other unexplained reason."
+      "description": "Infertile egg discarded."
     }
   },
   {

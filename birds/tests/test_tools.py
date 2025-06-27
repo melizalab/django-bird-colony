@@ -139,7 +139,7 @@ class TabulatePairsTests(TestCase):
         # day 4: lose the second egg
         _ = Event.objects.create(
             animal=child_2,
-            status=Status.objects.get(name=models.LOST_EVENT_NAME),
+            status=Status.objects.get(name=models.BAD_EGG_EVENT_NAME),
             location=self.nest,
             date=since + datetime.timedelta(days=4),
             entered_by=user,

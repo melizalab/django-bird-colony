@@ -161,7 +161,7 @@ class BreedingCheckForm(forms.Form):
             )
         data["hatch_status"] = get_status_or_error(models.BIRTH_EVENT_NAME)
         data["laid_status"] = get_status_or_error(models.UNBORN_CREATION_EVENT_NAME)
-        data["lost_status"] = get_status_or_error(models.LOST_EVENT_NAME)
+        data["lost_status"] = get_status_or_error(models.BAD_EGG_EVENT_NAME)
 
         data["hatched_eggs"] = initial_eggs[:delta_chicks]
         if delta_eggs < 0:

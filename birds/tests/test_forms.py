@@ -571,7 +571,7 @@ class BreedingCheckFormTest(TestCase):
         _event = Event.objects.create(
             animal=egg,
             date=today() - dt_days(2),
-            status=Status.objects.get(name=models.LOST_EVENT_NAME),
+            status=Status.objects.get(name=models.BAD_EGG_EVENT_NAME),
             entered_by=self.user,
         )
         form = BreedingCheckForm(
