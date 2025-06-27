@@ -91,19 +91,25 @@ class MeasurementAdmin(admin.ModelAdmin):
     list_filter = ("type",)
 
 
+class LocationAdmin(admin.ModelAdmin):
+    fields = ("name", "description", "room", "nest", "active")
+    list_display = ("name", "room", "description", "nest", "active")
+    list_filter = ("room", "nest", "active")
+
+
 admin.site.register(models.Animal, AnimalAdmin)
 admin.site.register(models.Event, EventAdmin)
 admin.site.register(models.Status, StatusAdmin)
 admin.site.register(models.Sample, SampleAdmin)
 admin.site.register(models.Pairing, PairingAdmin)
 admin.site.register(models.Measurement, MeasurementAdmin)
+admin.site.register(models.Location, LocationAdmin)
 
 
 for model in (
     models.Species,
     models.Color,
     models.Plumage,
-    models.Location,
     models.Age,
     models.Room,
     models.SampleType,
