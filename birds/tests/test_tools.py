@@ -191,3 +191,55 @@ class TabulatePairsTests(TestCase):
         pair_data = data[0]
         self.assertEqual(pair_data["pair"], pair)
         self.assertEqual(pair_data["location"], self.nest)
+
+    def test_excludes_dead_chicks(self):
+        """Test that tabulate_pairs doesn't count dead chicks"""
+        user = models.get_sentinel_user()
+        until = datetime.date.today()
+        since = until - datetime.timedelta(days=3)
+        # Create pairing
+        pair = Pairing.objects.create_with_events(
+            sire=self.sire,
+            dam=self.dam,
+            began_on=since,
+            purpose="testing",
+            entered_by=user,
+            location=self.nest,
+        )
+        # Create and hatch two eggs
+        eggs = [
+            Animal.objects.create_from_parents(
+                sire=self.sire,
+                dam=self.dam,
+                date=since + datetime.timedelta(days=1),
+                status=models.get_unborn_creation_event_type(),
+                entered_by=user,
+                location=self.nest,
+            )
+            for _ in range(2)
+        ]
+        # Both eggs hatch
+        for egg in eggs:
+            Event.objects.create(
+                animal=egg,
+                status=models.get_birth_event_type(),
+                date=since + datetime.timedelta(days=2),
+                entered_by=user,
+            )
+        # One chick dies
+        Event.objects.create(
+            animal=eggs[1],
+            status=models.get_death_event_type(),
+            date=until,
+            entered_by=user,
+        )
+        # make sure we see the right number of living chicks in the db
+        self.assertEqual(pair.eggs().alive().count(), 1)
+        # check the tabulatio
+        _, data = tools.tabulate_pairs(until, until)
+        pair_data = next(p for p in data if p["pair"] == pair)
+        tabulated_counts = pair_data["counts"][0]
+        tabulated_total = sum(tabulated_counts.values())
+        tabulated_eggs = tabulated_counts.get("egg", 0)
+        tabulated_chicks = tabulated_total - tabulated_eggs
+        self.assertEqual(tabulated_chicks, 1, "Should have 1 living chick")

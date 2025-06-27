@@ -10,6 +10,7 @@
 <table class="table table-striped">
   <thead>
     <th>current location</th>
+    <th></th>
     <th>pair</th>
     <th>active</th>
     {% for date in dates %}
@@ -19,7 +20,8 @@
   <tbody>
     {% for pairing in pairs %}
     <tr>
-      <td>{{ pairing.location }}</td>
+      <td>{{ pairing.location.room|default_if_none:"" }}</td>
+      <td>{{ pairing.location.name }}</td>
       <td>
 	<a href="{% url 'birds:pairing' pairing.pair.id %}">{{ pairing.pair.short_name }}</a>
       </td>

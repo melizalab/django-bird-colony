@@ -29,7 +29,7 @@ def tabulate_pairs(
     that are active on `until` are included; otherwise all pairs that were
     active at any point between `since` and `until` are used.
 
-    TODO: move this logic into the Pairing model and let the caller decide which
+    TODO: (maybe) move this logic into the Pairing model and let the caller decide which
     pairs to look at over which dates.
 
     """
@@ -54,12 +54,12 @@ def tabulate_pairs(
                 pass
             else:
                 for animal in eggs:
-                    if (
-                        status := animal.history.life_stage(date)
-                    ) == AnimalLifeHistory.LifeStage.EGG:
-                        counts[status.label.lower()] += 1
-                    elif (age_group := animal.history.age_group(date)) is not None:
-                        counts[age_group] += 1
+                    life_stage = animal.history.life_stage(date)
+                    if life_stage == AnimalLifeHistory.LifeStage.EGG:
+                        counts[life_stage.label.lower()] += 1
+                    elif life_stage == AnimalLifeHistory.LifeStage.ALIVE:
+                        if (age_group := animal.history.age_group(date)) is not None:
+                            counts[age_group] += 1
             days.append(counts)
         data.append({"pair": pair, "location": location, "counts": days})
     return dates, data

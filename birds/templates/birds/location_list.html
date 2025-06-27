@@ -6,24 +6,31 @@
 {% block content %}
 <h2>Locations</h2>
 
+{% regroup location_list by room as room_groups %}
+{% for room_group in room_groups %}
+    <h3>{{ room_group.grouper|default:"No Room" }}</h3>
+
 <table class="table table-striped table-condensed">
   <thead>
-    <th>Room/Building</th>
     <th>Cage</th>
     <th>Description</th>
     <th>Animals</th>
+    <th>Eggs</th>
   </thead>
   <tbody>
-    {% for location in location_list %}
+    {% for location in room_group.list %}
         <tr>
-	  <td>{{ location.room|default_if_none:"" }}</td>
           <td><a href="{{ location.get_absolute_url }}">{{ location.name }}</a></td>
 	  <td>{{ location.description }}</td>
           <td>{{ location.birds.alive.count }}</td>
+	  <td>{{ location.birds.eggs.existing.count }}</td>
         </tr>
     {% endfor %}
   </tbody>
 </table>
+
+{% endfor %}
+
 {% if page_obj %}
 <div class="pagination">
     <span class="step-links">

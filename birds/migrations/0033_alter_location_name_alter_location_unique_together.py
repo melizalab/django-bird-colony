@@ -4,19 +4,21 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('birds', '0031_room_alter_location_options_location_room_squashed_0032_location_active'),
+        (
+            "birds",
+            "0031_room_alter_location_options_location_room_squashed_0032_location_active",
+        ),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='location',
-            name='name',
+            model_name="location",
+            name="name",
             field=models.CharField(max_length=45),
         ),
         migrations.AlterUniqueTogether(
-            name='location',
-            unique_together={('room', 'name')},
+            name="location",
+            unique_together={("room", "name")},
         ),
     ]

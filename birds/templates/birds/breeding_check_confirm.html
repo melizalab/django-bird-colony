@@ -12,6 +12,7 @@
 
 <table class="table table-striped">
   <thead>
+    <th>room</th>
     <th>location</th>
     <th>pair</th>
     <th>changes</th>
@@ -20,7 +21,8 @@
     {% for form in nest_formset %}
     {% with nest=form.cleaned_data %}
     <tr>
-      <td>{{ nest.location }}</td>
+      <td>{{ nest.location.room|default_if_none:"" }}</td>
+      <td>{{ nest.location.name }}</td>
       <td>{{ nest.pairing.short_name }}</td>
       <td>
 	{% for change in form.change_summary %}

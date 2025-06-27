@@ -279,7 +279,9 @@ class Location(models.Model):
 
     def birds(self, on_date: datetime.date | None = None):
         """Returns an AnimalQuerySet with all the birds in this location"""
-        return Animal.objects.with_location(on_date=on_date).filter(last_location=self)
+        return Animal.objects.with_location(on_date=on_date).filter(
+            last_location_id=self.id
+        )
 
     def __str__(self) -> str:
         if self.room:
@@ -381,19 +383,22 @@ class AnimalQuerySet(models.QuerySet):
     """Supports queries based on status that require joining on the event table"""
 
     def with_location(self, on_date: datetime.date | None = None):
-        """Annotate the birds with their location as of `on_date`"""
-        refdate = on_date or datetime.date.today()
-        return self.annotate(
-            last_location=Subquery(
-                Event.objects.filter(
-                    location__isnull=False,
-                    date__lte=refdate,
-                    animal=OuterRef("pk"),
-                )
-                .order_by("-date", "-created")
-                .values("location__name")[:1]
-            ),
-        )
+        """Annotate the birds with their location (id only) as of `on_date`. Use
+        life_history.last_location if the most recent location is okay."""
+        if on_date is None:
+            return self.annotate(last_location_id=F("life_history__last_location_id"))
+        else:
+            return self.annotate(
+                last_location_id=Subquery(
+                    Event.objects.filter(
+                        location__isnull=False,
+                        date__lte=on_date,
+                        animal=OuterRef("pk"),
+                    )
+                    .order_by("-date", "-created")
+                    .values("location_id")[:1]
+                ),
+            )
 
     def with_dates(self, on_date: datetime.date | None = None):
         """Annotate the birds with important dates and current status using events on or prior to `on_date`.

@@ -887,6 +887,7 @@ def breeding_check(request):
             request.POST, initial=initial, prefix="nests"
         )
         user_form = NestCheckUser(request.POST, prefix="user")
+
         if nest_formset.is_valid():
             if not user_form.is_valid() or not user_form.cleaned_data["confirmed"]:
                 # coming from the original view, show the confirmation page
@@ -948,7 +949,10 @@ def breeding_check(request):
                 "chicks": total_count - eggs,
             }
         )
-    nest_formset = BreedingCheckFormSet(initial=initial, prefix="nests")
+    # only create a new formset for GET requests - otherwise use the one from
+    # the POST
+    if request.method == "GET":
+        nest_formset = BreedingCheckFormSet(initial=initial, prefix="nests")
     previous_checks = NestCheck.objects.filter(
         datetime__date__gte=(until - datetime.timedelta(days=7))
     ).order_by("-datetime")

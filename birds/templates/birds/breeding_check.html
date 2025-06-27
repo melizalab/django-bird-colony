@@ -1,23 +1,40 @@
 {% extends "base_view.html" %}
 {% load widget_tweaks %}
 {% load bird_tags %}
-
 {% block title %} meliza-lab : nest check {% endblock %}
-
 {% block content %}
 <h2>Nest Check</h2>
-
 <hr/>
-<h3>Today's nest check</h3>
 
+<!-- Display formset-level errors -->
+{% if nest_formset.non_form_errors %}
+  <div class="alert alert-danger">
+    <strong>Form Errors:</strong>
+    <ul>
+      {% for error in nest_formset.non_form_errors %}
+        <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+<h3>Today's nest check</h3>
 <p><strong>Instructions</strong>: This form is for entering data from the daily nest check. Count the eggs and chicks in each nest, update the values in the last column of the table, then click Submit. Note: if chicks die, you need to add events for the specific animals, then come back and complete the nest check. You may enter more than one nest check per day.</p>
 
 <form action="" class="form-horizontal" method="post" role="form">
   {% csrf_token %}
   {{ nest_formset.management_form }}
-
+  
+  <!-- Debug: Show management form errors -->
+  {% if nest_formset.management_form.errors %}
+    <div class="alert alert-warning">
+      <strong>Management form errors:</strong> {{ nest_formset.management_form.errors }}
+    </div>
+  {% endif %}
+  
 <table class="table table-striped">
   <thead>
+    <th>room</th>
     <th>location</th>
     <th>pair</th>
     <th>established</th>
@@ -28,10 +45,11 @@
   </thead>
   <tbody>
     {% for pairing, form in nest_data %}
-    <tr>
-      <td>{{ pairing.location }}</td>
+    <tr{% if form.errors %} class="danger"{% endif %}>
+      <td>{{ pairing.location.room|default_if_none:"" }}</td>
+      <td>{{ pairing.location.name }}</td>
       <td>
-	<a href="{% url 'birds:pairing' pairing.pair.id %}">{{ pairing.pair.short_name }}</a>
+        <a href="{% url 'birds:pairing' pairing.pair.id %}">{{ pairing.pair.short_name }}</a>
       </td>
       <td>{{ pairing.pair.began_on|date:"m/d/Y" }}</td>
       {% for day in pairing.counts %}
@@ -41,19 +59,42 @@
       {% endfor %}
       <td>
         {% if form.non_field_errors %}
-        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+          <div class="alert alert-danger">
+            <strong>Errors:</strong>
+            <ul>
+              {% for error in form.non_field_errors %}
+                <li>{{ error }}</li>
+              {% endfor %}
+            </ul>
+          </div>
         {% endif %}
+        
+        <!-- Hidden fields -->
         {{ form.pairing }} {{ form.location }}
-        <div class="form-group">
+        
+        <!-- Eggs field -->
+        <div class="form-group{% if form.eggs.errors %} has-error{% endif %}">
           <label for="{{ form.eggs.id_for_label}}" class="col-sm-2 control-label">Eggs </label>
           <div class="col-sm-5">
-          {% render_field form.eggs class+="form-control" %}
+            {% render_field form.eggs class+="form-control" %}
+            {% if form.eggs.errors %}
+              <span class="help-block">
+                {% for error in form.eggs.errors %}{{ error }}{% endfor %}
+              </span>
+            {% endif %}
           </div>
         </div>
-        <div class="form-group">
+        
+        <!-- Chicks field -->
+        <div class="form-group{% if form.chicks.errors %} has-error{% endif %}">
           <label for="{{ form.chicks.id_for_label}}" class="col-sm-2 control-label">Chicks </label>
           <div class="col-sm-5">
             {% render_field form.chicks class+="form-control" %}
+            {% if form.chicks.errors %}
+              <span class="help-block">
+                {% for error in form.chicks.errors %}{{ error }}{% endfor %}
+              </span>
+            {% endif %}
           </div>
         </div>
       </td>
@@ -73,7 +114,6 @@ removed from the database.</p>
 </form>
 
 <h4>Recent nest checks</h4>
-
 <table class="table table-striped">
   <thead>
     <th>Date</th>
@@ -90,5 +130,37 @@ removed from the database.</p>
     {% endfor %}
   </tbody>
 </table>
-
 {% endblock %}
+
+<!-- Debug info to help diagnose errors that might not show up otherwise -->
+{% if debug %}
+  <div class="alert alert-info">
+    <h4>Debug: Form Validation State</h4>
+    <details>
+      <summary>Click to expand debugging info</summary>
+      <ul>
+        <li><strong>Total forms:</strong> {{ nest_formset.total_form_count }}</li>
+        <li><strong>Initial forms:</strong> {{ nest_formset.initial_form_count }}</li>
+        <li><strong>Extra forms:</strong> {{ nest_formset.extra }}</li>
+        <li><strong>Forms with errors:</strong> 
+          {% for form in nest_formset %}
+            {% if form.errors %}{{ forloop.counter0 }}{% if not forloop.last %}, {% endif %}{% endif %}
+          {% endfor %}
+        </li>
+        <li><strong>Formset errors:</strong> {{ nest_formset.errors }}</li>
+        <li><strong>Non-form errors:</strong> {{ nest_formset.non_form_errors }}</li>
+      </ul>
+      
+      <h5>Individual Form Status:</h5>
+      {% for form in nest_formset %}
+        <div><strong>Form {{ forloop.counter0 }}:</strong> 
+          {% if form.errors %}
+            ERRORS: {{ form.errors }}
+          {% else %}
+            No errors
+          {% endif %}
+        </div>
+      {% endfor %}
+    </details>
+  </div>
+{% endif %}

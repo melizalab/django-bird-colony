@@ -503,7 +503,7 @@ class AnimalModelTests(TestCase):
         self.assertEqual(bird.last_location(today()), location_1)
         self.assertEqual(bird.history.last_location, location_1)
         abird = Animal.objects.with_location().get(pk=bird.pk)
-        self.assertEqual(abird.last_location, location_1.name)
+        self.assertEqual(abird.last_location_id, location_1.id)
 
         status_2 = Status.objects.get(name="moved")
         date_2 = today() - dt_days(1)
@@ -517,15 +517,15 @@ class AnimalModelTests(TestCase):
         )
         self.assertEqual(bird.last_location(today()), location_2)
         abird = Animal.objects.with_location().get(pk=bird.pk)
-        self.assertEqual(abird.last_location, location_2.name)
+        self.assertEqual(abird.last_location_id, location_2.id)
         self.assertEqual(bird.last_location(on_date=birthday), location_1)
         abird = Animal.objects.with_location(on_date=birthday).get(pk=bird.pk)
-        self.assertEqual(abird.last_location, location_1.name)
+        self.assertEqual(abird.last_location_id, location_1.id)
         self.assertIs(bird.last_location(on_date=birthday - dt_days(1)), None)
         abird = Animal.objects.with_location(on_date=birthday - dt_days(1)).get(
             pk=bird.pk
         )
-        self.assertIs(abird.last_location, None)
+        self.assertIs(abird.last_location_id, None)
 
         self.assertEqual(
             abird.history.last_location,
