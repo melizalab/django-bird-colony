@@ -267,7 +267,7 @@ class Location(models.Model):
     """
 
     id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=45, unique=True)
+    name = models.CharField(max_length=45)
     description = models.TextField(default="")
     room = models.ForeignKey("Room", null=True, blank=True, on_delete=models.SET_NULL)
     nest = models.BooleanField(
@@ -295,6 +295,7 @@ class Location(models.Model):
             "room",
             "name",
         )
+        unique_together = ("room", "name")
 
 
 class Age(models.Model):

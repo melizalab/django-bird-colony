@@ -102,7 +102,7 @@ wheels = [
 
 [[package]]
 name = "django-bird-colony"
-version = "0.13.0"
+version = "0.13.2"
 source = { editable = "." }
 dependencies = [
     { name = "django" },
@@ -132,7 +132,7 @@ requires-dist = [
     { name = "django-widget-tweaks", specifier = ">=1.5.0" },
     { name = "djangorestframework" },
     { name = "djangorestframework-link-header-pagination" },
-    { name = "numpy", specifier = ">=1.26,<2.0" },
+    { name = "numpy", specifier = ">=1.26" },
 ]
 
 [package.metadata.requires-dev]
