@@ -32,7 +32,7 @@ def get_status_or_error(name: str):
 
 class EventForm(forms.ModelForm):
     date = forms.DateField()
-    location = forms.ModelChoiceField(queryset=Location.objects.all(), required=False)
+    location = forms.ModelChoiceField(queryset=Location.objects.filter(active=True), required=False)
     description = forms.CharField(widget=forms.Textarea, required=False)
     entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
 
@@ -202,7 +202,7 @@ class NewBandForm(forms.Form):
     band_number = forms.IntegerField(min_value=1)
     sex = forms.ChoiceField(choices=Animal.Sex.choices, required=True)
     plumage = forms.ModelChoiceField(queryset=Plumage.objects.all(), required=False)
-    location = forms.ModelChoiceField(queryset=Location.objects.all(), required=False)
+    location = forms.ModelChoiceField(queryset=Location.objects.filter(active=True), required=False)
     user = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
 
     def clean(self):
@@ -266,7 +266,7 @@ class NewAnimalForm(forms.Form):
     banding_date = forms.DateField()
     band_color = forms.ModelChoiceField(queryset=Color.objects.all(), required=False)
     band_number = forms.IntegerField(min_value=1)
-    location = forms.ModelChoiceField(queryset=Location.objects.all())
+    location = forms.ModelChoiceField(queryset=Location.objects.filter(active=True))
     comments = forms.CharField(widget=forms.Textarea, required=False)
     user = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
 

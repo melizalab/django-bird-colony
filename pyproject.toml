@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "django-bird-colony"
-version = "0.13.5"
+version = "0.13.6"
 description = "A simple Django app for managing a bird breeding colony"
 readme = "README.rst"
 requires-python = ">=3.10"

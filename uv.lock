@@ -102,7 +102,7 @@ wheels = [
 
 [[package]]
 name = "django-bird-colony"
-version = "0.13.3"
+version = "0.13.5"
 source = { editable = "." }
 dependencies = [
     { name = "django" },
