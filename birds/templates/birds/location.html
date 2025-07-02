@@ -9,6 +9,8 @@
 
 <p>{{ location.description }}</p>
 
+<a href="{% url 'admin:birds_location_change' location.id %}">edit location (admin)</a><br/>
+
 <h3>Animals</h3>
 
 <table class="table table-striped table-condensed">

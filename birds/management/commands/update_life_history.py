@@ -5,6 +5,7 @@ import datetime
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
+from birds import pedigree
 from birds.models import Animal, AnimalLifeHistory
 
 
@@ -122,7 +123,34 @@ class Command(BaseCommand):
             # Progress update
             processed = min(offset + batch_size, total_count)
             self.stdout.write(f"Processed {processed}/{total_count} animals...")
+        self.stdout.write(
+            self.style.SUCCESS(f"Updated life history for {total_count} animals")
+        )
 
         self.stdout.write(
-            self.style.SUCCESS(f"Successfully completed: " f"{created_count} created")
+            "Recalculating inbreeding coefficients for all pedigree animals..."
+        )
+        pedigree_animals = Animal.objects.for_pedigree()
+        ped = pedigree.Pedigree.from_animals(
+            [(animal.uuid, animal.sire, animal.dam) for animal in pedigree_animals]
+        )
+        inbreeding_coeffs = ped.get_inbreeding()
+        # Update life history records for the target animals
+        updated_count = 0
+        for animal in pedigree_animals:
+            try:
+                animal_index = ped.index(animal.uuid)
+                coefficient = float(inbreeding_coeffs[animal_index])
+            except (KeyError, IndexError):
+                coefficient = 0.0
+
+            life_history = animal.history
+            life_history.inbreeding_coefficient = coefficient
+            life_history.save(update_fields=["inbreeding_coefficient"])
+            updated_count += 1
+
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Updated inbreeding coefficients for {updated_count} pedigree animals"
+            )
         )

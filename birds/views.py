@@ -435,14 +435,10 @@ def location_list(request):
         .select_related("room")
         .order_by("room__name", "name")
     )
-    # paginator = Paginator(qs, 25)
-    # page_number = request.GET.get("page")
-    # page_obj = paginator.get_page(page_number)
     return render(
         request,
         "birds/location_list.html",
         {"location_list": qs},
-        # {"page_obj": page_obj, "location_list": page_obj.object_list},
     )
 
 

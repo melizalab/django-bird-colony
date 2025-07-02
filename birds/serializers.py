@@ -164,8 +164,8 @@ class EventSerializer(serializers.ModelSerializer):
 
 
 class PairingSerializer(serializers.ModelSerializer):
-    sire = serializers.StringRelatedField()
-    dam = serializers.StringRelatedField()
+    sire = serializers.StringRelatedField(source="sire.uuid")
+    dam = serializers.StringRelatedField(source="dam.uuid")
 
     class Meta:
         model = Pairing
@@ -211,7 +211,9 @@ class AnimalPedigreeSerializer(serializers.Serializer):
     n_kids_unexpectedly_died = serializers.IntegerField(
         source="children.hatched.lost.count", default=0
     )
+    n_kids_alive = serializers.IntegerField(source="n_alive", default=0)
     inbreeding = serializers.FloatField(source="life_history.inbreeding_coefficient")
+    reserved_by = serializers.StringRelatedField()
 
     def get_alive(self, obj):
         return obj.life_history.is_alive()
