@@ -51,7 +51,6 @@ Quick start
        'widget_tweaks',  # For form tweaking
        'rest_framework',
        'django_filters',
-       'widget_tweaks',
        'fullurl',
        'birds',
    )
