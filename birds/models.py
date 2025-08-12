@@ -116,6 +116,13 @@ class Plumage(models.Model):
         verbose_name_plural = "plumage variants"
 
 
+# class Tag(models.Model):
+#     """Represents a tag for an animal's status in the colony. Replaces the reservation system."""
+
+#     id = models.AutoField(primary_key=True)
+#     created_at = models.DateTimeField(auto_now_add=True)
+
+
 class Status(models.Model):
     """Represents a type of event in the life of an animal.
 
@@ -228,7 +235,7 @@ class Measurement(models.Model):
     # different measures will require different degrees of precision, so we use
     # FloatField here instead of DecimalField.
     value = models.FloatField(help_text="the value of the measurement")
-    created = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     @property
     def formatted(self) -> str:
@@ -395,7 +402,7 @@ class AnimalQuerySet(models.QuerySet):
                         date__lte=on_date,
                         animal=OuterRef("pk"),
                     )
-                    .order_by("-date", "-created")
+                    .order_by("-date", "-created_at")
                     .values("location_id")[:1]
                 ),
             )
@@ -550,7 +557,7 @@ class AnimalQuerySet(models.QuerySet):
                         "uuid"
                     )[:1]
                 ),
-                idx=Window(expression=RowNumber(), order_by=["created", "uuid"]),
+                idx=Window(expression=RowNumber(), order_by=["created_at", "uuid"]),
             )
             .order_by("idx")
         )
@@ -584,7 +591,7 @@ class ParentManger(models.Manager):
             ped.values("child")
             .annotate(parents=ArrayAgg("parent", ordering="parent__sex"))
             # ensure topological sort
-            .order_by("child__created", "child__uuid")
+            .order_by("child__created_at", "child__uuid")
             .values_list("child", "parents")
         )
         return [
@@ -648,7 +655,7 @@ class Animal(models.Model):
         on_delete=models.SET(get_sentinel_user),
         help_text="mark a bird as reserved for a specific user",
     )
-    created = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
     plumage = models.ForeignKey(
         "Plumage", on_delete=models.SET_NULL, blank=True, null=True
     )
@@ -751,8 +758,10 @@ class Animal(models.Model):
         try:
             return self.life_history
         except AnimalLifeHistory.DoesNotExist:
-            life_history, created = AnimalLifeHistory.objects.get_or_create(animal=self)
-            if created:
+            life_history, created_at = AnimalLifeHistory.objects.get_or_create(
+                animal=self
+            )
+            if created_at:
                 life_history.update_from_events()
                 life_history.save()
             return life_history
@@ -1144,7 +1153,7 @@ class EventQuerySet(models.QuerySet):
         return self.exclude(location__isnull=True)
 
     def latest_by_animal(self):
-        return self.order_by("animal_id", "-date", "-created").distinct("animal_id")
+        return self.order_by("animal_id", "-date", "-created_at").distinct("animal_id")
 
     def in_month(self, date: datetime.date | None = None):
         """Only events in a given month (the current one if None)"""
@@ -1174,7 +1183,7 @@ class Event(models.Model):
     entered_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET(get_sentinel_user)
     )
-    created = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     objects = EventQuerySet.as_manager()
 
@@ -1221,12 +1230,12 @@ class Event(models.Model):
         )
 
     class Meta:
-        ordering = ("-date", "-created")
+        ordering = ("-date", "-created_at")
         indexes = (
             models.Index(fields=["animal", "status"], name="animal_status_idx"),
             models.Index(fields=["animal", "date"], name="animal_date_idx"),
         )
-        get_latest_by = ("date", "created")
+        get_latest_by = ("date", "created_at")
 
 
 class PairingManager(models.Manager):
@@ -1324,7 +1333,7 @@ class PairingQuerySet(models.QuerySet):
                     Q(date__gte=OuterRef("began_on")),
                     (Q(animal=OuterRef("sire")) | Q(animal=OuterRef("dam"))),
                 )
-                .order_by("-date", "-created")
+                .order_by("-date", "-created_at")
                 .values("location__name")[:1]
             )
         )
@@ -1357,7 +1366,7 @@ class Pairing(models.Model):
     ended_on = models.DateField(
         null=True, blank=True, help_text="date the pairing ended"
     )
-    created = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
     purpose = models.CharField(
         max_length=64,
         null=True,

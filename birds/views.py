@@ -113,7 +113,7 @@ def animal_view(request, uuid: str):
         .with_child_counts()
         .order_by_life_stage()
     )
-    events = animal.event_set.with_related().order_by("-date", "-created")
+    events = animal.event_set.with_related().order_by("-date", "-created_at")
     samples = animal.sample_set.order_by("-date")
     pairings = (
         animal.pairings().with_related().with_progeny_stats().order_by("-began_on")
@@ -286,7 +286,7 @@ def reservation_entry(request, uuid: str):
 # Events
 @require_http_methods(["GET"])
 def event_list(request, *, animal: str | None = None, location: int | None = None):
-    qs = Event.objects.with_related().order_by("-date", "-created")
+    qs = Event.objects.with_related().order_by("-date", "-created_at")
     if animal is not None:
         animal = get_object_or_404(Animal, uuid=animal)
         qs = qs.filter(animal=animal)
@@ -398,7 +398,7 @@ def measurement_list(
         "event__animal__species",
         "event__animal__band_color",
         "event__entered_by",
-    ).order_by("-event__date", "-created")
+    ).order_by("-event__date", "-created_at")
     if animal is not None:
         animal = get_object_or_404(Animal, uuid=animal)
         qs = qs.filter(event__animal=animal)
@@ -445,7 +445,7 @@ def location_list(request):
 @require_http_methods(["GET"])
 def location_view(request, pk):
     location = get_object_or_404(Location, pk=pk)
-    birds = location.birds().with_related().existing().order_by("-created")
+    birds = location.birds().with_related().existing().order_by("-created_at")
     events = location.event_set.with_related()
 
     return render(
@@ -567,7 +567,7 @@ def pairing_view(request, pk):
     qs = Pairing.objects.with_related().with_progeny_stats()
     pair = get_object_or_404(qs, pk=pk)
     progeny = pair.eggs().with_related().hatched().order_by_life_stage()
-    eggs = pair.eggs().with_related().unhatched().order_by("created")
+    eggs = pair.eggs().with_related().unhatched().order_by("created_at")
     pairings = pair.other_pairings().with_progeny_stats()
     events = pair.events().with_related()
     # kinship should eventually be cached to avoid all this work
@@ -1023,7 +1023,7 @@ def breeding_stats_list(request):
         Animal.objects.with_dates()
         .annotate(nchildren=Count("children"))
         .filter(Q(alive__gt=0) | Q(nchildren__gt=0))
-        .annotate(idx=Window(expression=RowNumber(), order_by=["created", "uuid"]))
+        .annotate(idx=Window(expression=RowNumber(), order_by=["created_at", "uuid"]))
         .select_related("species", "band_color")
         .prefetch_related(
             Prefetch("parents", queryset=Animal.objects.with_dates()),

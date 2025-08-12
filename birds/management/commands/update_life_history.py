@@ -62,11 +62,13 @@ class Command(BaseCommand):
 
     def update_single_animal(self, animal):
         """Update life history for a single animal"""
-        life_history, created = AnimalLifeHistory.objects.get_or_create(animal=animal)
+        life_history, created_at = AnimalLifeHistory.objects.get_or_create(
+            animal=animal
+        )
         life_history.update_from_events()
         life_history.save()
 
-        if created:
+        if created_at:
             self.stdout.write(f"Created life history for {animal}")
         else:
             self.stdout.write(f"Updated life history for {animal}")
