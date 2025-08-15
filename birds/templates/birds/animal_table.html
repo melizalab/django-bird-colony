@@ -10,7 +10,7 @@
     <th>Children</th>
     <th>UUID</th>
     <th>Inbreeding</th>
-    <th>Reserved</th>
+    <th>Tags</th>
   </thead>
   <tbody>
     {% for animal in animal_list %}
@@ -25,7 +25,7 @@
           <td>{{ animal.n_hatched}}</td>
           <td>{{ animal.uuid }}</td>
 	  <td>{{ history.inbreeding_coefficient|default_if_none:""|stringformat:".3g" }}</td>
-          <td>{{ animal.reserved_by|link_to:"birds:user" }}</td>
+          <td>{{ animal.tags.all|url_list }}</td>
         </tr>
     {% endwith %}
     {% endfor %}

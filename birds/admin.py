@@ -12,6 +12,12 @@ class ParentInline(admin.TabularInline):
     autocomplete_fields = ("parent",)
 
 
+class TagInline(admin.TabularInline):
+    model = models.AnimalTag
+    autocomplete_fields = ("tag",)
+    extra = 1
+
+
 class MeasurementInline(admin.TabularInline):
     model = models.Measurement
     extra = 1
@@ -24,12 +30,16 @@ class AnimalAdmin(admin.ModelAdmin):
         "band_color",
         "band_number",
         "plumage",
-        "reserved_by",
         "attributes",
     )
-    list_display = ("name", "species", "band", "uuid", "sex", "plumage", "reserved_by")
-    list_filter = ("species", "sex", "band_color", "plumage", "reserved_by")
-    inlines = (ParentInline,)
+    list_display = ("name", "species", "band", "uuid", "sex", "plumage", "display_tags")
+    list_filter = ("species", "sex", "band_color", "plumage", "tags")
+    search_fields = ("band_color__name", "band_number", "species__code")
+    inlines = (ParentInline, TagInline,)
+
+    def display_tags(self, obj):
+        return ", ".join([tag.name for tag in obj.tags.all()])
+    display_tags.short_description = "Tags"
 
 
 class EventAdmin(admin.ModelAdmin):
@@ -99,6 +109,10 @@ class LocationAdmin(admin.ModelAdmin):
     list_filter = ("room", "nest", "active")
 
 
+class TagAdmin(admin.ModelAdmin):
+    search_fields = ("name", "description")
+
+
 admin.site.register(models.Animal, AnimalAdmin)
 admin.site.register(models.Event, EventAdmin)
 admin.site.register(models.Status, StatusAdmin)
@@ -106,6 +120,7 @@ admin.site.register(models.Sample, SampleAdmin)
 admin.site.register(models.Pairing, PairingAdmin)
 admin.site.register(models.Measurement, MeasurementAdmin)
 admin.site.register(models.Location, LocationAdmin)
+admin.site.register(models.Tag, TagAdmin)
 
 
 for model in (

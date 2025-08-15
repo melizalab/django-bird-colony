@@ -9,7 +9,7 @@ class AnimalSerializer(serializers.ModelSerializer):
     species = serializers.StringRelatedField()
     band_color = serializers.StringRelatedField()
     plumage = serializers.StringRelatedField()
-    reserved_by = serializers.StringRelatedField()
+    tags = serializers.StringRelatedField(many=True)
     sire = serializers.PrimaryKeyRelatedField(read_only=True)
     dam = serializers.PrimaryKeyRelatedField(read_only=True)
     alive = serializers.BooleanField(source="life_history.is_alive")
@@ -27,7 +27,7 @@ class AnimalSerializer(serializers.ModelSerializer):
             "sire",
             "dam",
             "alive",
-            "reserved_by",
+            "tags",
         )
 
 
@@ -35,7 +35,7 @@ class AnimalDetailSerializer(AnimalSerializer):
     species = serializers.StringRelatedField()
     band_color = serializers.StringRelatedField()
     plumage = serializers.StringRelatedField()
-    reserved_by = serializers.StringRelatedField()
+    tags = serializers.StringRelatedField(many=True)
     sire = serializers.PrimaryKeyRelatedField(read_only=True)
     dam = serializers.PrimaryKeyRelatedField(read_only=True)
     age_days = serializers.SerializerMethodField()
@@ -61,7 +61,7 @@ class AnimalDetailSerializer(AnimalSerializer):
             "band_number",
             "sire",
             "dam",
-            "reserved_by",
+            "tags",
             "age_days",
             "alive",
             "last_location",
@@ -213,7 +213,7 @@ class AnimalPedigreeSerializer(serializers.Serializer):
     )
     n_kids_alive = serializers.IntegerField(source="n_alive", default=0)
     inbreeding = serializers.FloatField(source="life_history.inbreeding_coefficient")
-    reserved_by = serializers.StringRelatedField()
+    tags = serializers.StringRelatedField(many=True)
 
     def get_alive(self, obj):
         return obj.life_history.is_alive()

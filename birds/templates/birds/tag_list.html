@@ -1,0 +1,28 @@
+{% extends "base_view.html" %}
+
+{% block title %} meliza-lab : Tags {% endblock %}
+
+{% block content %}
+<h2>Tags</h2>
+
+<p>Select a tag to list all the associated animals.</p>
+
+<table class="table table-striped table-condensed">
+  <thead>
+    <th>Tag</th>
+    <th>Living</th>
+    <th>Total</th>
+    <th>Description</th>
+  </thead>
+  <tbody>
+    {% for tag in tag_list %}
+        <tr>
+          <td><a href="{% url 'birds:tag' tag.id %}">{{ tag }}</a></td>
+          <td>{{ tag.n_tagged_alive }}</td>	  
+          <td>{{ tag.n_tagged }}</td>
+	  <td>{{ tag.description }}</td>
+        </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

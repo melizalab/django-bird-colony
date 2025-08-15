@@ -52,6 +52,7 @@ from birds.models import (
     Sample,
     SampleType,
     Status,
+    Tag
 )
 from birds.tools import tabulate_pairs
 
@@ -462,30 +463,30 @@ def location_view(request, pk):
 
 # Users
 @require_http_methods(["GET"])
-def user_list(request):
+def tag_list(request):
     queryset = (
-        User.objects.filter(is_active=True)
+        Tag.objects
         .annotate(
-            n_reserved=Count("animal"),
-            n_reserved_alive=Count(
-                "animal",
-                filter=Q(animal__life_history__acquired_on__isnull=False)
-                & Q(animal__life_history__died_on__isnull=True),
+            n_tagged=Count("animals"),
+            n_tagged_alive=Count(
+                "animals",
+                filter=Q(animals__life_history__acquired_on__isnull=False)
+                & Q(animals__life_history__died_on__isnull=True),
             ),
         )
-        .order_by("-n_reserved")
+        .order_by("-n_tagged")
     )
     return render(
         request,
-        "birds/user_list.html",
-        {"user_list": queryset},
+        "birds/tag_list.html",
+        {"tag_list": queryset},
     )
 
 
 @require_http_methods(["GET"])
-def user_view(request, pk):
-    user = get_object_or_404(User, pk=pk)
-    reserved = user.animal_set.with_related().order_by_life_stage()
+def tag_view(request, pk):
+    tag = get_object_or_404(Tag, pk=pk)
+    reserved = tag.animals.with_related().order_by_life_stage()
     query = request.GET.copy()
     try:
         page_number = query.pop("page")[-1]
@@ -496,9 +497,9 @@ def user_view(request, pk):
     page_obj = paginator.get_page(page_number)
     return render(
         request,
-        "birds/user.html",
+        "birds/tag.html",
         {
-            "reserver": user,
+            "tag": tag,
             "filter": f,
             "query": query,
             "page_obj": page_obj,

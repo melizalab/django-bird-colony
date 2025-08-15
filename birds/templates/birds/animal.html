@@ -8,7 +8,7 @@
 
 <hr>
 <dl class="dl-horizontal">
-<dt>reserved by</dt><dd>{% if animal.reserved_by %}<a href="{% url 'birds:user' animal.reserved_by.id %}">{{ animal.reserved_by }}</a>{% endif %}
+<dt>tags</dt><dd>{{ animal.tags.all|url_list }}</dd>
   </dd>  <dt>species</dt><dd>{{ animal.species }}</dd>
   <dt>sex</dt><dd>{{ animal.sex }}</dd>
   <dt>plumage</dt><dd>{{ animal.plumage }}</dd>

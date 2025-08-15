@@ -21,7 +21,7 @@
     <th>Age</th>
     <th>Status</th>
     <th>UUID</th>
-    <th>Reserved</th>
+    <th>Tags</th>
   </thead>
   <tbody>
     {% for animal in animal_list %}
@@ -33,7 +33,7 @@
           <td>{{ history.age_display }}</td>
           <td>{{ history.status_display }}</td>
           <td>{{ animal.uuid }}</td>
-          <td>{{ animal.reserved_by|link_to:"birds:user" }}</td>
+          <td>{{ animal.tags.all|url_list }}</td>
           <td></td>
         </tr>
     {% endwith %}

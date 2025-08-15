@@ -23,6 +23,7 @@ from birds.models import (
     SampleType,
     Species,
     Status,
+    Tag,
 )
 
 warnings.filterwarnings("error")
@@ -294,33 +295,33 @@ class LocationViewTests(BaseColonyTest):
         self.assertEqual(len(response.context["animal_list"]), 2 + self.n_children)
 
 
-class UserViewTest(BaseColonyTest):
+class TagViewTest(BaseColonyTest):
     def setUp(self):
-        self.test_user1 = User.objects.create_user(
-            username="testuser1", password="1X<ISRUkw+tuK"
+        self.test_tag = Tag.objects.create(name="testtag", description="a test tag, for testing"
         )
-        self.test_user1.save()
 
-    def test_user_list_url_exists_at_desired_location(self):
-        response = self.client.get("/birds/users/")
+    def test_tag_list_url_exists_at_desired_location(self):
+        response = self.client.get("/birds/tags/")
         self.assertEqual(response.status_code, 200)
 
-    def test_user_list_contains_all_users(self):
-        response = self.client.get(reverse("birds:users"))
+    def test_tag_list_contains_all_tags(self):
+        response = self.client.get(reverse("birds:tags"))
         self.assertEqual(response.status_code, 200)
         self.assertCountEqual(
-            response.context["user_list"],
-            [self.test_user1, models.get_sentinel_user()],
+            response.context["tag_list"],
+            [self.test_tag]
         )
 
-    def test_user_detail_404_invalid_id(self):
-        response = self.client.get(reverse("birds:user", args=[100223]))
+    def test_tag_detail_404_invalid_id(self):
+        response = self.client.get(reverse("birds:tag", args=[100223]))
         self.assertEqual(response.status_code, 404)
 
-    def test_user_detail_view_contains_all_reserved_birds(self):
+    def test_tag_detail_view_contains_all_tagged_birds(self):
         species = Species.objects.get(pk=1)
-        animal = Animal.objects.create(species=species, reserved_by=self.test_user1)
-        response = self.client.get(reverse("birds:user", args=[self.test_user1.id]))
+        animal = Animal.objects.create(species=species)
+        animal.tags.set([self.test_tag])
+        animal.save()
+        response = self.client.get(reverse("birds:tag", args=[self.test_tag.id]))
         self.assertCountEqual(response.context["animal_list"], [animal])
 
 

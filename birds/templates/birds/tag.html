@@ -2,11 +2,11 @@
 {% load widget_tweaks %}
 {% load bird_tags %}
 
-{% block title %} meliza-lab : user : {{ reserver }} {% endblock %}
+{% block title %} meliza-lab : tag : {{ tag }} {% endblock %}
 
 {% block content %}
 
-<h2>Animals reserved by {{ reserver.get_full_name }}</h2>
+<h2>Animals tagged with {{ tag }}</h2>
 
 <form class="form-horizontal" method="get" role="form">
   <div class="form-group">

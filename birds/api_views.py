@@ -151,11 +151,11 @@ def measurement_list(request, format=None):
 @api_view(["GET"])
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer, JSONLRenderer])
 def animal_pedigree(request, format=None):
-    """Streams a list of animals with their parents and various statistics important for breeding.
+    """A list of animals with their parents and various statistics important for breeding.
 
     Only animals that are currently alive or have descendents are included in
     the pedigree. The results can be further filtered using standard Animal query
-    params.
+    params. This endpoint can be retrieved as a streaming response.
 
     """
     qs = (

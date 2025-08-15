@@ -116,11 +116,22 @@ class Plumage(models.Model):
         verbose_name_plural = "plumage variants"
 
 
-# class Tag(models.Model):
-#     """Represents a tag for an animal's status in the colony. Replaces the reservation system."""
+class Tag(models.Model):
+    """Represents a tag for an animal's status in the colony. Replaces the reservation system."""
 
-#     id = models.AutoField(primary_key=True)
-#     created_at = models.DateTimeField(auto_now_add=True)
+    id = models.AutoField(primary_key=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    name = models.CharField(max_length=16, unique=True)
+    description = models.TextField()
+
+    def __str__(self) -> str:
+        return self.name
+
+    def get_absolute_url(self):
+        return reverse("birds:tag", kwargs={"pk": self.id})
+
+    class Meta:
+        ordering = ("name",)
 
 
 class Status(models.Model):
@@ -481,7 +492,7 @@ class AnimalQuerySet(models.QuerySet):
             "reserved_by",
             "species",
             "band_color",
-        ).prefetch_related("species__age_set")
+        ).prefetch_related("species__age_set", "tags")
 
     def hatched(self, on_date: datetime.date | None = None):
         """Only birds that were born in the colony (excludes eggs)."""
@@ -655,6 +666,7 @@ class Animal(models.Model):
         on_delete=models.SET(get_sentinel_user),
         help_text="mark a bird as reserved for a specific user",
     )
+    tags = models.ManyToManyField("Tag", related_name="animals", through="AnimalTag", blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     plumage = models.ForeignKey(
         "Plumage", on_delete=models.SET_NULL, blank=True, null=True
@@ -1166,6 +1178,21 @@ class EventQuerySet(models.QuerySet):
 
     def count_by_status(self):
         return self.values("status__name").annotate(count=Count("id"))
+
+
+class AnimalTag(models.Model):
+    """Represents a many-to-many relationship between tags and animals"""
+
+    id = models.AutoField(primary_key=True)
+    animal = models.ForeignKey("Animal", on_delete=models.CASCADE)
+    tag = models.ForeignKey("Tag", on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self) -> str:
+        return f"{self.animal} tagged with {self.tag}"
+    
+    class Meta:
+        unique_together = ("animal", "tag")
 
 
 class Event(models.Model):
