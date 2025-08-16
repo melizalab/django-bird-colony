@@ -35,10 +35,14 @@ class AnimalAdmin(admin.ModelAdmin):
     list_display = ("name", "species", "band", "uuid", "sex", "plumage", "display_tags")
     list_filter = ("species", "sex", "band_color", "plumage", "tags")
     search_fields = ("band_color__name", "band_number", "species__code")
-    inlines = (ParentInline, TagInline,)
+    inlines = (
+        ParentInline,
+        TagInline,
+    )
 
     def display_tags(self, obj):
         return ", ".join([tag.name for tag in obj.tags.all()])
+
     display_tags.short_description = "Tags"
 
 

@@ -35,9 +35,19 @@ urlpatterns = [
         name="set_sex",
     ),
     path(
-        "animals/<uuid>/reserve/",
-        login_required(views.reservation_entry),
-        name="update_reservation",
+        "animals/<uuid:uuid>/tags/",
+        login_required(views.update_tags),
+        name="update_tags",
+    ),
+    path(
+        "animals/<uuid:uuid>/tags/toggle/<int:tag_id>/",
+        login_required(views.toggle_tag),
+        name="toggle_tag",
+    ),
+    path(
+        "animals/<uuid:uuid>/tags/create/",
+        login_required(views.create_tag),
+        name="create_tag",
     ),
     path(
         "animals/<uuid>/new-band/",

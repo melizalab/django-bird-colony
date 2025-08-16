@@ -666,7 +666,9 @@ class Animal(models.Model):
         on_delete=models.SET(get_sentinel_user),
         help_text="mark a bird as reserved for a specific user",
     )
-    tags = models.ManyToManyField("Tag", related_name="animals", through="AnimalTag", blank=True)
+    tags = models.ManyToManyField(
+        "Tag", related_name="animals", through="AnimalTag", blank=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     plumage = models.ForeignKey(
         "Plumage", on_delete=models.SET_NULL, blank=True, null=True
@@ -1187,10 +1189,10 @@ class AnimalTag(models.Model):
     animal = models.ForeignKey("Animal", on_delete=models.CASCADE)
     tag = models.ForeignKey("Tag", on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     def __str__(self) -> str:
         return f"{self.animal} tagged with {self.tag}"
-    
+
     class Meta:
         unique_together = ("animal", "tag")
 

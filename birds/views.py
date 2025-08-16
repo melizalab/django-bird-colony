@@ -4,7 +4,6 @@ import datetime
 from collections import Counter, defaultdict
 from itertools import groupby
 
-from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.db.models import Count, Prefetch, Q, Window
 from django.db.models.functions import RowNumber
@@ -16,6 +15,7 @@ from django.urls import reverse
 from django.utils import dateparse
 from django.utils.timezone import make_aware
 from django.utils.translation import gettext_lazy as _
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from birds import __version__, pedigree
@@ -36,9 +36,9 @@ from birds.forms import (
     NewBandForm,
     NewEggForm,
     NewPairingForm,
-    ReservationForm,
     SampleForm,
     SexForm,
+    TagChangeForm,
 )
 from birds.models import (
     ADULT_ANIMAL_NAME,
@@ -52,7 +52,7 @@ from birds.models import (
     Sample,
     SampleType,
     Status,
-    Tag
+    Tag,
 )
 from birds.tools import tabulate_pairs
 
@@ -252,35 +252,99 @@ def update_sex(request, uuid: str):
 
 
 @require_http_methods(["GET", "POST"])
-def reservation_entry(request, uuid: str):
-    # TODO write tests
+def update_tags(request, uuid: str):
+    """Main tag editing page"""
     animal = get_object_or_404(Animal, pk=uuid)
     if request.method == "POST":
-        form = ReservationForm(request.POST)
+        form = TagChangeForm(request.POST)
         if form.is_valid():
             data = form.cleaned_data
-            if data["entered_by"] is None:
-                user = request.user
-                animal.reserved_by = None
-                descr = f"reservation released: {data['description']}"
+            if data["description"]:
+                descr = f"updated tags: {data['description']}"
+            elif not animal.tags.exists():
+                descr = "cleared all tags"
             else:
-                user = animal.reserved_by = data["entered_by"]
-                descr = f"reservation created: {data['description']}"
-            animal.save()
+                tag_list = ",".join(tag.name for tag in animal.tags.all())
+                descr = f"tags set to: {tag_list}"
             Event.objects.create(
                 animal=animal,
                 date=data["date"],
                 status=data["status"],
-                entered_by=user,
+                entered_by=data["entered_by"],
                 description=descr,
             )
-            return HttpResponseRedirect(reverse("birds:animal", args=(animal.pk,)))
+            return HttpResponseRedirect(reverse("birds:animal", args=(animal.uuid,)))
     else:
-        form = ReservationForm()
-        if animal.reserved_by is None:
-            form.initial["entered_by"] = request.user
+        form = TagChangeForm()
+        form.initial["entered_by"] = request.user
+
+    all_tags = Tag.objects.all().order_by("name")
+    animal_tags = animal.tags.all()
+
     return render(
-        request, "birds/reservation_entry.html", {"animal": animal, "form": form}
+        request,
+        "birds/tag_edit.html",
+        {
+            "animal": animal,
+            "all_tags": all_tags,
+            "animal_tags": animal_tags,
+            "form": form,
+        },
+    )
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def toggle_tag(request, uuid: str, tag_id: int):
+    """Toggle a tag on/off for an animal via HTMX"""
+    animal = get_object_or_404(Animal, pk=uuid)
+    tag = get_object_or_404(Tag, pk=tag_id)
+
+    if animal.tags.filter(pk=tag_id).exists():
+        animal.tags.remove(tag)
+    else:
+        animal.tags.add(tag)
+
+    # Return updated tag list for HTMX
+    return render(
+        request,
+        "birds/partials/tag_list.html",
+        {
+            "animal": animal,
+            "all_tags": Tag.objects.all().order_by("name"),
+        },
+    )
+
+
+@require_http_methods(["POST"])
+def create_tag(request, uuid: str):
+    """Create a new tag and add it to the animal"""
+    animal = get_object_or_404(Animal, pk=uuid)
+
+    # TODO: use a form
+    tag_name = request.POST.get("tag_name", "").strip()
+    tag_description = request.POST.get("tag_description", "").strip()
+
+    if not tag_name:
+        return HttpResponse("Tag name is required", status=400)
+
+    # Check if tag already exists
+    tag, created = Tag.objects.get_or_create(
+        name=tag_name, defaults={"description": tag_description}
+    )
+
+    # Add to animal if not already present
+    if not animal.tags.filter(pk=tag.pk).exists():
+        animal.tags.add(tag)
+
+    # Return updated tag list
+    return render(
+        request,
+        "birds/partials/tag_list.html",
+        {
+            "animal": animal,
+            "all_tags": Tag.objects.all().order_by("name"),
+        },
     )
 
 
@@ -464,18 +528,14 @@ def location_view(request, pk):
 # Users
 @require_http_methods(["GET"])
 def tag_list(request):
-    queryset = (
-        Tag.objects
-        .annotate(
-            n_tagged=Count("animals"),
-            n_tagged_alive=Count(
-                "animals",
-                filter=Q(animals__life_history__acquired_on__isnull=False)
-                & Q(animals__life_history__died_on__isnull=True),
-            ),
-        )
-        .order_by("-n_tagged")
-    )
+    queryset = Tag.objects.annotate(
+        n_tagged=Count("animals"),
+        n_tagged_alive=Count(
+            "animals",
+            filter=Q(animals__life_history__acquired_on__isnull=False)
+            & Q(animals__life_history__died_on__isnull=True),
+        ),
+    ).order_by("-n_tagged")
     return render(
         request,
         "birds/tag_list.html",

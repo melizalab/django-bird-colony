@@ -12,7 +12,6 @@ from birds.forms import (
     NewAnimalForm,
     NewBandForm,
     NewPairingForm,
-    ReservationForm,
     SexForm,
 )
 from birds.models import (
@@ -50,22 +49,22 @@ class SexFormTest(TestCase):
         self.assertTrue(form.is_valid())
 
 
-class ReservationFormTest(TestCase):
-    def test_without_reservation_status(self):
-        user = models.get_sentinel_user()
-        form = ReservationForm({"date": today(), "entered_by": user})
-        self.assertFalse(form.is_valid())
+# class ReservationFormTest(TestCase):
+#     def test_without_reservation_status(self):
+#         user = models.get_sentinel_user()
+#         form = ReservationForm({"date": today(), "entered_by": user})
+#         self.assertFalse(form.is_valid())
 
-    def test_with_reservation_status(self):
-        _ = Status.objects.get_or_create(name=models.RESERVATION_EVENT_NAME)
-        user = models.get_sentinel_user()
-        form = ReservationForm({"date": today(), "entered_by": user})
-        self.assertTrue(form.is_valid())
+#     def test_with_reservation_status(self):
+#         _ = Status.objects.get_or_create(name=models.RESERVATION_EVENT_NAME)
+#         user = models.get_sentinel_user()
+#         form = ReservationForm({"date": today(), "entered_by": user})
+#         self.assertTrue(form.is_valid())
 
-    def test_without_user(self):
-        _ = Status.objects.get_or_create(name=models.RESERVATION_EVENT_NAME)
-        form = ReservationForm({"date": today()})
-        self.assertTrue(form.is_valid())
+#     def test_without_user(self):
+#         _ = Status.objects.get_or_create(name=models.RESERVATION_EVENT_NAME)
+#         form = ReservationForm({"date": today()})
+#         self.assertTrue(form.is_valid())
 
 
 class NewBandFormTest(TestCase):

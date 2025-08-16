@@ -12,9 +12,7 @@ class AnimalFilter(filters.FilterSet):
     plumage = filters.CharFilter(field_name="plumage__name", lookup_expr="icontains")
     living = filters.BooleanFilter(field_name="alive", method="is_alive")
     available = filters.BooleanFilter(field_name="tags", lookup_expr="isnull")
-    tagged = filters.CharFilter(
-        field_name="tags__name", lookup_expr="iexact"
-    )
+    tagged = filters.CharFilter(field_name="tags__name", lookup_expr="iexact")
     parent = filters.CharFilter(field_name="parents__uuid", lookup_expr="istartswith")
     child = filters.CharFilter(field_name="children__uuid", lookup_expr="istartswith")
 

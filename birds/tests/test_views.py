@@ -297,7 +297,8 @@ class LocationViewTests(BaseColonyTest):
 
 class TagViewTest(BaseColonyTest):
     def setUp(self):
-        self.test_tag = Tag.objects.create(name="testtag", description="a test tag, for testing"
+        self.test_tag = Tag.objects.create(
+            name="testtag", description="a test tag, for testing"
         )
 
     def test_tag_list_url_exists_at_desired_location(self):
@@ -307,10 +308,7 @@ class TagViewTest(BaseColonyTest):
     def test_tag_list_contains_all_tags(self):
         response = self.client.get(reverse("birds:tags"))
         self.assertEqual(response.status_code, 200)
-        self.assertCountEqual(
-            response.context["tag_list"],
-            [self.test_tag]
-        )
+        self.assertCountEqual(response.context["tag_list"], [self.test_tag])
 
     def test_tag_detail_404_invalid_id(self):
         response = self.client.get(reverse("birds:tag", args=[100223]))

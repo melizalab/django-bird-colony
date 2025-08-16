@@ -1,0 +1,37 @@
+<!-- birds/partials/tag_list.html -->
+<div id="tag-list">
+    {% for tag in all_tags %}
+        <span class="tag-item {% if tag in animal.tags.all %}active{% endif %}"
+              hx-post="{% url 'birds:toggle_tag' animal.uuid tag.id %}"
+              hx-target="#tag-list"
+              hx-swap="outerHTML"
+              {% if tag.description %}
+                  data-toggle="tooltip" 
+                  data-placement="top" 
+                  title="{{ tag.description }}"
+              {% endif %}>
+            {{ tag.name }}
+        </span>
+    {% empty %}
+        <p class="text-muted">No tags available. Create one below.</p>
+    {% endfor %}
+    
+    <!-- Update current tags display -->
+    <script>
+        // Update the current tags display
+        const currentTagsDiv = document.getElementById('current-tags-display');
+        const currentTags = [
+            {% for tag in animal.tags.all %}
+                "{{ tag.name }}"{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+        
+        if (currentTags.length > 0) {
+            currentTagsDiv.innerHTML = currentTags.map(tag => 
+                `<span class="label label-primary">${tag}</span>`
+            ).join(' ');
+        } else {
+            currentTagsDiv.innerHTML = '<span class="text-muted">No tags assigned</span>';
+        }
+    </script>
+</div>

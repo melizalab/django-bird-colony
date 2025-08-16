@@ -3,6 +3,7 @@ from django import forms
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
 from django.template.defaultfilters import pluralize
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from birds import models
@@ -225,13 +226,39 @@ class NewBandForm(forms.Form):
         return data
 
 
-class ReservationForm(forms.Form):
-    """Form to create or clear a reservation"""
+# class ReservationForm(forms.Form):
+#     """Form to create or clear a reservation"""
 
-    date = forms.DateField()
-    description = forms.CharField(widget=forms.Textarea, required=False)
+
+class TagChangeForm(forms.Form):
+    """Form to update tags on an animal.
+
+    Adding and removing tags happens through an HTMX view, so this form just
+    handles the date and user comments used to generate an event logging the
+    changes.
+
+    """
+
+    date = forms.DateField(
+        initial=timezone.now().date,
+        widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+        help_text="Date of tag changes (defaults to today)",
+        required=True,
+    )
+    description = forms.CharField(
+        required=False,
+        widget=forms.Textarea(
+            attrs={
+                "class": "form-control",
+                "rows": 4,
+                "placeholder": "Optional comment about these tag changes...",
+            }
+        ),
+        help_text="Optional comment to log with these changes",
+    )
     entered_by = forms.ModelChoiceField(
-        queryset=User.objects.filter(is_active=True), required=False
+        queryset=User.objects.filter(is_active=True),
+        widget=forms.Select(attrs={"class": "form-control"}),
     )
 
     def clean(self):

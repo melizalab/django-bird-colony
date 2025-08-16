@@ -3,60 +3,80 @@
 import django.db.models.deletion
 from django.db import migrations, models
 
+
 def add_tag_for_reservation(apps, schema_editor):
-    """Add a tag corresponding to the reserved_by field, if set """
+    """Add a tag corresponding to the reserved_by field, if set"""
     Animal = apps.get_model("birds", "Animal")
     Tag = apps.get_model("birds", "Tag")
     qs = Animal.objects.filter(reserved_by__isnull=False)
     for animal in qs:
         user = animal.reserved_by
-        tag, _ = Tag.objects.get_or_create(name=user.username,
-                                        description=f"reserved by {user.first_name} {user.last_name}")
+        tag, _ = Tag.objects.get_or_create(
+            name=user.username,
+            description=f"reserved by {user.first_name} {user.last_name}",
+        )
         animal.tags.set([tag])
         animal.save()
+
 
 # Functions from the following migrations need manual copying.
 # Move them and any dependencies into this file, then update the
 # RunPython operations to refer to the local versions:
 # birds.migrations.0035_tag_animaltag_animal_tags
 
-class Migration(migrations.Migration):
 
-    replaces = [('birds', '0035_tag_animaltag_animal_tags'), ('birds', '0036_alter_tag_options_alter_animal_tags')]
+class Migration(migrations.Migration):
+    replaces = [
+        ("birds", "0035_tag_animaltag_animal_tags"),
+        ("birds", "0036_alter_tag_options_alter_animal_tags"),
+    ]
 
     dependencies = [
-        ('birds', '0034_alter_event_options_rename_created_animal_created_at_and_more'),
+        ("birds", "0034_alter_event_options_rename_created_animal_created_at_and_more"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Tag',
+            name="Tag",
             fields=[
-                ('id', models.AutoField(primary_key=True, serialize=False)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('name', models.CharField(max_length=16, unique=True)),
-                ('description', models.TextField()),
+                ("id", models.AutoField(primary_key=True, serialize=False)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("name", models.CharField(max_length=16, unique=True)),
+                ("description", models.TextField()),
             ],
-            options={'ordering': ('name',)},
+            options={"ordering": ("name",)},
         ),
         migrations.CreateModel(
-            name='AnimalTag',
+            name="AnimalTag",
             fields=[
-                ('id', models.AutoField(primary_key=True, serialize=False)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('animal', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='birds.animal')),
-                ('tag', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='birds.tag')),
+                ("id", models.AutoField(primary_key=True, serialize=False)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "animal",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, to="birds.animal"
+                    ),
+                ),
+                (
+                    "tag",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, to="birds.tag"
+                    ),
+                ),
             ],
             options={
-                'unique_together': {('animal', 'tag')},
+                "unique_together": {("animal", "tag")},
             },
         ),
         migrations.AddField(
-            model_name='animal',
-            name='tags',
-            field=models.ManyToManyField(blank=True, related_name='animals', through='birds.AnimalTag', to='birds.tag'),
+            model_name="animal",
+            name="tags",
+            field=models.ManyToManyField(
+                blank=True,
+                related_name="animals",
+                through="birds.AnimalTag",
+                to="birds.tag",
+            ),
         ),
-        migrations.RunPython(
-            code=add_tag_for_reservation
-        ),
+        migrations.RunPython(code=add_tag_for_reservation),
     ]

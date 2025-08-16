@@ -8,8 +8,8 @@
 
 <hr>
 <dl class="dl-horizontal">
-<dt>tags</dt><dd>{{ animal.tags.all|url_list }}</dd>
-  </dd>  <dt>species</dt><dd>{{ animal.species }}</dd>
+  <dt>tags</dt><dd>{{ animal.tags.all|url_list }}</dd>
+  <dt>species</dt><dd>{{ animal.species }}</dd>
   <dt>sex</dt><dd>{{ animal.sex }}</dd>
   <dt>plumage</dt><dd>{{ animal.plumage }}</dd>
   <dt>uuid</dt><dd>{{ animal.uuid }}</dd>
@@ -44,13 +44,7 @@
 {% if not animal.sexed %}
 <a href="{% url 'birds:set_sex' animal.uuid %}">update sex</a><br/>
 {% endif %}
-<a href="{% url 'birds:update_reservation' animal.uuid %}">
-  {% if animal.reserved_by %}
-  release reservation
-  {% else %}
-  reserve this bird
-  {% endif %}
-</a><br/>
+<a href="{% url 'birds:update_tags' animal.uuid %}">update tags (reservations)</a><br/>
 {% if not animal.band_number %}
 <a href="{% url 'birds:new_band' animal.uuid %}">band bird</a><br/>
 {% endif %}
