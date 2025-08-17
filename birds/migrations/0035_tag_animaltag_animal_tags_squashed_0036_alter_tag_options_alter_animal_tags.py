@@ -19,10 +19,27 @@ def add_tag_for_reservation(apps, schema_editor):
         animal.save()
 
 
-# Functions from the following migrations need manual copying.
-# Move them and any dependencies into this file, then update the
-# RunPython operations to refer to the local versions:
-# birds.migrations.0035_tag_animaltag_animal_tags
+def set_reserved_by_to_first_tag(apps, schema_editor):
+    """Set reserved_by to the first tag that matches a user's name"""
+    Animal = apps.get_model("birds", "Animal")
+    User = apps.get_model("auth", "User")
+    # Get all usernames at once to avoid repeated queries
+    usernames = set(User.objects.values_list("username", flat=True))
+    # Prefetch tags to avoid N+1 queries
+    animals_with_tags = Animal.objects.filter(tags__isnull=False).prefetch_related(
+        "tags"
+    )
+
+    for animal in animals_with_tags:
+        for tag in animal.tags.all():
+            if tag.name in usernames:
+                try:
+                    user = User.objects.get(username=tag.name)
+                    animal.reserved_by = user
+                    animal.save()
+                    break
+                except User.DoesNotExist:
+                    pass
 
 
 class Migration(migrations.Migration):
@@ -78,5 +95,7 @@ class Migration(migrations.Migration):
                 to="birds.tag",
             ),
         ),
-        migrations.RunPython(code=add_tag_for_reservation),
+        migrations.RunPython(
+            code=add_tag_for_reservation, reverse_code=set_reserved_by_to_first_tag
+        ),
     ]

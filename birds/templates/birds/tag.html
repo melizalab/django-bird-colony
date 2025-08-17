@@ -8,6 +8,18 @@
 
 <h2>Animals tagged with {{ tag }}</h2>
 
+<dl class="dl-horizontal">
+  <dt>description</dt><dd>{{ tag.description }}</dd>
+  <dt>total</dt><dd>{{ tag.animals.count }}</dd>
+  <dt>alive</dt><dd>{{ tag.animals.alive.count }}</dd>
+</dl>
+
+<p>
+  <a href="{% url 'birds:tags' %}">all tags</a><br/>
+  <a href="{% url 'admin:birds_tag_change' tag.id %}">edit this tag</a><br/>
+</p>
+
+
 <form class="form-horizontal" method="get" role="form">
   <div class="form-group">
     <div class="col-sm-2">

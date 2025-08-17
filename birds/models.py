@@ -489,7 +489,6 @@ class AnimalQuerySet(models.QuerySet):
         return self.select_related(
             "life_history",
             "life_history__last_location",
-            "reserved_by",
             "species",
             "band_color",
         ).prefetch_related("species__age_set", "tags")
@@ -659,13 +658,6 @@ class Animal(models.Model):
         through_fields=("child", "parent"),
     )
 
-    reserved_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        blank=True,
-        null=True,
-        on_delete=models.SET(get_sentinel_user),
-        help_text="mark a bird as reserved for a specific user",
-    )
     tags = models.ManyToManyField(
         "Tag", related_name="animals", through="AnimalTag", blank=True
     )
