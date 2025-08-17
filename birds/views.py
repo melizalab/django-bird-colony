@@ -39,6 +39,7 @@ from birds.forms import (
     SampleForm,
     SexForm,
     TagChangeForm,
+    TagCreateForm,
 )
 from birds.models import (
     ADULT_ANIMAL_NAME,
@@ -289,6 +290,7 @@ def update_tags(request, uuid: str):
             "all_tags": all_tags,
             "animal_tags": animal_tags,
             "form": form,
+            "tag_create_form": TagCreateForm(),  # Add this for the partial
         },
     )
 
@@ -320,30 +322,22 @@ def toggle_tag(request, uuid: str, tag_id: int):
 def create_tag(request, uuid: str):
     """Create a new tag and add it to the animal"""
     animal = get_object_or_404(Animal, pk=uuid)
+    form = TagCreateForm(request.POST)
 
-    # TODO: use a form
-    tag_name = request.POST.get("tag_name", "").strip()
-    tag_description = request.POST.get("tag_description", "").strip()
-
-    if not tag_name:
-        return HttpResponse("Tag name is required", status=400)
-
-    # Check if tag already exists
-    tag, created = Tag.objects.get_or_create(
-        name=tag_name, defaults={"description": tag_description}
-    )
-
-    # Add to animal if not already present
-    if not animal.tags.filter(pk=tag.pk).exists():
+    if form.is_valid():
+        tag = form.save()
         animal.tags.add(tag)
+        # Success: return clean form
+        form = TagCreateForm()
 
-    # Return updated tag list
+    # Always return the same partial (with or without errors)
     return render(
         request,
         "birds/partials/tag_list.html",
         {
             "animal": animal,
             "all_tags": Tag.objects.all().order_by("name"),
+            "tag_create_form": form,  # Pass form with errors or clean form
         },
     )
 

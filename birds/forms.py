@@ -18,6 +18,7 @@ from birds.models import (
     Sample,
     Species,
     Status,
+    Tag,
 )
 
 
@@ -226,10 +227,6 @@ class NewBandForm(forms.Form):
         return data
 
 
-# class ReservationForm(forms.Form):
-#     """Form to create or clear a reservation"""
-
-
 class TagChangeForm(forms.Form):
     """Form to update tags on an animal.
 
@@ -265,6 +262,26 @@ class TagChangeForm(forms.Form):
         data = super().clean()
         data["status"] = get_status_or_error(models.RESERVATION_EVENT_NAME)
         return data
+
+
+class TagCreateForm(forms.ModelForm):
+    description = forms.CharField(
+        required=True,
+        widget=forms.Textarea(
+            attrs={
+                "class": "form-control",
+                "rows": 4,
+                "placeholder": "Description of this tag",
+            }
+        ),
+    )
+
+    class Meta:
+        model = Tag
+        fields = (
+            "name",
+            "description",
+        )
 
 
 class SexForm(forms.Form):

@@ -51,11 +51,6 @@
     pointer-events: none;
 }
 
-.create-tag-btn {
-    padding-left: 0;
-    margin-left: 3px;
-    margin-top: 10px;
-}
 </style>
 {% endblock %}
 
@@ -85,69 +80,49 @@ function toggleNewTagForm() {
         <h3 class="panel-title">Edit Tags: {{ animal }}</h3>
     </div>
     <div class="panel-body">
-      <p><strong>Instructions:</strong> This form is used to update the tags for an animal. After selecting zero or more tags,
-	set the date and enter an optional comment to generate a corresponding event in the database.</p>
+        <p><strong>Instructions:</strong> This form is used to update the tags for an animal. After selecting zero or more tags,
+        set the date and enter an optional comment to generate a corresponding event in the database.</p>
         
-        <div id="tag-list" 
-             hx-target="#tag-list"
-             hx-swap="outerHTML">
-            {% include "birds/partials/tag_list.html" %}
-        </div>
-
-        <button type="button" class="btn btn-link create-tag-btn" onclick="toggleNewTagForm()">
-            <span class="glyphicon glyphicon-plus"></span> Create New Tag
-        </button>
-
-        <div id="new-tag-form" class="new-tag-form" style="display: none;">
-            <h4>Create New Tag</h4>
-            <form hx-post="{% url 'birds:create_tag' animal.uuid %}"
-                  hx-target="#tag-list"
-                  hx-swap="outerHTML">
-                {% csrf_token %}
-                <div class="form-group">
-                    <label for="tag_name">Tag Name:</label>
-                    <input type="text" id="tag_name" name="tag_name" class="form-control" 
-                           placeholder="Enter tag name" required maxlength="16">
-                </div>
-                <div class="form-group">
-                    <label for="tag_description">Description:</label>
-                    <textarea id="tag_description" name="tag_description" class="form-control" 
-                              rows="2" placeholder="Optional description"></textarea>
-                </div>
-                <button type="submit" class="btn btn-primary">Create and Add Tag</button>
-                <button type="button" class="btn btn-default" onclick="toggleNewTagForm()">Cancel</button>
-            </form>
-        </div>
-
-        <!-- Save Changes Form -->
-        <div style="margin-top: 30px;">
-            <form method="post" action="{% url 'birds:update_tags' animal.uuid %}" class="form-horizontal" role="form">
-                {% csrf_token %}
-                <div class="form-group {% if form.date.errors %}has-error{% endif %}">
-                    <label for="id_date" class="col-sm-2 control-label">{{ form.date.label }} *</label>
-                    <div class="col-sm-3">
-                        {{ form.date }}
+        <div class="form-horizontal">
+            <div class="form-group">
+                <label class="col-sm-2 control-label">Tags</label>
+                <div class="col-sm-10">
+                    <div id="tag-list" 
+                         hx-target="#tag-list"
+                         hx-swap="outerHTML">
+                        {% include "birds/partials/tag_list.html" %}
                     </div>
                 </div>
-                <div class="form-group {% if form.description.errors %}has-error{% endif %}">
-                    <label for="id_description" class="col-sm-2 control-label">{{ form.description.label }}</label>
-                    <div class="col-sm-5">
-                        {{ form.description }}
-                    </div>
+            </div>
+	</div>
+
+        <form method="post" action="{% url 'birds:update_tags' animal.uuid %}" class="form-horizontal" role="form">
+            {% csrf_token %}
+
+            <div class="form-group {% if form.date.errors %}has-error{% endif %}">
+                <label for="id_date" class="col-sm-2 control-label">{{ form.date.label }} *</label>
+                <div class="col-sm-3">
+                    {{ form.date }}
                 </div>
-		<div class="form-group {% if form.entered_by.errors %}has-error{% endif %}">
-		  <label for="id_entered_by" class="col-sm-2 control-label">{{ form.entered_by.label }} * </label>
-		  <div class="col-sm-3">
-		    {{ form.entered_by }}
-		  </div>
-		</div>
-		<div class="form-group">
-		  <div class="col-sm-offset-2 col-sm-10">
-		    <button type="submit" class="btn btn-default">Update tags</button>
-		  </div>
-		</div>
-            </form>
-        </div>
+            </div>
+            <div class="form-group {% if form.description.errors %}has-error{% endif %}">
+                <label for="id_description" class="col-sm-2 control-label">{{ form.description.label }}</label>
+                <div class="col-sm-5">
+                    {{ form.description }}
+                </div>
+            </div>
+            <div class="form-group {% if form.entered_by.errors %}has-error{% endif %}">
+                <label for="id_entered_by" class="col-sm-2 control-label">{{ form.entered_by.label }} * </label>
+                <div class="col-sm-3">
+                    {{ form.entered_by }}
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-sm-offset-2 col-sm-10">
+                    <button type="submit" class="btn btn-default">Update tags</button>
+                </div>
+            </div>
+        </form>
     </div>
 </div>
 {% endblock %}

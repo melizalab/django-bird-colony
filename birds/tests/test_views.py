@@ -323,6 +323,90 @@ class TagViewTest(BaseColonyTest):
         self.assertCountEqual(response.context["animal_list"], [animal])
 
 
+class TagToggleViewTest(BaseColonyTest):
+    def setUp(self):
+        species = Species.objects.get(pk=1)
+        self.tag1 = Tag.objects.create(
+            name="testtag", description="a test tag, for testing"
+        )
+        self.tag2 = Tag.objects.create(
+            name="testtag2", description="another test tag, for testing"
+        )
+        self.animal = Animal.objects.create(species=species)
+        self.animal.tags.add(self.tag1)
+        self.animal.save()
+        self.user = User.objects.create_user(
+            username="testuser1", password="1X<ISRUkw+tuK"
+        )
+
+    def test_toggle_requires_login(self):
+        response = self.client.post(
+            reverse("birds:toggle_tag", args=[self.animal.uuid, self.tag1.id]), {}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith("/accounts/login/"))
+
+    def test_tag_toggle_404_invalid_animal(self):
+        id = uuid.uuid4()
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.post(
+            reverse("birds:toggle_tag", args=[id, self.tag1.id]), {}
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_tag_toggle_404_invalid_tag(self):
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.post(
+            reverse("birds:toggle_tag", args=[self.animal.uuid, 2000]), {}
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_tag_toggle_off(self):
+        self.assertTrue(self.tag1 in self.animal.tags.all())
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.post(
+            reverse("birds:toggle_tag", args=[self.animal.uuid, self.tag1.id]), {}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "birds/partials/tag_list.html")
+        self.assertTrue(self.tag1 not in self.animal.tags.all())
+
+    def test_tag_toggle_on(self):
+        self.assertTrue(self.tag2 not in self.animal.tags.all())
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.post(
+            reverse("birds:toggle_tag", args=[self.animal.uuid, self.tag2.id]), {}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "birds/partials/tag_list.html")
+        self.assertTrue(self.tag2 in self.animal.tags.all())
+
+    def test_tag_create_requires_login(self):
+        response = self.client.post(
+            reverse("birds:create_tag", args=[self.animal.uuid]), {}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith("/accounts/login/"))
+
+    def test_tag_create_404_invalid_animal(self):
+        id = uuid.uuid4()
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.post(reverse("birds:create_tag", args=[id]), {})
+        self.assertEqual(response.status_code, 404)
+
+    def test_tag_create(self):
+        self.client.login(username="testuser1", password="1X<ISRUkw+tuK")
+        response = self.client.post(
+            reverse("birds:create_tag", args=[self.animal.uuid]),
+            {"name": "testtag3", "description": "a new tag"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "birds/partials/tag_list.html")
+        self.assertEqual(response.context["animal"], self.animal)
+        self.assertEqual(len(response.context["all_tags"]), 3)
+        self.assertTrue(self.animal.tags.filter(name="testtag3").exists())
+
+
 class BreedingReportTests(BaseColonyTest):
     def test_breeding_report_url_exists_at_desired_location(self):
         response = self.client.get("/birds/summary/breeding/")

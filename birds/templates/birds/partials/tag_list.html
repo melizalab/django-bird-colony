@@ -1,4 +1,6 @@
 <!-- birds/partials/tag_list.html -->
+{% load widget_tweaks %}
+
 <div id="tag-list">
     {% for tag in all_tags %}
         <span class="tag-item {% if tag in animal.tags.all %}active{% endif %}"
@@ -16,22 +18,57 @@
         <p class="text-muted">No tags available. Create one below.</p>
     {% endfor %}
     
+    <div style="clear: both; margin-top: 10px;">
+        <button type="button" class="btn btn-link" style="padding-left: 0;" onclick="toggleNewTagForm()">
+            <span class="glyphicon glyphicon-plus"></span> Create New Tag
+        </button>
+    </div>
+
+    <div id="new-tag-form" class="new-tag-form" style="display: none;">
+      {% if tag_create_form.non_field_errors %}
+      <div class="alert alert-danger">{{ tag_create_form.non_field_errors }}</div>
+      {% endif %}
+
+        <form hx-post="{% url 'birds:create_tag' animal.uuid %}"
+              hx-target="#tag-list"
+              hx-swap="outerHTML"
+              class="form-horizontal">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="tag_name" class="col-sm-2 control-label">{{ tag_create_form.name.label }} *</label>
+                <div class="col-sm-5">
+                  {{ tag_create_form.name }}
+		  <span class="help-block">
+                    {% for error in tag_create_form.name.errors %}{{ error }}{% endfor %}
+		  </span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="tag_description" class="col-sm-2 control-label">{{ tag_create_form.description.label }} *</label>
+                <div class="col-sm-5">
+                  {{ tag_create_form.description }}
+		  <span class="help-block">
+                    {% for error in tag_create_form.description.errors %}{{ error }}{% endfor %}
+		  </span>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-sm-offset-3 col-sm-9">
+                    <button type="submit" class="btn btn-primary">Create and Add Tag</button>
+                    <button type="button" class="btn btn-default" onclick="toggleNewTagForm()">Cancel</button>
+                </div>
+            </div>
+        </form>
+    </div>
+    
     <!-- Update current tags display -->
     <script>
-        // Update the current tags display
-        const currentTagsDiv = document.getElementById('current-tags-display');
-        const currentTags = [
-            {% for tag in animal.tags.all %}
-                "{{ tag.name }}"{% if not forloop.last %},{% endif %}
-            {% endfor %}
-        ];
+        // Initialize Bootstrap tooltips for new elements
+        $('[data-toggle="tooltip"]').tooltip();
         
-        if (currentTags.length > 0) {
-            currentTagsDiv.innerHTML = currentTags.map(tag => 
-                `<span class="label label-primary">${tag}</span>`
-            ).join(' ');
-        } else {
-            currentTagsDiv.innerHTML = '<span class="text-muted">No tags assigned</span>';
-        }
+        // Show form if there are errors
+        {% if tag_create_form.errors %}
+            document.getElementById('new-tag-form').style.display = 'block';
+        {% endif %}
     </script>
 </div>

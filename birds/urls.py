@@ -45,7 +45,7 @@ urlpatterns = [
         name="toggle_tag",
     ),
     path(
-        "animals/<uuid:uuid>/tags/create/",
+        "animals/<uuid:uuid>/tags/new/",
         login_required(views.create_tag),
         name="create_tag",
     ),
