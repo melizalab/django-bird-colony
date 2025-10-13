@@ -606,14 +606,22 @@ def active_pairing_list(request):
         .order_by("-began_on")
     )
     f = PairingFilter(request.GET, queryset=qs)
+    pairings = list(f.qs)
     kinships = {
         pairing: kinship[ped.index(pairing.sire.uuid), ped.index(pairing.dam.uuid)]
-        for pairing in f.qs
+        for pairing in pairings
     }
+    location_ids = [p.last_location for p in pairings]
+    locations = Location.objects.filter(
+        id__in=location_ids
+    ).select_related('room').in_bulk()
+    # hydrate the pairings with the location information
+    for pairing in pairings:
+        pairing.location = locations.get(pairing.last_location)
     return render(
         request,
         "birds/pairing_list_active.html",
-        {"pairing_list": f.qs, "kinships": kinships},
+        {"pairing_list": pairings, "kinships": kinships},
     )
 
 

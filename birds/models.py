@@ -1346,7 +1346,7 @@ class PairingQuerySet(models.QuerySet):
         )
 
     def with_location(self):
-        """Active pairs only, annotated with the *name* of the most recent location"""
+        """Active pairs only, annotated with the *id* of the most recent location"""
         return self.active().annotate(
             last_location=Subquery(
                 Event.objects.filter(
@@ -1355,7 +1355,7 @@ class PairingQuerySet(models.QuerySet):
                     (Q(animal=OuterRef("sire")) | Q(animal=OuterRef("dam"))),
                 )
                 .order_by("-date", "-created_at")
-                .values("location__name")[:1]
+                .values("location__id")[:1]
             )
         )
 

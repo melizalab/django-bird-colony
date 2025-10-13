@@ -8,24 +8,28 @@
 
 {% regroup location_list by room as room_groups %}
 {% for room_group in room_groups %}
-    <h3>{{ room_group.grouper|default:"No Room" }}</h3>
+<hr/>
+<h3>{{ room_group.grouper|default:"No Room" }}</h3>
 
-<p>{{ room_group.grouper.description }}</h3>
+<p>{{ room_group.grouper.description }}</p>
+<dl class="dl-horizontal">
+  
+</dl>
     
 <table class="table table-striped table-condensed">
   <thead>
     <th>Cage</th>
-    <th>Description</th>
     <th>Animals</th>
     <th>Eggs</th>
+    <th>Description</th>
   </thead>
   <tbody>
     {% for location in room_group.list %}
         <tr>
           <td><a href="{{ location.get_absolute_url }}">{{ location.name }}</a></td>
-	  <td>{{ location.description }}</td>
           <td>{{ location.birds.alive.count }}</td>
 	  <td>{{ location.birds.eggs.existing.count }}</td>
+	  <td>{{ location.description }}</td>
         </tr>
     {% endfor %}
   </tbody>

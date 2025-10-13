@@ -20,6 +20,7 @@
     <th>Sire</th>
     <th>Dam</th>
     <th>Kinship</th>
+    <th>Room</th>
     <th>Location</th>
     <th>Eggs Laid</th>
     <th>Eggs Hatched</th>
@@ -35,7 +36,8 @@
           <td><a href="{{ pairing.sire.get_absolute_url }}">{{ pairing.sire.name }}</a></td>
           <td><a href="{{ pairing.dam.get_absolute_url }}">{{ pairing.dam.name }}</a></td>
 	  <td>{{ kinships|item_at:pairing|stringformat:".3g" }}</td>
-          <td>{{ pairing.last_location|default_if_none:"" }}</td>
+          <td>{{ pairing.location.room|default_if_none:"" }}</td>
+          <td>{{ pairing.location.name|default_if_none:"" }}</td>
           <td>{{ pairing.n_eggs }}</td>
           <td>{{ pairing.n_hatched }}</td>
           <td>{{ pairing.n_living }}</td>
@@ -46,4 +48,8 @@
     {% endfor %}
   </tbody>
 </table>
+
+<p>
+  <b>Total:</b> {{ pairing_list|length }}
+</p>
 {% endblock %}
