@@ -8,9 +8,9 @@
 
 {% for room_group in room_groups %}
 <hr/>
-<h3>{{ room_group.grouper|default:"No Room" }}</h3>
+<h3>{{ room_group.room|default:"No Room" }}</h3>
 
-<p>{{ room_group.grouper.description }}</p>
+<p>{{ room_group.room.description }}</p>
 <dl class="dl-horizontal">
   
 </dl>

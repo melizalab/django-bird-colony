@@ -1,0 +1,65 @@
+{% extends "base_view.html" %}
+{% load widget_tweaks %}
+{% load bird_tags %}
+
+{% block title %} meliza-lab : kinship : {{ animal.name }} {% endblock %}
+
+{% block content %}
+<h2>Kinship for {{ animal.name }}</h2>
+
+<p>This report shows the kinship coefficient between {{ animal.name }} and other living animals in the colony.</p>
+
+<form class="form-horizontal" method="get" role="form">
+  <div class="form-group">
+    <div class="col-sm-2">
+      {% render_field filter.form.sex placeholder="Sex" class+="form-control" %}
+    </div>
+    <div class="col-sm-2">
+      {% render_field filter.form.color placeholder="Band color" class+="form-control" %}
+    </div>
+    <div class="col-sm-2">
+      {% render_field filter.form.band placeholder="Band number" class+="form-control" %}
+    </div>
+    <div class="col-sm-2">
+      {% render_field filter.form.uuid placeholder="UUID (beginning)" class+="form-control" %}
+    </div>
+    <button type="submit" class="btn btn-primary">
+      <span class="glyphicon glyphicon-search"></span> Search
+    </button>
+  </div>
+</form>
+
+<table class="table table-striped table-condensed">
+  <thead>
+    <th>Name</th>
+    <th>Sex</th>
+    <th>Age</th>
+    <th>Kinship</th>
+    <th>Status</th>
+    <th>Location</th>
+    <th>Children</th>
+    <th>UUID</th>
+    <th>Tags</th>
+  </thead>
+  <tbody>
+    {% for animal in animal_list %}
+    {% with history=animal.history %}
+        <tr>
+          <td><a href="{{ animal.get_absolute_url }}">{{ animal.name }}</a></td>
+          <td>{{ animal.sex }}</td>
+          <td>{{ history.age_display }}</td>
+	  <td>{{ animal.kinship|default_if_none:""|stringformat:".3g" }}</td>
+          <td>{{ history.status_display }}</td>
+          <td>{{ history.last_location|link_or_blank }}</td>
+          <td>{{ animal.n_hatched}}</td>
+          <td>{{ animal.uuid }}</td>
+          <td>{{ animal.tags.all|url_list }}</td>
+        </tr>
+    {% endwith %}
+    {% endfor %}
+  </tbody>
+</table>
+
+<p>NB: When alive is False, age is at death or release</p>
+
+{% endblock %}

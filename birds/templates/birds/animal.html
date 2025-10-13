@@ -96,5 +96,6 @@
 {% include "birds/animal_table.html" with animal_list=kids only %}
 
 <a href="{% url 'birds:animal_kids' animal.uuid %}">all children</a> (including eggs)&nbsp;&nbsp;
-<a href="{% url 'birds:genealogy' animal.uuid %}">full genealogy</a> (may take a while)<br/>
+<a href="{% url 'birds:genealogy' animal.uuid %}">full genealogy</a> (may take a while)&nbsp;&nbsp;
+<a href="{% url 'birds:kinship' animal.uuid %}?sex={{ opposite_sex }}">kinship</a> (with potential mates)<br/>
 {% endblock %}

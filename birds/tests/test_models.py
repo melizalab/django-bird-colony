@@ -1496,7 +1496,7 @@ class PairingModelTests(TestCase):
         annotated_pairing = Pairing.objects.with_location().get(pk=pairing.pk)
         self.assertEqual(
             annotated_pairing.last_location,
-            location.name,
+            location.id,
             "pairing location should be the location of the most recent event",
         )
 
@@ -1522,7 +1522,7 @@ class PairingModelTests(TestCase):
         annotated_pairing = Pairing.objects.with_location().get(pk=pairing.pk)
         self.assertEqual(
             annotated_pairing.last_location,
-            location_2.name,
+            location_2.id,
             "pairing location should be the location of the most recent event",
         )
 

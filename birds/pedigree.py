@@ -45,8 +45,12 @@ class Pedigree:
     def get_inbreeding(self) -> np.ndarray:
         return inbreeding_coeffs(self.sire_array(), self.dam_array())
 
-    def get_kinship(self) -> np.ndarray:
-        return kinship_coeffs(self.sire_array(), self.dam_array())
+    def get_kinship(self, name: str | None = None) -> np.ndarray:
+        K = kinship_coeffs(self.sire_array(), self.dam_array())
+        if name is not None:
+            return K[self.index(name)]
+        else:
+            return K
 
 
 def inbreeding_coeffs(sire_ids: npt.ArrayLike, dam_ids: npt.ArrayLike) -> np.ndarray:

@@ -1,10 +1,10 @@
 {% extends "base_view.html" %}
 {% load bird_tags %}
 
-{% block title %} meliza-lab : bird : {{ animal.name }} {% endblock %}
+{% block title %} meliza-lab : geneology : {{ animal.name }} {% endblock %}
 
 {% block content %}
-<h2>{{ animal.name }}</h2>
+<h2>Geneology for {{ animal.name }}</h2>
 
 <hr>
 <dl class="dl-horizontal">
@@ -15,7 +15,6 @@
   <dt>uuid</dt><dd>{{ animal.uuid }}</dd>
   <dt>alive</dt><dd>{{ animal.alive|yesno }}</dd>
   <dt>acquired</dt><dd>{{ animal.acquisition_event.event_date }}</dd>
-  <dt>age</dt><dd>{{ animal.age_days|agestr }} ({{ animal.age_group }})</dd>
 </dl>
 
 <h3>Great-great-grandparents</h3>

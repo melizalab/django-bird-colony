@@ -129,10 +129,8 @@ class Command(BaseCommand):
             self.style.SUCCESS(f"Updated life history for {total_count} animals")
         )
 
-        self.stdout.write(
-            "Recalculating inbreeding coefficients for all pedigree animals..."
-        )
-        pedigree_animals = Animal.objects.for_pedigree()
+        self.stdout.write("Recalculating inbreeding coefficients for all animals...")
+        pedigree_animals = Animal.objects.for_pedigree(all_animals=True)
         ped = pedigree.Pedigree.from_animals(
             [(animal.uuid, animal.sire, animal.dam) for animal in pedigree_animals]
         )
@@ -153,6 +151,6 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"Updated inbreeding coefficients for {updated_count} pedigree animals"
+                f"Updated inbreeding coefficients for {updated_count} animals"
             )
         )

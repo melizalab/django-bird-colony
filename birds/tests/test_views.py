@@ -284,7 +284,9 @@ class LocationViewTests(BaseColonyTest):
     def test_location_list_contains_all_locations(self):
         response = self.client.get(reverse("birds:locations"))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.context["location_list"]), 2)
+        room_groups = response.context["room_groups"]
+        self.assertEqual(len(room_groups), 1)
+        self.assertEqual(len(room_groups[0]["locations"]), 2)
 
     def test_location_detail_404_invalid_id(self):
         response = self.client.get(reverse("birds:location", args=[99]))

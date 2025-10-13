@@ -550,12 +550,16 @@ class AnimalQuerySet(models.QuerySet):
             "-life_history__died_on", F("life_history__born_on").asc(nulls_last=True)
         )
 
-    def for_pedigree(self):
+    def for_pedigree(self, all_animals: bool = False):
         """All parents and currently living animals annotated with sire/dam and topologically sorted"""
+        if all_animals:
+            filt = Q(life_history__acquired_on__isnull=False)
+        else:
+            filt = Q(n_hatched__gt=0) | Q(life_history__died_on__isnull=True)
         return (
             self.select_related("life_history")
             .with_child_counts()
-            .filter(Q(n_hatched__gt=0) | Q(life_history__died_on__isnull=True))
+            .filter(filt)
             .annotate(
                 sire=Subquery(
                     Animal.objects.filter(children=OuterRef("uuid"), sex="M").values(
@@ -1656,3 +1660,13 @@ class Sample(models.Model):
 
     class Meta:
         ordering = ("animal", "type")
+
+
+def opposite_sex(sex: Animal.Sex | str) -> Animal.Sex | None:
+    # can't get this to work as a method on the class
+    if sex in ("M", Animal.Sex.MALE):
+        return Animal.Sex.FEMALE
+    elif sex in ("F", Animal.Sex.FEMALE):
+        return Animal.Sex.MALE
+    else:
+        return None

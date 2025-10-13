@@ -54,6 +54,7 @@ from birds.models import (
     SampleType,
     Status,
     Tag,
+    opposite_sex,
 )
 from birds.tools import tabulate_pairs
 
@@ -131,6 +132,7 @@ def animal_view(request, uuid: str):
             "event_list": events,
             "sample_list": samples,
             "pairing_list": pairings,
+            "opposite_sex": opposite_sex(animal.sex),
         },
     )
 
@@ -159,6 +161,34 @@ def animal_genealogy(request, uuid: str):
             "ancestors": ancestors,
             "descendents": descendents,
             "living": living,
+        },
+    )
+
+
+@require_http_methods(["GET"])
+def animal_kinship(request, uuid: str):
+    animal = get_object_or_404(Animal, pk=uuid)
+    qs_ped = (
+        Animal.objects.filter(species=animal.species)
+        .for_pedigree()
+        .values_list("uuid", "sire", "dam")
+    )
+    ped = pedigree.Pedigree.from_animals(qs_ped)
+    kinship = ped.get_kinship(animal.uuid)
+    qs_display = Animal.objects.with_related().alive().filter(uuid__in=ped.names)
+    f = AnimalFilter(request.GET, queryset=qs_display)
+    animal_list = list(f.qs)
+    for a in animal_list:
+        idx = ped.index(a.uuid)  # returns zero if the name is not in the pedigree
+        a.kinship = kinship[idx]  # default is zero
+    animal_list.sort(key=lambda a: a.kinship, reverse=True)
+    return render(
+        request,
+        "birds/animal_kinship.html",
+        {
+            "filter": f,
+            "animal": animal,
+            "animal_list": animal_list,
         },
     )
 
@@ -505,7 +535,7 @@ def location_list(request):
 
         room_groups.append(
             {
-                "grouper": room,
+                "room": room,
                 "locations": locations,
                 "total_animals": sum(loc.animal_count for loc in locations),
                 "total_eggs": sum(loc.egg_count for loc in locations),
