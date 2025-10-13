@@ -489,15 +489,33 @@ def measurement_list(
 # Locations
 @require_http_methods(["GET"])
 def location_list(request):
+    from itertools import groupby
+
     qs = (
         Location.objects.filter(active=True)
         .select_related("room")
         .order_by("room__name", "name")
     )
+    room_groups = []
+    for room, locations in groupby(qs, key=lambda loc: loc.room):
+        locations = list(locations)
+        for loc in locations:
+            loc.animal_count = loc.birds().alive().count()
+            loc.egg_count = loc.birds().eggs().existing().count()
+
+        room_groups.append(
+            {
+                "grouper": room,
+                "locations": locations,
+                "total_animals": sum(loc.animal_count for loc in locations),
+                "total_eggs": sum(loc.egg_count for loc in locations),
+            }
+        )
+
     return render(
         request,
         "birds/location_list.html",
-        {"location_list": qs},
+        {"room_groups": room_groups},
     )
 
 
@@ -612,9 +630,9 @@ def active_pairing_list(request):
         for pairing in pairings
     }
     location_ids = [p.last_location for p in pairings]
-    locations = Location.objects.filter(
-        id__in=location_ids
-    ).select_related('room').in_bulk()
+    locations = (
+        Location.objects.filter(id__in=location_ids).select_related("room").in_bulk()
+    )
     # hydrate the pairings with the location information
     for pairing in pairings:
         pairing.location = locations.get(pairing.last_location)

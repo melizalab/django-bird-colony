@@ -6,7 +6,6 @@
 {% block content %}
 <h2>Locations</h2>
 
-{% regroup location_list by room as room_groups %}
 {% for room_group in room_groups %}
 <hr/>
 <h3>{{ room_group.grouper|default:"No Room" }}</h3>
@@ -24,14 +23,20 @@
     <th>Description</th>
   </thead>
   <tbody>
-    {% for location in room_group.list %}
+    {% for location in room_group.locations %}
         <tr>
           <td><a href="{{ location.get_absolute_url }}">{{ location.name }}</a></td>
-          <td>{{ location.birds.alive.count }}</td>
-	  <td>{{ location.birds.eggs.existing.count }}</td>
+          <td>{{ location.animal_count }}</td>
+	  <td>{{ location.egg_count }}</td>
 	  <td>{{ location.description }}</td>
         </tr>
-    {% endfor %}
+	{% endfor %}
+    <tr class="info">
+      <td><strong>Total</strong></td>
+      <td><strong>{{ room_group.total_animals }}</strong></td>
+      <td><strong>{{ room_group.total_eggs }}</strong></td>
+      <td></td>
+    </tr>      
   </tbody>
 </table>
 
