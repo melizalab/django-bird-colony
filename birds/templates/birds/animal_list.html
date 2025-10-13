@@ -31,7 +31,7 @@
         {% endif %}
 
         <span class="current">
-            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} ({{animal_list|length}} animals shown)
         </span>
 
         {% if page_obj.has_next %}
