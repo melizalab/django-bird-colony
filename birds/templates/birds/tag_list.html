@@ -15,6 +15,12 @@
     <th>Description</th>
   </thead>
   <tbody>
+    <tr>
+      <td><a href="{% url 'birds:animals' %}?available=True">(untagged)</a></td>
+      <td>{{ untagged.n_alive }}</td>
+      <td>{{ untagged.n_total }}</td>
+      <td>animals with no tags</td>
+    </tr>
     {% for tag in tag_list %}
         <tr>
           <td><a href="{% url 'birds:tag' tag.id %}">{{ tag }}</a></td>

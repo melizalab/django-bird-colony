@@ -540,7 +540,7 @@ def location_view(request, pk):
 # Users
 @require_http_methods(["GET"])
 def tag_list(request):
-    queryset = Tag.objects.annotate(
+    qs_tagged = Tag.objects.annotate(
         n_tagged=Count("animals"),
         n_tagged_alive=Count(
             "animals",
@@ -548,10 +548,20 @@ def tag_list(request):
             & Q(animals__life_history__died_on__isnull=True),
         ),
     ).order_by("-n_tagged")
+    qs_untagged = Animal.objects.filter(tags__isnull=True).aggregate(
+        n_total=Count("uuid"),
+        n_alive=Count(
+            "uuid",
+            filter=(
+                Q(life_history__acquired_on__isnull=False)
+                & Q(life_history__died_on__isnull=True)
+            ),
+        ),
+    )
     return render(
         request,
         "birds/tag_list.html",
-        {"tag_list": queryset},
+        {"tag_list": qs_tagged, "untagged": qs_untagged},
     )
 
 
