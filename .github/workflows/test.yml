@@ -42,7 +42,7 @@ jobs:
         NUMPY_VERSION: ${{ matrix.numpy-version }}
       run: |
         uv sync --frozen
-        uv add "Django>${DJANGO_VERSION}"
+        uv add "Django~=${DJANGO_VERSION}"
         uv add "numpy>=$NUMPY_VERSION,<$(echo "$NUMPY_VERSION" | awk -F. '{print $1"."($2+1)}')"
     - name: Run tests on python ${{ matrix.python-version }}
       run: uv run pytest        
