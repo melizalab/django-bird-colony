@@ -25,7 +25,7 @@ with non-avian species.
 Features:
 
 * Animals have globally unique identifiers and can optionally have colored and numbered leg bands (one band per animal). This means they keep their identities even if you have to reband them.
-* Record events over the lifespan of each animal, from egg to grave. Events can be linked to locations, so you can find where an animal is, or was on a certain date. Events can also be linked to measurements like weight so you can track these over time or use them to make breeding decisions.
+* Record events over the lifespan of each animal, from egg to grave. Events can be linked to locations, so you can find where an animal is or was on a certain date. Events can also be linked to measurements like weight so you can track these over time or use them to make breeding decisions.
 * Track pairings, pedigrees, and breeding success statistics. You can export a complete pedigree for all living birds in the colony and compute relatedness using external software like the R `pedigree <https://www.rdocumentation.org/packages/pedigree/versions/1.4.2>`_ package.
 * Useful forms for entering data, including periodic nest checks. Easy to track when eggs are laid and hatch and associate them with the correct parents.
 * Associate biological samples with animals and track their physical location.
@@ -37,7 +37,7 @@ for you to use under the BSD License. See COPYING for details
 Quick start
 ~~~~~~~~~~~
 
-1. Requires Python 3.10+. Runs on Django 4.2 LTS and 5.1.
+1. Requires Python 3.10+. Runs on Django 4.2 LTS and 5.2 LTS.
 
 2. Install the package using pip: ``pip install django-bird-colony``.
 
