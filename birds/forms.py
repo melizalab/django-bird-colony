@@ -237,7 +237,7 @@ class TagChangeForm(forms.Form):
     """
 
     date = forms.DateField(
-        initial=timezone.now().date,
+        initial=lambda: timezone.now().date,
         widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}),
         help_text="Date of tag changes (defaults to today)",
         required=True,
