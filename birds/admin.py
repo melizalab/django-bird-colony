@@ -102,7 +102,7 @@ class MeasurementAdmin(admin.ModelAdmin):
         "value",
         "type",
     )
-    list_display = ("event__animal", "event__date", "value", "type")
+    list_display = ("value", "type")
     date_hierarchy = "event__date"
     list_filter = ("type",)
 

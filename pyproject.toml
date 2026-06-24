@@ -57,7 +57,7 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "birds.tests.settings"
+DJANGO_SETTINGS_MODULE = "birds.settings"
 django_find_project = false
 python_files = ["test_*.py", "*_test.py"]
 addopts = "-v --cov=birds --cov-report=term-missing"
