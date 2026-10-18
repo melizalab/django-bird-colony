@@ -49,8 +49,10 @@ jobs:
         DJANGO_VERSION: ${{ matrix.django-version }}
         NUMPY_VERSION: ${{ matrix.numpy-version }}
       run: |
-        uv sync --frozen
+        uv sync --frozen --group postgres
         uv add "Django~=${DJANGO_VERSION}"
         uv add "numpy>=$NUMPY_VERSION,<$(echo "$NUMPY_VERSION" | awk -F. '{print $1"."($2+1)}')"
     - name: Run tests on python ${{ matrix.python-version }}
-      run: uv run pytest        
+      env:
+        BIRDS_TEST_DB: postgres
+      run: uv run pytest

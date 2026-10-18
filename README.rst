@@ -131,8 +131,11 @@ Recommend using `uv <https://docs.astral.sh/uv/>`__ for development.
 Run ``uv sync`` to create a virtual environment and install
 dependencies. ``uv sync --no-dev --frozen`` for deployment.
 
-Testing: ``uv run pytest``. Requires a test database, will use settings
-from ``inventory/test/settings.py``.
+Testing: ``uv run --group postgres pytest``. Tests use an in-memory sqlite
+database by default; set ``BIRDS_TEST_DB=postgres`` to use a postgres server
+(configured with ``POSTGRES_*`` environment variables, as on CI). The
+``postgres`` group is needed in both cases because ``birds.models`` imports
+``django.contrib.postgres``.
 
 Changelog
 ~~~~~~~~~
