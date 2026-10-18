@@ -3,7 +3,6 @@
 import datetime
 import uuid
 
-import django.contrib.postgres.fields.jsonb
 import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
@@ -32,7 +31,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "attributes",
-                    django.contrib.postgres.fields.jsonb.JSONField(
+                    models.JSONField(
                         blank=True,
                         default=dict,
                         help_text="specify additional sample-specific attributes",
