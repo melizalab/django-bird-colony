@@ -33,7 +33,7 @@ class AnimalAdmin(admin.ModelAdmin):
         "attributes",
     )
     list_display = ("name", "species", "band", "uuid", "sex", "plumage", "display_tags")
-    list_filter = ("species", "sex", "band_color", "plumage", "tags")
+    list_filter = ("species", "sex", "band_color", "plumage", "tags", "created_at")
     search_fields = ("band_color__name", "band_number", "species__code")
     inlines = (
         ParentInline,
@@ -82,6 +82,11 @@ class SampleAdmin(admin.ModelAdmin):
     search_fields = ("description",)
 
 
+class ColorAdmin(admin.ModelAdmin):
+    list_display = ("name", "abbrv", "kind")
+    list_filter = ("kind",)
+
+
 class PairingAdmin(admin.ModelAdmin):
     date_hierarchy = "began_on"
     fields = ("sire", "dam", "began_on", "purpose", "ended_on", "comment")
@@ -125,11 +130,11 @@ admin.site.register(models.Pairing, PairingAdmin)
 admin.site.register(models.Measurement, MeasurementAdmin)
 admin.site.register(models.Location, LocationAdmin)
 admin.site.register(models.Tag, TagAdmin)
+admin.site.register(models.Color, ColorAdmin)
 
 
 for model in (
     models.Species,
-    models.Color,
     models.Plumage,
     models.Age,
     models.Room,
