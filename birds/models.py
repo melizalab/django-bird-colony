@@ -4,13 +4,13 @@ import datetime
 import uuid
 from collections.abc import Sequence
 from functools import lru_cache
+from itertools import groupby
 from typing import Optional
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.contrib.postgres.aggregates import ArrayAgg
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import connection, models
 from django.db.models import (
     CheckConstraint,
     Count,
@@ -25,8 +25,9 @@ from django.db.models import (
     Value,
     Window,
 )
-from django.db.models.functions import Coalesce, Now, RowNumber, Trunc, TruncDay
+from django.db.models.functions import Coalesce, RowNumber, Trunc
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.formats import date_format
 from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
@@ -604,20 +605,23 @@ class ParentManger(models.Manager):
 
         """
         ped = self.pedigree_subgraph(target_animals)
-        founders = ped.exclude(
-            parent__in=Subquery(ped.values_list("child__uuid", flat=True))
-        ).distinct("parent")
-        # these are all the children with their parents
-        qs = (
-            ped.values("child")
-            .annotate(parents=ArrayAgg("parent", ordering="parent__sex"))
-            # ensure topological sort
-            .order_by("child__created_at", "child__uuid")
-            .values_list("child", "parents")
+        founders = (
+            ped.exclude(parent__in=Subquery(ped.values_list("child__uuid", flat=True)))
+            .order_by("parent_id")
+            .values_list("parent", flat=True)
+            .distinct()
         )
-        return [
-            (founder, []) for founder in founders.values_list("parent", flat=True)
-        ] + list(qs)
+        # these are all the children with their parents, in topological order
+        # with the dam listed first
+        rows = ped.order_by(
+            "child__created_at",
+            "child__uuid",
+            F("parent__sex").asc(nulls_last=True),
+        ).values_list("child", "parent")
+        return [(founder, []) for founder in founders] + [
+            (child, [parent for _, parent in group])
+            for child, group in groupby(rows, key=lambda row: row[0])
+        ]
 
 
 class Parent(models.Model):
@@ -1170,7 +1174,22 @@ class EventQuerySet(models.QuerySet):
         return self.exclude(location__isnull=True)
 
     def latest_by_animal(self):
-        return self.order_by("animal_id", "-date", "-created_at").distinct("animal_id")
+        if connection.features.can_distinct_on_fields:
+            return self.order_by("animal_id", "-date", "-created_at").distinct(
+                "animal_id"
+            )
+        # fallback for backends without DISTINCT ON (e.g. sqlite)
+        return (
+            self.annotate(
+                latest_rank=Window(
+                    expression=RowNumber(),
+                    partition_by=F("animal_id"),
+                    order_by=[F("date").desc(), F("created_at").desc()],
+                )
+            )
+            .filter(latest_rank=1)
+            .order_by("animal_id")
+        )
 
     def in_month(self, date: datetime.date | None = None):
         """Only events in a given month (the current one if None)"""
@@ -1439,10 +1458,8 @@ class Pairing(models.Model):
             date_query &= Q(life_history__born_on__lte=self.ended_on)
 
         qs = self.sire.children.alive().filter(date_query)
-        agg = qs.annotate(age=TruncDay(Now()) - F("life_history__born_on")).aggregate(
-            Max("age")
-        )
-        return agg["age__max"]
+        oldest = qs.aggregate(born_on=Min("life_history__born_on"))["born_on"]
+        return None if oldest is None else timezone.localdate() - oldest
 
     def eggs(self) -> AnimalQuerySet:
         """All the eggs laid during this pairing (hatched and unhatched)"""

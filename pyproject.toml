@@ -66,7 +66,6 @@ python_files = ["test_*.py", "*_test.py"]
 addopts = "-v --cov=birds --cov-report=term-missing"
 testpaths = ["birds/tests"]
 env_viles = [".env", ".test.env", "deploy.env"]
-markers = ["postgres: test requires a postgres database"]
 
 [tool.black]
 line-length = 88

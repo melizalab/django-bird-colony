@@ -1,7 +1,6 @@
 # -*- mode: python -*-
 import datetime
 
-import pytest
 from django.core.exceptions import ValidationError
 from django.db.utils import IntegrityError
 from django.test import TestCase
@@ -656,7 +655,6 @@ class ParentModelTests(TestCase):
         self.assertTrue(dam.children.contains(bird))
         self.assertEqual(bird.full_siblings().count(), 0)
 
-    @pytest.mark.postgres  # DISTINCT ON
     def test_pedigree(self):
         species = Species.objects.get(pk=1)
         sire = Animal.objects.create(species=species, sex=Animal.Sex.MALE)
@@ -713,7 +711,6 @@ class ParentModelTests(TestCase):
         self.assertEqual(annotated.n_hatched, 2)
         self.assertEqual(annotated.n_alive, 1)
 
-    @pytest.mark.postgres  # DISTINCT ON
     def test_genealogy(self):
         species = Species.objects.get(pk=1)
         born_status = models.get_birth_event_type()
@@ -948,7 +945,6 @@ class EventModelTests(TestCase):
         )
         self.assertEqual(event_2.age(), None)
 
-    @pytest.mark.postgres  # DISTINCT ON
     def test_most_recent_event(self):
         species = Species.objects.get(pk=1)
         bird_1 = Animal.objects.create(species=species)
@@ -1340,7 +1336,6 @@ class PairingModelTests(TestCase):
             "egg laid in pairing does not exist after it was lost",
         )
 
-    @pytest.mark.postgres  # database date arithmetic
     def test_pairing_progeny_stats(self):
         laid_status = models.get_unborn_creation_event_type()
         hatch_status = models.get_birth_event_type()
