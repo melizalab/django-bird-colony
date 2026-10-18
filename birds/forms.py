@@ -60,19 +60,21 @@ class SampleForm(forms.ModelForm):
 
 
 class NewPairingForm(forms.Form):
-    qs = Animal.objects.with_dates().alive()
-    sire = forms.ModelChoiceField(
-        queryset=qs.filter(sex=Animal.Sex.MALE).order_by("band_color", "band_number")
-    )
-    dam = forms.ModelChoiceField(
-        queryset=qs.filter(sex=Animal.Sex.FEMALE).order_by("band_color", "band_number")
-    )
+    # the parent querysets depend on today's date, so they are set in __init__
+    sire = forms.ModelChoiceField(queryset=Animal.objects.none())
+    dam = forms.ModelChoiceField(queryset=Animal.objects.none())
     began_on = forms.DateField()
     purpose = forms.CharField(widget=forms.Textarea, required=False)
     entered_by = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
     location = forms.ModelChoiceField(
         queryset=Location.objects.filter(nest=True), required=False
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        qs = Animal.objects.with_dates().alive().order_by("band_color", "band_number")
+        self.fields["sire"].queryset = qs.filter(sex=Animal.Sex.MALE)
+        self.fields["dam"].queryset = qs.filter(sex=Animal.Sex.FEMALE)
 
     def clean(self):
         data = super().clean()
@@ -307,9 +309,9 @@ class NewAnimalForm(forms.Form):
         choices=Animal.Sex.choices, initial=Animal.Sex.UNKNOWN_SEX, required=True
     )
     plumage = forms.ModelChoiceField(queryset=Plumage.objects.all(), required=False)
-    qs = Animal.objects.alive()
-    sire = forms.ModelChoiceField(queryset=qs.filter(sex__exact="M"), required=False)
-    dam = forms.ModelChoiceField(queryset=qs.filter(sex__exact="F"), required=False)
+    # the parent querysets depend on today's date, so they are set in __init__
+    sire = forms.ModelChoiceField(queryset=Animal.objects.none(), required=False)
+    dam = forms.ModelChoiceField(queryset=Animal.objects.none(), required=False)
     species = forms.ModelChoiceField(queryset=Species.objects.all(), required=False)
     banding_date = forms.DateField()
     band_color = forms.ModelChoiceField(queryset=Color.objects.filter(kind=Color.BandType.AVAILABLE), required=False)
@@ -317,6 +319,12 @@ class NewAnimalForm(forms.Form):
     location = forms.ModelChoiceField(queryset=Location.objects.filter(active=True))
     comments = forms.CharField(widget=forms.Textarea, required=False)
     user = forms.ModelChoiceField(queryset=User.objects.filter(is_active=True))
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        qs = Animal.objects.alive()
+        self.fields["sire"].queryset = qs.filter(sex__exact="M")
+        self.fields["dam"].queryset = qs.filter(sex__exact="F")
 
     def clean(self):
         data = super().clean()

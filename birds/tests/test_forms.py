@@ -1,11 +1,15 @@
 # -*- mode: python -*-
 import datetime
+import importlib
+import types
 import warnings
-from unittest import skip
+from contextlib import contextmanager
+from unittest import mock, skip
 
 from django.forms import formset_factory
 from django.test import TestCase
 
+from birds import forms as birds_forms
 from birds import models
 from birds.forms import (
     BreedingCheckForm,
@@ -35,6 +39,27 @@ def today() -> datetime.date:
 
 def dt_days(days: int) -> datetime.timedelta:
     return datetime.timedelta(days=days)
+
+
+@contextmanager
+def forms_imported_on(day: datetime.date):
+    """Reload birds.forms as if the server had been started on `day`"""
+
+    class FakeDate(datetime.date):
+        @classmethod
+        def today(cls):
+            return day
+
+    fake = types.SimpleNamespace(
+        **{k: v for k, v in vars(datetime).items() if not k.startswith("__")}
+    )
+    fake.date = FakeDate
+    try:
+        with mock.patch.object(models, "datetime", fake):
+            module = importlib.reload(birds_forms)
+        yield module
+    finally:
+        importlib.reload(birds_forms)
 
 
 class SexFormTest(TestCase):
@@ -761,3 +786,51 @@ class BreedingCheckNewPairingFormTest(TestCase):
             {"pairing": pairing, "location": self.nest, "eggs": 0, "chicks": 0},
         )
         self.assertFalse(form.is_valid())
+
+
+class ParentChoicesDateTest(TestCase):
+    """Parent choices have to be calculated when a form is created, not when the
+    module is imported, or birds that arrive after a long-running server has
+    started are not offered until the server is restarted (#97)"""
+
+    fixtures = ["bird_colony_starter_kit"]
+
+    @classmethod
+    def setUpTestData(cls):
+        arrival = today() - dt_days(5)
+        status = models.get_birth_event_type()
+        user = models.get_sentinel_user()
+        location = Location.objects.get(pk=2)
+        species = Species.objects.get(pk=1)
+        cls.sire = Animal.objects.create_with_event(
+            species=species,
+            status=status,
+            date=arrival,
+            entered_by=user,
+            location=location,
+            sex=Animal.Sex.MALE,
+            band_number=1,
+        )
+        cls.dam = Animal.objects.create_with_event(
+            species=species,
+            status=status,
+            date=arrival,
+            entered_by=user,
+            location=location,
+            sex=Animal.Sex.FEMALE,
+            band_number=2,
+        )
+
+    def check_choices(self, form_name):
+        # the server was started before the birds arrived
+        with forms_imported_on(today() - dt_days(10)) as module:
+            form = getattr(module, form_name)()
+            self.assertIn(self.sire, form.fields["sire"].queryset)
+            self.assertIn(self.dam, form.fields["dam"].queryset)
+            self.assertNotIn(self.dam, form.fields["sire"].queryset)
+
+    def test_new_pairing_form_choices_follow_the_date(self):
+        self.check_choices("NewPairingForm")
+
+    def test_new_animal_form_choices_follow_the_date(self):
+        self.check_choices("NewAnimalForm")

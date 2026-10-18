@@ -46,6 +46,14 @@ Changed
 * The test suite runs on in-memory sqlite by default. Set
   ``BIRDS_TEST_DB=postgres`` to use postgres, as CI does.
 
+Fixed
+~~~~~
+
+* Birds that arrive or hatch after the server starts are now offered as sire
+  and dam in the new pairing and new animal forms. The choices were calculated
+  once, when the server started, so affected birds only appeared after a
+  restart (#97).
+
 0.14.1 (2026-02-18)
 -------------------
 
