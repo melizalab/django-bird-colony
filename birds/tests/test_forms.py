@@ -70,7 +70,7 @@ class NewBandFormTest(TestCase):
             common_name="eurasian magpie", genus="pica", species="pica", code="EUMA"
         )
         cls.plumage = Plumage.objects.create(name="standard")
-        cls.color = Color.objects.create(name="blue", abbrv="bl")
+        cls.color = Color.objects.create(name="blue", abbrv="bl", kind="available")
         cls.location = Location.objects.create(name="home")
         cls.animal = Animal.objects.create(
             species=species,

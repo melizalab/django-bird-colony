@@ -202,7 +202,7 @@ class NewBandForm(forms.Form):
     """Form to assign a band to an existing bird, optionally updating sex and plumage"""
 
     banding_date = forms.DateField()
-    band_color = forms.ModelChoiceField(queryset=Color.objects.all(), required=False)
+    band_color = forms.ModelChoiceField(queryset=Color.objects.filter(kind=Color.BandType.AVAILABLE), required=False)
     band_number = forms.IntegerField(min_value=1)
     sex = forms.ChoiceField(choices=Animal.Sex.choices, required=True)
     plumage = forms.ModelChoiceField(queryset=Plumage.objects.all(), required=False)
@@ -312,7 +312,7 @@ class NewAnimalForm(forms.Form):
     dam = forms.ModelChoiceField(queryset=qs.filter(sex__exact="F"), required=False)
     species = forms.ModelChoiceField(queryset=Species.objects.all(), required=False)
     banding_date = forms.DateField()
-    band_color = forms.ModelChoiceField(queryset=Color.objects.all(), required=False)
+    band_color = forms.ModelChoiceField(queryset=Color.objects.filter(kind=Color.BandType.AVAILABLE), required=False)
     band_number = forms.IntegerField(min_value=1)
     location = forms.ModelChoiceField(queryset=Location.objects.filter(active=True))
     comments = forms.CharField(widget=forms.Textarea, required=False)

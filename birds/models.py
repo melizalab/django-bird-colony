@@ -86,9 +86,16 @@ class Species(models.Model):
 class Color(models.Model):
     """Represents a band color. Animals may be banded, and the bands can be colored."""
 
+    class BandType(models.TextChoices):
+        AVAILABLE = "available", _("Actively used band color")
+        HISTORICAL = "historical", _("Previously used band color")
+        EXTERNAL = "external", _("Band color/type from another lab")
+
+
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=12, unique=True)
     abbrv = models.CharField("Abbreviation", max_length=3, unique=True)
+    kind = models.CharField(max_length=12, choices=BandType.choices, default=BandType.AVAILABLE)
 
     def __str__(self) -> str:
         return self.name

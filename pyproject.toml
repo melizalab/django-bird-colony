@@ -54,6 +54,7 @@ dev = [
     "pytest-django>=4.9.0",
     "ruff>=0.7.0",
     "pytest-dotenv>=0.5.2",
+    "django-stubs>=5.2"
 ]
 
 [tool.pytest.ini_options]
