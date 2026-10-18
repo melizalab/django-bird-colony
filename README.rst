@@ -139,6 +139,4 @@ as on CI.
 Changelog
 ~~~~~~~~~
 
-In the 0.4.0 release, the primary key for animal records became the
-animal’s uuid. To migrate from previous version, data must be exported
-as JSON under the 0.3.999 release and then imported under 0.4.0
+See `CHANGELOG.rst <https://github.com/melizalab/django-bird-colony/blob/master/CHANGELOG.rst>`_.

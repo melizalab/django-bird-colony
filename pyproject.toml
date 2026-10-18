@@ -41,6 +41,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/melizalab/django-bird-colony"
+Changelog = "https://github.com/melizalab/django-bird-colony/blob/master/CHANGELOG.rst"
 
 # [tool.hatch.version]
 # path = "birds/__init__.py"
@@ -104,3 +105,6 @@ check_untyped_defs = true
 include = ["birds/**"]
 exclude = ["*test*"]
 artifacts = ["README.rst"]
+
+[tool.hatch.build.targets.sdist]
+include = ["birds/**", "CHANGELOG.rst"]
