@@ -37,7 +37,7 @@ for you to use under the BSD License. See COPYING for details
 Quick start
 ~~~~~~~~~~~
 
-1. Requires Python 3.10+. Runs on Django 4.2 LTS and 5.2 LTS.
+1. Requires Python 3.11+. Runs on Django 5.2 LTS and 6.1.
 
 2. Install the package using pip: ``pip install django-bird-colony``.
 

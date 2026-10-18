@@ -98,7 +98,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="status",
             constraint=models.CheckConstraint(
-                check=models.Q(
+                condition=models.Q(
                     ("adds__isnull", True), ("removes__isnull", True), _connector="OR"
                 ),
                 name="adds_or_removes_null",

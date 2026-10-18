@@ -200,7 +200,7 @@ class Status(models.Model):
         )
         constraints = (
             CheckConstraint(
-                check=Q(adds__isnull=True) | Q(removes__isnull=True),
+                condition=Q(adds__isnull=True) | Q(removes__isnull=True),
                 name="adds_or_removes_null",
             ),
         )
@@ -1583,7 +1583,7 @@ class Pairing(models.Model):
         ordering = ("-began_on", "-ended_on")
         constraints = (
             CheckConstraint(
-                check=Q(ended_on__isnull=True) | Q(ended_on__gt=F("began_on")),
+                condition=Q(ended_on__isnull=True) | Q(ended_on__gt=F("began_on")),
                 name="ended_on_gt_began_on",
             ),
         )

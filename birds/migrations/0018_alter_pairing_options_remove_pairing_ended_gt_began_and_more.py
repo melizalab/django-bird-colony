@@ -44,7 +44,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="pairing",
             constraint=models.CheckConstraint(
-                check=models.Q(
+                condition=models.Q(
                     ("ended_on__isnull", True),
                     ("ended_on__gt", models.F("began_on")),
                     _connector="OR",
