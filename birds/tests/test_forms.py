@@ -71,6 +71,12 @@ class NewBandFormTest(TestCase):
         )
         cls.plumage = Plumage.objects.create(name="standard")
         cls.color = Color.objects.create(name="blue", abbrv="bl", kind="available")
+        cls.historical_color = Color.objects.create(
+            name="old", abbrv="ol", kind=Color.BandType.HISTORICAL
+        )
+        cls.external_color = Color.objects.create(
+            name="other", abbrv="ot", kind=Color.BandType.EXTERNAL
+        )
         cls.location = Location.objects.create(name="home")
         cls.animal = Animal.objects.create(
             species=species,
@@ -135,6 +141,31 @@ class NewBandFormTest(TestCase):
         )
         self.assertTrue(form.is_valid())
 
+    def test_band_color_options_exclude_historical_and_external(self):
+        form = NewBandForm()
+        self.assertCountEqual(form.fields["band_color"].queryset, [self.color])
+        html = str(form["band_color"])
+        self.assertIn(self.color.name, html)
+        self.assertNotIn(self.historical_color.name, html)
+        self.assertNotIn(self.external_color.name, html)
+
+    def test_historical_and_external_band_colors_rejected(self):
+        _ = Status.objects.get_or_create(name=models.BANDED_EVENT_NAME)
+        user = models.get_sentinel_user()
+        for color in (self.historical_color, self.external_color):
+            with self.subTest(kind=color.kind):
+                form = NewBandForm(
+                    {
+                        "banding_date": today(),
+                        "band_color": color.pk,
+                        "band_number": 10,
+                        "sex": "M",
+                        "user": user,
+                    }
+                )
+                self.assertFalse(form.is_valid())
+                self.assertIn("band_color", form.errors)
+
 
 class NewAnimalFormTest(TestCase):
     fixtures = ["bird_colony_starter_kit"]
@@ -146,6 +177,13 @@ class NewAnimalFormTest(TestCase):
         cls.user = models.get_sentinel_user()
         cls.location = Location.objects.get(pk=2)
         cls.species = Species.objects.get(pk=1)
+        cls.color = Color.objects.create(name="teal", abbrv="tl")
+        cls.historical_color = Color.objects.create(
+            name="old", abbrv="ol", kind=Color.BandType.HISTORICAL
+        )
+        cls.external_color = Color.objects.create(
+            name="other", abbrv="ot", kind=Color.BandType.EXTERNAL
+        )
         cls.sire = Animal.objects.create_with_event(
             species=cls.species,
             status=status,
@@ -180,6 +218,57 @@ class NewAnimalFormTest(TestCase):
             }
         )
         self.assertTrue(form.is_valid())
+
+    def test_band_color_options_exclude_historical_and_external(self):
+        form = NewAnimalForm()
+        options = form.fields["band_color"].queryset
+        self.assertIn(self.color, options)
+        self.assertNotIn(self.historical_color, options)
+        self.assertNotIn(self.external_color, options)
+        html = str(form["band_color"])
+        self.assertIn(self.color.name, html)
+        self.assertNotIn(self.historical_color.name, html)
+        self.assertNotIn(self.external_color.name, html)
+
+    def test_default_band_color_kind_is_available(self):
+        self.assertEqual(self.color.kind, Color.BandType.AVAILABLE)
+
+    def test_historical_and_external_band_colors_rejected(self):
+        acq_status = Status.objects.get(name="transferred in")
+        for color in (self.historical_color, self.external_color):
+            with self.subTest(kind=color.kind):
+                form = NewAnimalForm(
+                    {
+                        "acq_status": acq_status,
+                        "acq_date": today() - dt_days(10),
+                        "banding_date": today(),
+                        "sex": "M",
+                        "species": self.species,
+                        "band_color": color.pk,
+                        "band_number": 100,
+                        "location": self.location,
+                        "user": self.user,
+                    }
+                )
+                self.assertFalse(form.is_valid())
+                self.assertIn("band_color", form.errors)
+
+    def test_available_band_color_accepted(self):
+        acq_status = Status.objects.get(name="transferred in")
+        form = NewAnimalForm(
+            {
+                "acq_status": acq_status,
+                "acq_date": today() - dt_days(10),
+                "banding_date": today(),
+                "sex": "M",
+                "species": self.species,
+                "band_color": self.color.pk,
+                "band_number": 100,
+                "location": self.location,
+                "user": self.user,
+            }
+        )
+        self.assertTrue(form.is_valid(), form.errors)
 
     def test_add_by_transfer_requires_species(self):
         acq_on = today() - dt_days(10)
