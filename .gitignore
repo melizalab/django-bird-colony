@@ -2,3 +2,6 @@
 *.pyc
 *.egg-info/
 .DS_Store
+.env
+birds/collected_static
+db.sqlite3
