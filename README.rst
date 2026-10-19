@@ -131,7 +131,7 @@ Optional steps:
 4. Add tags to the ``Tags`` model. Each bird can be tagged with zero or more of
    these. Tags are used for reservations and for searching which birds were used
    for different experiments.
-4. If you want to change some of the boilerplate text on the entry
+5. If you want to change some of the boilerplate text on the entry
    forms, you’ll need to install the app from source. The templates are
    found under ``birds/templates/birds`` in the source directory.
 

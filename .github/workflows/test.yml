@@ -18,6 +18,10 @@ jobs:
         version: "latest"
     - name: Check code with ruff
       run: uv run --frozen ruff check .
+    - name: Build package
+      run: uv build
+    - name: Check that the README renders on PyPI
+      run: uvx twine check --strict dist/*
 
   test:
     runs-on: ubuntu-26.04
