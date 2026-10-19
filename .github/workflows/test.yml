@@ -6,6 +6,19 @@ on:
       - master
 
 jobs:
+  lint:
+    runs-on: ubuntu-26.04
+
+    steps:
+    - uses: actions/checkout@v7
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: true
+        version: "latest"
+    - name: Check code with ruff
+      run: uv run --frozen ruff check .
+
   test:
     runs-on: ubuntu-26.04
 

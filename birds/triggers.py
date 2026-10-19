@@ -1,4 +1,7 @@
 # -*- mode: python -*-
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright 2014-2026 C Daniel Meliza and contributors
+
 from django.db.models.signals import m2m_changed, post_delete, post_save
 from django.dispatch import receiver
 

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright 2014-2026 C Daniel Meliza and contributors
+
 import os
 
 # Tests use an in-memory sqlite database by default. Set BIRDS_TEST_DB=postgres

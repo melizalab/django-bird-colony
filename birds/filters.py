@@ -1,4 +1,7 @@
 # -*- mode: python -*-
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright 2014-2026 C Daniel Meliza and contributors
+
 from django_filters import rest_framework as filters
 
 from birds.models import Animal, Event, Measurement, Sample

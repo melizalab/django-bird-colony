@@ -1,4 +1,7 @@
 # -*- mode: python -*-
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright 2014-2026 C Daniel Meliza and contributors
+
 """Tools for classifying birds and computing summaries"""
 
 import datetime

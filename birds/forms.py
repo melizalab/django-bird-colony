@@ -1,4 +1,7 @@
 # -*- mode: python -*-
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright 2014-2026 C Daniel Meliza and contributors
+
 from django import forms
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist

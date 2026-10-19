@@ -1,4 +1,7 @@
 # -*- mode: python -*-
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright 2014-2026 C Daniel Meliza and contributors
+
 from django import template
 from django.urls import NoReverseMatch, reverse
 from django.utils.html import format_html, format_html_join

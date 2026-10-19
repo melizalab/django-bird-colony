@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright 2014-2026 C Daniel Meliza and contributors
+
 from django.contrib import admin
 from django.contrib.auth import views as authviews
 from django.urls import include, re_path
