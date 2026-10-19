@@ -6,7 +6,7 @@ Releases are listed newest first. Dates come from the release tag, or from the
 version-bump commit for releases that were never tagged (most releases before
 0.13). Numbers like #57 refer to issues on GitHub.
 
-0.15.0 (unreleased)
+0.15.0
 -------------------
 
 Breaking changes

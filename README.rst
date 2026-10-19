@@ -66,7 +66,7 @@ Quick start
 
 3. Run ``python manage.py migrate`` to create the database tables. If
    this is a new django install, run
-   ``python migrate.py createsuperuser`` to create your admin user.
+   ``python manage.py createsuperuser`` to create your admin user.
 
 4. Run ``python manage.py loaddata bird_colony_starter_kit`` to create
    some useful initial records.
@@ -96,29 +96,41 @@ Required steps:
    will be named ``zebf_red_1`` and so forth.
 2. Edit and add locations to the ``Locations`` table. You need to have
    at least one location created. The main use for this field is to
-   allow you to find where a bird is by looking at the last event.
-3. Edit and create new event types in the ``Status codes`` table. Common event
-   types include ``laid``, ``hatched``, ``added``, ``moved``, ``died``, ``used for
-   anatomy``, etc. For each status code, indicate whether it adds or removes a
-   bird from the colony. Addition event types include eggs being laid, births,
-   and transfers, which are handled differently. Removal event types include
-   expected and unexpected deaths. Unexpected deaths are important to tabulate
-   when looking at family history and breeding success. When you create an event
-   that removes a bird, it will appear as no longer alive. The ``hatched`` event
-   is special, because if you add a bird to the database using the ``Add new
-   bird`` view using this code, the system will require you to enter the bird’s
-   parents. (If you don’t know the bird’s parents, you can always create it
-   manually in the admin interface)
+   allow you to find where a bird is by looking at the last event. Mark the
+   locations where pairs are kept as nests, so they can be chosen when you
+   create a pairing. Locations can also be grouped into rooms, and inactive
+   locations are not offered in forms.
+3. Edit and create new event types in the ``Status codes`` table. The
+   application looks up some event types by name, so the table needs to
+   include ``hatched``, ``laid``, ``banded``, ``died``, ``moved``, ``note``,
+   ``reservation``, and ``bad egg``. The ``bird_colony_starter_kit`` fixture
+   creates these, plus ``transferred in`` and ``transferred out``. For each
+   status code, indicate whether it adds a bird to the colony (an egg being
+   laid, a birth, or a transfer in) or removes one (an expected or unexpected
+   death or removal). Unexpected removals are important to tabulate when
+   looking at family history and breeding success. When you create an event
+   that removes a bird, it will appear as no longer alive. The ``hatched``
+   event is special, because if you add a bird to the database using the
+   ``Add new bird`` view using this code, the system will require you to enter
+   the bird’s parents. (If you don’t know the bird’s parents, you can always
+   create it manually in the admin interface)
 
 Optional steps:
 ^^^^^^^^^^^^^^^
 
-1. If your bands are colored, add your colors to the ``Colors`` table.
-   This will affect the short name for your animals.
+1. If your bands are colored, add your colors to the ``Band colors`` table.
+   This will affect the short name for your animals. Only colors with the kind
+   ``available`` are offered when you add an animal or band a bird. Mark colors
+   you no longer use as ``historical``, and colors from other labs as
+   ``external``, so that existing animals keep their bands without cluttering
+   the forms.
 2. If you’re going to be adding samples to the databse, add or edit
    ``Sample locations`` and ``Sample types`` in the admin interface.
-3. Add additional users to the database. This is particularly useful if
-   you want to allow specific users to reserve animals.
+3. Add additional users to the database. Every event records who entered
+   it, so add a user for each person who will be entering data.
+4. Add tags to the ``Tags`` model. Each bird can be tagged with zero or more of
+   these. Tags are used for reservations and for searching which birds were used
+   for different experiments.
 4. If you want to change some of the boilerplate text on the entry
    forms, you’ll need to install the app from source. The templates are
    found under ``birds/templates/birds`` in the source directory.
