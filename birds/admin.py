@@ -37,7 +37,7 @@ class AnimalAdmin(admin.ModelAdmin):
     )
     list_display = ("name", "species", "band", "uuid", "sex", "plumage", "display_tags")
     list_filter = ("species", "sex", "band_color", "plumage", "tags", "created_at")
-    search_fields = ("band_color__name", "band_number", "species__code")
+    search_fields = ("band_color__name", "band_number", "species__code", "^uuid")
     inlines = (
         ParentInline,
         TagInline,
